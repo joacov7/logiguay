@@ -1,0 +1,62 @@
+import { Controller, Get, Put, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
+import { Role } from '@prisma/client';
+import { UsersService } from './users.service';
+import { UpdateUserDto } from './dto/user.dto';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+
+@ApiTags('Users')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Controller('users')
+export class UsersController {
+  constructor(private readonly usersService: UsersService) {}
+
+  @Get()
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Listar todos los usuarios' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  findAll(
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    return this.usersService.findAll(page, limit);
+  }
+
+  @Get('me')
+  @ApiOperation({ summary: 'Obtener perfil del usuario actual' })
+  getMe(@CurrentUser('id') userId: string) {
+    return this.usersService.getProfile(userId);
+  }
+
+  @Get(':id')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Obtener usuario por ID' })
+  findOne(@Param('id') id: string) {
+    return this.usersService.findOne(id);
+  }
+
+  @Put(':id')
+  @ApiOperation({ summary: 'Actualizar usuario' })
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateUserDto,
+    @CurrentUser() user: any,
+  ) {
+    if (user.role !== Role.ADMIN && user.id !== id) {
+      throw new Error('No autorizado');
+    }
+    return this.usersService.update(id, dto);
+  }
+
+  @Delete(':id')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Desactivar usuario' })
+  deactivate(@Param('id') id: string) {
+    return this.usersService.deactivate(id);
+  }
+}

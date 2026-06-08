@@ -1,0 +1,422 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  DADOR
+  TRANSPORTISTA
+  CHOFER
+}
+
+enum PlanType {
+  FREE
+  PRO
+  EMPRESA
+  FLOTA
+}
+
+enum VehicleType {
+  CAMION
+  ACOPLADO
+  SEMIRREMOLQUE
+}
+
+enum VehicleStatus {
+  ACTIVO
+  INACTIVO
+  MANTENIMIENTO
+}
+
+enum DocumentStatus {
+  VIGENTE
+  VENCIDO
+  POR_VENCER
+}
+
+enum CargoStatus {
+  PENDIENTE
+  PUBLICADO
+  COTIZANDO
+  ASIGNADO
+  CANCELADO
+}
+
+enum TripStatus {
+  PENDIENTE
+  PUBLICADO
+  COTIZANDO
+  ASIGNADO
+  EN_CAMINO_ORIGEN
+  EN_CARGA
+  EN_TRANSITO
+  EN_DESCARGA
+  FINALIZADO
+  CANCELADO
+}
+
+enum CommissionType {
+  PORCENTAJE
+  FIJO
+  HIBRIDO
+}
+
+enum QuoteStatus {
+  PENDIENTE
+  ACEPTADA
+  RECHAZADA
+}
+
+enum GeoFenceType {
+  ORIGEN
+  DESTINO
+  PLANTA
+  ACOPIO
+  PUERTO
+  CLIENTE
+}
+
+enum TripEventType {
+  LLEGADA_ORIGEN
+  SALIDA_ORIGEN
+  LLEGADA_DESTINO
+  SALIDA_DESTINO
+  DESVIO
+  PERDIDA_SENAL
+  DEMORA
+}
+
+enum InvoiceType {
+  VIAJE
+  COMISION
+  SUSCRIPCION
+}
+
+enum InvoiceStatus {
+  PENDIENTE
+  PAGADA
+  CANCELADA
+}
+
+enum SubscriptionStatus {
+  ACTIVA
+  CANCELADA
+  VENCIDA
+  TRIAL
+}
+
+model User {
+  id         String   @id @default(cuid())
+  email      String   @unique
+  password   String
+  role       Role     @default(DADOR)
+  firstName  String
+  lastName   String
+  phone      String?
+  country    String   @default("AR")
+  language   String   @default("es")
+  currency   String   @default("ARS")
+  timezone   String   @default("America/Argentina/Buenos_Aires")
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  companyUsers CompanyUser[]
+  drivers      Driver[]
+  auditLogs    AuditLog[]
+
+  @@map("users")
+}
+
+model Company {
+  id        String   @id @default(cuid())
+  name      String
+  cuit      String   @unique
+  address   String?
+  country   String   @default("AR")
+  planType  PlanType @default(FREE)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  companyUsers  CompanyUser[]
+  branches      Branch[]
+  vehicles      Vehicle[]
+  drivers       Driver[]
+  cargos        Cargo[]
+  quotes        Quote[]
+  geoFences     GeoFence[]
+  alerts        Alert[]
+  subscriptions Subscription[]
+  invoices      Invoice[]
+  trips         Trip[]
+
+  @@map("companies")
+}
+
+model CompanyUser {
+  userId    String
+  companyId String
+  role      Role   @default(DADOR)
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@id([userId, companyId])
+  @@map("company_users")
+}
+
+model Branch {
+  id        String  @id @default(cuid())
+  companyId String
+  name      String
+  address   String
+  lat       Float?
+  lng       Float?
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("branches")
+}
+
+model Vehicle {
+  id            String        @id @default(cuid())
+  companyId     String
+  type          VehicleType
+  plate         String        @unique
+  brand         String?
+  model         String?
+  year          Int?
+  capacityTons  Float?
+  capacityM3    Float?
+  status        VehicleStatus @default(ACTIVO)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  company   Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  trips     Trip[]
+  positions VehiclePosition[]
+  documents Document[]
+
+  @@map("vehicles")
+}
+
+model Driver {
+  id             String   @id @default(cuid())
+  userId         String
+  companyId      String
+  licenseNumber  String
+  licenseExpiry  DateTime
+  status         String   @default("ACTIVO")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company   Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  trips     Trip[]
+  documents Document[]
+
+  @@map("drivers")
+}
+
+model Document {
+  id         String         @id @default(cuid())
+  entityType String
+  entityId   String
+  type       String
+  fileUrl    String
+  expiresAt  DateTime?
+  status     DocumentStatus @default(VIGENTE)
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  vehicle Vehicle? @relation(fields: [entityId], references: [id], map: "document_vehicle_fk")
+  driver  Driver?  @relation(fields: [entityId], references: [id], map: "document_driver_fk")
+
+  @@map("documents")
+}
+
+model Cargo {
+  id                 String      @id @default(cuid())
+  companyId          String
+  type               String
+  description        String?
+  weightTons         Float?
+  volumeM3           Float?
+  originAddress      String
+  originLat          Float?
+  originLng          Float?
+  destinationAddress String
+  destinationLat     Float?
+  destinationLng     Float?
+  requiredDate       DateTime?
+  estimatedValue     Float?
+  observations       String?
+  status             CargoStatus @default(PENDIENTE)
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  trips   Trip[]
+  quotes  Quote[]
+
+  @@map("cargos")
+}
+
+model Trip {
+  id               String     @id @default(cuid())
+  cargoId          String
+  vehicleId        String?
+  driverId         String?
+  transportCompanyId String?
+  status           TripStatus @default(PENDIENTE)
+  agreedRate       Float?
+  commission       Float?
+  commissionType   CommissionType?
+  estimatedArrival DateTime?
+  actualArrival    DateTime?
+  startedAt        DateTime?
+  finishedAt       DateTime?
+  canceledAt       DateTime?
+  cancelReason     String?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  cargo            Cargo    @relation(fields: [cargoId], references: [id])
+  vehicle          Vehicle? @relation(fields: [vehicleId], references: [id])
+  driver           Driver?  @relation(fields: [driverId], references: [id])
+  transportCompany Company? @relation(fields: [transportCompanyId], references: [id])
+  events           TripEvent[]
+  alerts           Alert[]
+  invoices         Invoice[]
+
+  @@map("trips")
+}
+
+model Quote {
+  id               String      @id @default(cuid())
+  cargoId          String
+  transportCompanyId String
+  amount           Float
+  notes            String?
+  status           QuoteStatus @default(PENDIENTE)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  cargo            Cargo   @relation(fields: [cargoId], references: [id])
+  transportCompany Company @relation(fields: [transportCompanyId], references: [id])
+
+  @@map("quotes")
+}
+
+model GeoFence {
+  id           String       @id @default(cuid())
+  companyId    String
+  name         String
+  type         GeoFenceType
+  lat          Float
+  lng          Float
+  radiusMeters Float        @default(500)
+  createdAt    DateTime     @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("geofences")
+}
+
+model VehiclePosition {
+  id               String   @id @default(cuid())
+  vehicleId        String
+  lat              Float
+  lng              Float
+  speed            Float?
+  heading          Float?
+  timestamp        DateTime @default(now())
+  connectionStatus String   @default("CONNECTED")
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@map("vehicle_positions")
+}
+
+model TripEvent {
+  id        String        @id @default(cuid())
+  tripId    String
+  type      TripEventType
+  lat       Float?
+  lng       Float?
+  timestamp DateTime      @default(now())
+  notes     String?
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@map("trip_events")
+}
+
+model Alert {
+  id        String   @id @default(cuid())
+  companyId String
+  tripId    String?
+  type      String
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  trip    Trip?   @relation(fields: [tripId], references: [id])
+
+  @@map("alerts")
+}
+
+model Subscription {
+  id        String             @id @default(cuid())
+  companyId String
+  plan      PlanType
+  status    SubscriptionStatus @default(TRIAL)
+  startDate DateTime
+  endDate   DateTime
+  amount    Float
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
+
+model Invoice {
+  id        String        @id @default(cuid())
+  companyId String
+  tripId    String?
+  type      InvoiceType
+  amount    Float
+  status    InvoiceStatus @default(PENDIENTE)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  trip    Trip?   @relation(fields: [tripId], references: [id])
+
+  @@map("invoices")
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  oldValue  Json?
+  newValue  Json?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
+}
