@@ -64,3 +64,4 @@ coverage/
 # Misc
 *.pem
 .npmrc
+.claude/
