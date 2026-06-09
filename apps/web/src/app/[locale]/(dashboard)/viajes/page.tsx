@@ -113,7 +113,7 @@ export default function ViajesPage() {
         ))}
       </div>
 
-      <div className={`grid gap-6 ${selectedTrip ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'}`}>
+      <div className="grid gap-6 grid-cols-1">
         {/* Table */}
         <Card padding="none">
           {isLoading ? (
@@ -157,10 +157,12 @@ export default function ViajesPage() {
             </Table>
           )}
         </Card>
+      </div>
 
-        {/* Detail panel */}
-        {selectedTrip && (
-          <Card>
+      {/* Detail modal */}
+      {selectedTrip && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={() => setSelectedTrip(null)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-start justify-between mb-4">
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">Detalle del viaje</h2>
@@ -270,9 +272,9 @@ export default function ViajesPage() {
                 </div>
               )}
             </div>
-          </Card>
-        )}
-      </div>
+          </div>
+        </div>
+      )}
 
       {data && data.pages > 1 && (
         <div className="flex items-center justify-center gap-2">
