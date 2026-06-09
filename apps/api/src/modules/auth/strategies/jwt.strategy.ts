@@ -45,6 +45,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         firstName: true,
         lastName: true,
         isActive: true,
+        companyUsers: { select: { companyId: true }, take: 1 },
       },
     });
 
@@ -52,6 +53,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('Usuario no encontrado o inactivo');
     }
 
-    return user;
+    const { companyUsers, ...rest } = user;
+    return { ...rest, companyId: companyUsers[0]?.companyId ?? null };
   }
 }

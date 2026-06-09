@@ -16,6 +16,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { StatusBadge } from '@/components/ui/Badge';
 import api from '@/lib/api';
+import { useAuth } from '@/hooks/useAuth';
 import { Cargo, PaginatedResponse } from '@/types';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -36,6 +37,8 @@ interface Filters {
 const CARGO_TYPES = ['Cereal', 'Fertilizante', 'Maquinaria', 'General', 'Otro', 'Granos', 'Combustible', 'Materiales', 'Refrigerados'];
 
 export default function BolsaPage() {
+  const { user } = useAuth();
+  const companyId = (user as any)?.companyId as string | undefined;
   const [page, setPage] = useState(1);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [quotingCargoId, setQuotingCargoId] = useState<string | null>(null);
@@ -85,7 +88,7 @@ export default function BolsaPage() {
     mutationFn: async ({ cargoId, amount, notes }: { cargoId: string; amount: number; notes: string }) => {
       return api.post('/quotes', {
         cargoId,
-        transportCompanyId: 'placeholder',
+        transportCompanyId: companyId,
         amount,
         notes: notes || undefined,
       });

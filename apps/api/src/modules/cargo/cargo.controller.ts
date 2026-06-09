@@ -15,6 +15,7 @@ import { CreateCargoDto, UpdateCargoDto, MarketplaceFilterDto } from './dto/carg
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Role } from '@prisma/client';
 
 @ApiTags('Cargo')
@@ -27,8 +28,8 @@ export class CargoController {
   @Post()
   @Roles(Role.DADOR, Role.ADMIN)
   @ApiOperation({ summary: 'Crear carga' })
-  create(@Body() dto: CreateCargoDto) {
-    return this.cargoService.create(dto);
+  create(@Body() dto: CreateCargoDto, @CurrentUser('companyId') companyId: string) {
+    return this.cargoService.create({ ...dto, companyId: dto.companyId || companyId });
   }
 
   @Get()
