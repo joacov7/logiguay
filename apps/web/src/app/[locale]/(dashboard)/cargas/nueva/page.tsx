@@ -1,18 +1,106 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useRouter } from '@/i18n/routing';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMutation } from '@tanstack/react-query';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Search } from 'lucide-react';
 import Link from 'next/link';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
+
+interface NominatimResult {
+  place_id: number;
+  display_name: string;
+  lat: string;
+  lon: string;
+}
+
+function AddressSearch({
+  addressField,
+  latField,
+  lngField,
+  getValues,
+  setValue,
+}: {
+  addressField: 'originAddress' | 'destinationAddress';
+  latField: 'originLat' | 'destinationLat';
+  lngField: 'originLng' | 'destinationLng';
+  getValues: (field: string) => string;
+  setValue: (field: string, value: unknown) => void;
+}) {
+  const [results, setResults] = useState<NominatimResult[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const handleSearch = async () => {
+    const address = getValues(addressField);
+    if (!address || address.length < 3) {
+      setError('Ingresá una dirección primero');
+      return;
+    }
+    setError('');
+    setLoading(true);
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=5&countrycodes=ar`,
+        { headers: { 'Accept-Language': 'es' } },
+      );
+      const data: NominatimResult[] = await res.json();
+      setResults(data);
+      if (data.length === 0) setError('Sin resultados. Probá con otra dirección.');
+    } catch {
+      setError('Error al buscar. Intentá de nuevo.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSelect = (result: NominatimResult) => {
+    setValue(addressField, result.display_name);
+    setValue(latField, parseFloat(result.lat));
+    setValue(lngField, parseFloat(result.lon));
+    setResults([]);
+  };
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={handleSearch}
+        disabled={loading}
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-600 border border-blue-300 rounded-lg hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+      >
+        <Search className="h-3.5 w-3.5" />
+        {loading ? 'Buscando...' : 'Buscar ubicación'}
+      </button>
+      {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+      {results.length > 0 && (
+        <div
+          ref={dropdownRef}
+          className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"
+        >
+          {results.map((r) => (
+            <button
+              key={r.place_id}
+              type="button"
+              onClick={() => handleSelect(r)}
+              className="block w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-blue-50 border-b border-gray-100 last:border-0"
+            >
+              {r.display_name}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const CARGO_TYPES = [
   { value: 'Cereal', label: 'Cereal' },
@@ -64,6 +152,7 @@ export default function NuevaCargaPage() {
     register,
     handleSubmit,
     setValue,
+    getValues,
     formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -176,6 +265,13 @@ export default function NuevaCargaPage() {
               error={errors.originAddress?.message}
               {...register('originAddress')}
             />
+            <AddressSearch
+              addressField="originAddress"
+              latField="originLat"
+              lngField="originLng"
+              getValues={getValues as (field: string) => string}
+              setValue={setValue as (field: string, value: unknown) => void}
+            />
             <div className="grid grid-cols-2 gap-4">
               <Input
                 label="Latitud"
@@ -205,6 +301,13 @@ export default function NuevaCargaPage() {
               required
               error={errors.destinationAddress?.message}
               {...register('destinationAddress')}
+            />
+            <AddressSearch
+              addressField="destinationAddress"
+              latField="destinationLat"
+              lngField="destinationLng"
+              getValues={getValues as (field: string) => string}
+              setValue={setValue as (field: string, value: unknown) => void}
             />
             <div className="grid grid-cols-2 gap-4">
               <Input

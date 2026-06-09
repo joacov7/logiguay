@@ -110,6 +110,16 @@ export interface Cargo {
   _count?: { quotes: number };
 }
 
+export type TripEventType = 'LLEGADA_ORIGEN' | 'SALIDA_ORIGEN' | 'LLEGADA_DESTINO' | 'SALIDA_DESTINO';
+
+export interface TripEvent {
+  id: string;
+  tripId: string;
+  type: TripEventType;
+  timestamp: string;
+  notes?: string;
+}
+
 export interface Trip {
   id: string;
   cargoId: string;
@@ -130,6 +140,7 @@ export interface Trip {
   cargo?: Partial<Cargo>;
   vehicle?: Partial<Vehicle>;
   driver?: Partial<Driver>;
+  events?: TripEvent[];
 }
 
 export interface Quote {

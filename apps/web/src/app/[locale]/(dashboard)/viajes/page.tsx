@@ -2,14 +2,14 @@
 
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Navigation, ChevronRight, X, Truck, User, MapPin, CheckCircle, Circle } from 'lucide-react';
+import { Navigation, ChevronRight, X, Truck, User, MapPin, CheckCircle, Circle, Clock } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
 import { StatusBadge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
-import { Trip, PaginatedResponse } from '@/types';
+import { Trip, TripEvent, PaginatedResponse } from '@/types';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -30,6 +30,13 @@ const STAGES = [
 ];
 
 const STATUS_ORDER = STAGES.map((s) => s.status);
+
+const EVENT_TYPE_LABELS: Record<string, string> = {
+  LLEGADA_ORIGEN: 'Llegada al origen',
+  SALIDA_ORIGEN: 'Salida del origen',
+  LLEGADA_DESTINO: 'Llegada al destino',
+  SALIDA_DESTINO: 'Entrega completada',
+};
 
 export default function ViajesPage() {
   const { user } = useAuth();
@@ -330,6 +337,33 @@ export default function ViajesPage() {
                       );
                     })}
                   </div>
+                </div>
+
+                {/* Events timeline */}
+                <div>
+                  <p className="text-xs font-medium text-gray-500 uppercase mb-3">Historial de eventos</p>
+                  {trip.events && trip.events.length > 0 ? (
+                    <div className="space-y-2">
+                      {trip.events.map((event: TripEvent) => (
+                        <div key={event.id} className="flex items-start gap-3 p-2.5 rounded-lg bg-gray-50">
+                          <Clock className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-800">
+                              {EVENT_TYPE_LABELS[event.type] ?? event.type}
+                            </p>
+                            <p className="text-xs text-gray-400">
+                              {format(new Date(event.timestamp), 'dd/MM/yyyy HH:mm')}
+                            </p>
+                            {event.notes && (
+                              <p className="text-xs text-gray-500 mt-0.5">{event.notes}</p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-400 italic">Sin eventos registrados</p>
+                  )}
                 </div>
 
                 {/* Actions */}
