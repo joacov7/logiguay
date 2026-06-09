@@ -5,12 +5,22 @@ import { NextRequest, NextResponse } from 'next/server';
 const intlMiddleware = createMiddleware(routing);
 
 const PUBLIC_PATHS = ['/login', '/register', '/'];
+const LOCALES = ['es', 'en', 'pt'];
+
+function stripLocale(pathname: string): string {
+  for (const locale of LOCALES) {
+    if (pathname === `/${locale}`) return '/';
+    if (pathname.startsWith(`/${locale}/`)) return pathname.slice(locale.length + 1);
+  }
+  return pathname;
+}
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const bare = stripLocale(pathname);
 
   const isPublic = PUBLIC_PATHS.some(
-    (path) => pathname === path || pathname.startsWith(`${path}/`),
+    (path) => bare === path || bare.startsWith(`${path}/`),
   );
 
   const token = request.cookies.get('accessToken')?.value;
@@ -21,7 +31,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  if (token && (pathname === '/login' || pathname === '/register')) {
+  if (token && (bare === '/login' || bare === '/register')) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
