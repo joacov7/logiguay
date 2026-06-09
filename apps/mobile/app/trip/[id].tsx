@@ -9,8 +9,8 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import api from '@/lib/api';
-import { Trip, TripStatus } from '@/lib/types';
+import api from '../../src/lib/api';
+import { Trip, TripStatus } from '../../src/lib/types';
 
 function statusColor(status: TripStatus): string {
   switch (status) {
