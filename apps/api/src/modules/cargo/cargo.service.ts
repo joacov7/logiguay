@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
-import { CreateCargoDto, UpdateCargoDto } from './dto/cargo.dto';
+import { CreateCargoDto, UpdateCargoDto, MarketplaceFilterDto } from './dto/cargo.dto';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class CargoService {
@@ -11,6 +12,7 @@ export class CargoService {
       data: {
         ...dto,
         requiredDate: dto.requiredDate ? new Date(dto.requiredDate) : null,
+        auctionEndsAt: dto.auctionEndsAt ? new Date(dto.auctionEndsAt) : null,
         status: 'PENDIENTE',
       },
     });
@@ -24,9 +26,9 @@ export class CargoService {
   }) {
     const { companyId, status, page = 1, limit = 20 } = filters;
     const skip = (page - 1) * limit;
-    const where: any = {};
+    const where: Prisma.CargoWhereInput = {};
     if (companyId) where.companyId = companyId;
-    if (status) where.status = status;
+    if (status) where.status = status as Prisma.EnumCargoStatusFilter;
 
     const [data, total] = await Promise.all([
       this.prisma.cargo.findMany({
@@ -61,11 +63,18 @@ export class CargoService {
   async update(id: string, dto: UpdateCargoDto) {
     const cargo = await this.findOne(id);
 
-    if (cargo.status === 'CANCELADO') {
-      throw new BadRequestException('No se puede modificar una carga cancelada');
+    if (cargo.status !== 'PENDIENTE') {
+      throw new BadRequestException('Solo se pueden editar cargas en estado PENDIENTE');
     }
 
-    return this.prisma.cargo.update({ where: { id }, data: dto });
+    return this.prisma.cargo.update({
+      where: { id },
+      data: {
+        ...dto,
+        requiredDate: dto.requiredDate ? new Date(dto.requiredDate) : undefined,
+        auctionEndsAt: dto.auctionEndsAt ? new Date(dto.auctionEndsAt) : undefined,
+      },
+    });
   }
 
   async publish(id: string) {
@@ -81,21 +90,129 @@ export class CargoService {
     return this.prisma.cargo.update({ where: { id }, data: { status: 'CANCELADO' } });
   }
 
-  async getMarketplace(page = 1, limit = 20) {
+  async remove(id: string) {
+    const cargo = await this.findOne(id);
+    if (cargo.status !== 'PENDIENTE') {
+      throw new BadRequestException('Solo se pueden eliminar cargas en estado PENDIENTE');
+    }
+    return this.prisma.cargo.delete({ where: { id } });
+  }
+
+  async getMarketplace(filters: MarketplaceFilterDto) {
+    const {
+      type,
+      minWeight,
+      maxWeight,
+      minValue,
+      maxValue,
+      requiredDateFrom,
+      requiredDateTo,
+      search,
+      orderBy = 'createdAt',
+      orderDir = 'desc',
+      page = 1,
+      limit = 20,
+    } = filters;
+
     const skip = (page - 1) * limit;
+
+    const where: Prisma.CargoWhereInput = {
+      status: { in: ['PUBLICADO', 'COTIZANDO'] },
+    };
+
+    if (type) where.type = { contains: type, mode: 'insensitive' };
+    if (minWeight !== undefined || maxWeight !== undefined) {
+      where.weightTons = {};
+      if (minWeight !== undefined) (where.weightTons as Prisma.FloatNullableFilter).gte = minWeight;
+      if (maxWeight !== undefined) (where.weightTons as Prisma.FloatNullableFilter).lte = maxWeight;
+    }
+    if (minValue !== undefined || maxValue !== undefined) {
+      where.estimatedValue = {};
+      if (minValue !== undefined) (where.estimatedValue as Prisma.FloatNullableFilter).gte = minValue;
+      if (maxValue !== undefined) (where.estimatedValue as Prisma.FloatNullableFilter).lte = maxValue;
+    }
+    if (requiredDateFrom || requiredDateTo) {
+      where.requiredDate = {};
+      if (requiredDateFrom) (where.requiredDate as Prisma.DateTimeNullableFilter).gte = new Date(requiredDateFrom);
+      if (requiredDateTo) (where.requiredDate as Prisma.DateTimeNullableFilter).lte = new Date(requiredDateTo);
+    }
+    if (search) {
+      where.OR = [
+        { type: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+        { originAddress: { contains: search, mode: 'insensitive' } },
+        { destinationAddress: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    const orderByClause: Prisma.CargoOrderByWithRelationInput =
+      orderBy === 'estimatedValue'
+        ? { estimatedValue: orderDir }
+        : orderBy === 'requiredDate'
+        ? { requiredDate: orderDir }
+        : { createdAt: orderDir };
+
     const [data, total] = await Promise.all([
       this.prisma.cargo.findMany({
-        where: { status: 'PUBLICADO' },
+        where,
         skip,
         take: limit,
-        orderBy: { createdAt: 'desc' },
+        orderBy: orderByClause,
         include: {
           company: { select: { id: true, name: true, country: true } },
           _count: { select: { quotes: true } },
         },
       }),
-      this.prisma.cargo.count({ where: { status: 'PUBLICADO' } }),
+      this.prisma.cargo.count({ where }),
     ]);
+
     return { data, total, page, limit, pages: Math.ceil(total / limit) };
+  }
+
+  async getCargoWithQuotes(id: string) {
+    const cargo = await this.prisma.cargo.findUnique({
+      where: { id },
+      include: {
+        company: { select: { id: true, name: true } },
+        quotes: {
+          include: { transportCompany: { select: { id: true, name: true, country: true } } },
+          orderBy: { amount: 'asc' },
+        },
+        _count: { select: { quotes: true } },
+      },
+    });
+    if (!cargo) throw new NotFoundException('Carga no encontrada');
+    return cargo;
+  }
+
+  async selectQuote(cargoId: string, quoteId: string) {
+    const cargo = await this.findOne(cargoId);
+
+    if (!['PUBLICADO', 'COTIZANDO'].includes(cargo.status)) {
+      throw new BadRequestException('La carga no está en un estado válido para seleccionar cotización');
+    }
+
+    const quote = await this.prisma.quote.findUnique({ where: { id: quoteId } });
+    if (!quote) throw new NotFoundException('Cotización no encontrada');
+    if (quote.cargoId !== cargoId) throw new BadRequestException('La cotización no pertenece a esta carga');
+
+    await this.prisma.$transaction([
+      this.prisma.quote.update({ where: { id: quoteId }, data: { status: 'ACEPTADA' } }),
+      this.prisma.quote.updateMany({
+        where: { cargoId, id: { not: quoteId } },
+        data: { status: 'RECHAZADA' },
+      }),
+      this.prisma.cargo.update({ where: { id: cargoId }, data: { status: 'ASIGNADO' } }),
+      this.prisma.trip.create({
+        data: {
+          cargoId,
+          transportCompanyId: quote.transportCompanyId,
+          agreedRate: quote.amount,
+          status: 'ASIGNADO',
+        },
+      }),
+    ]);
+
+    return this.getCargoWithQuotes(cargoId);
   }
 }

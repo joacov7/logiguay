@@ -2,25 +2,64 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { useQuery } from '@tanstack/react-query';
-import { Plus, Package } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Plus, Package, Eye } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
 import { StatusBadge } from '@/components/ui/Badge';
 import api from '@/lib/api';
-import { Cargo, PaginatedResponse } from '@/types';
+import { Cargo, PaginatedResponse, Quote } from '@/types';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
+const STATUS_OPTIONS = [
+  { value: '', label: 'Todos' },
+  { value: 'PENDIENTE', label: 'Pendiente' },
+  { value: 'PUBLICADO', label: 'Publicado' },
+  { value: 'COTIZANDO', label: 'Cotizando' },
+  { value: 'ASIGNADO', label: 'Asignado' },
+  { value: 'CANCELADO', label: 'Cancelado' },
+];
+
+interface CargoWithQuotes extends Cargo {
+  quotes: Quote[];
+}
+
 export default function CargasPage() {
   const [page, setPage] = useState(1);
+  const [statusFilter, setStatusFilter] = useState('');
+  const [selectedCargoId, setSelectedCargoId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery<PaginatedResponse<Cargo>>({
-    queryKey: ['cargas', page],
+    queryKey: ['cargas', page, statusFilter],
     queryFn: async () => {
-      const res = await api.get(`/cargo?page=${page}&limit=20`);
+      const params = new URLSearchParams({ page: String(page), limit: '20' });
+      if (statusFilter) params.set('status', statusFilter);
+      const res = await api.get(`/cargo?${params.toString()}`);
       return res.data;
+    },
+  });
+
+  const { data: cargoDetail, isLoading: detailLoading } = useQuery<CargoWithQuotes>({
+    queryKey: ['cargo-detail', selectedCargoId],
+    queryFn: async () => {
+      const res = await api.get(`/cargo/${selectedCargoId}`);
+      return res.data;
+    },
+    enabled: !!selectedCargoId,
+  });
+
+  const selectQuoteMutation = useMutation({
+    mutationFn: async ({ cargoId, quoteId }: { cargoId: string; quoteId: string }) => {
+      const res = await api.patch(`/cargo/${cargoId}/select-quote/${quoteId}`);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cargas'] });
+      queryClient.invalidateQueries({ queryKey: ['cargo-detail', selectedCargoId] });
+      setSelectedCargoId(null);
     },
   });
 
@@ -33,10 +72,28 @@ export default function CargasPage() {
         </div>
         <Link href="/cargas/nueva">
           <Button>
-            <Plus className="h-4 w-4" />
+            <Plus className="h-4 w-4 mr-1" />
             Nueva carga
           </Button>
         </Link>
+      </div>
+
+      {/* Status filter */}
+      <div className="flex items-center gap-2">
+        <span className="text-sm text-gray-600">Filtrar por estado:</span>
+        {STATUS_OPTIONS.map((opt) => (
+          <button
+            key={opt.value}
+            onClick={() => { setStatusFilter(opt.value); setPage(1); }}
+            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+              statusFilter === opt.value
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
       </div>
 
       <Card padding="none">
@@ -58,9 +115,11 @@ export default function CargasPage() {
                 <TableHead>Origen</TableHead>
                 <TableHead>Destino</TableHead>
                 <TableHead>Peso</TableHead>
+                <TableHead>Valor</TableHead>
                 <TableHead>Fecha requerida</TableHead>
                 <TableHead>Estado</TableHead>
-                <TableHead>Cotizaciones</TableHead>
+                <TableHead>Ofertas</TableHead>
+                <TableHead></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -69,7 +128,12 @@ export default function CargasPage() {
                   <TableCell className="font-medium">{cargo.type}</TableCell>
                   <TableCell className="max-w-xs truncate">{cargo.originAddress}</TableCell>
                   <TableCell className="max-w-xs truncate">{cargo.destinationAddress}</TableCell>
-                  <TableCell>{cargo.weightTons ? `${cargo.weightTons}t` : '—'}</TableCell>
+                  <TableCell>{cargo.weightTons != null ? `${cargo.weightTons}t` : '—'}</TableCell>
+                  <TableCell>
+                    {cargo.estimatedValue != null
+                      ? `$${cargo.estimatedValue.toLocaleString('es-AR')}`
+                      : '—'}
+                  </TableCell>
                   <TableCell>
                     {cargo.requiredDate
                       ? format(new Date(cargo.requiredDate), 'dd MMM yyyy', { locale: es })
@@ -78,7 +142,20 @@ export default function CargasPage() {
                   <TableCell>
                     <StatusBadge status={cargo.status} />
                   </TableCell>
-                  <TableCell>{cargo._count?.quotes || 0}</TableCell>
+                  <TableCell>{cargo._count?.quotes ?? 0}</TableCell>
+                  <TableCell>
+                    {cargo.status === 'COTIZANDO' && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setSelectedCargoId(cargo.id)}
+                        className="flex items-center gap-1"
+                      >
+                        <Eye className="h-3 w-3" />
+                        Ver ofertas
+                      </Button>
+                    )}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -95,6 +172,71 @@ export default function CargasPage() {
           <Button variant="outline" size="sm" onClick={() => setPage((p) => p + 1)} disabled={page >= data.pages}>
             Siguiente
           </Button>
+        </div>
+      )}
+
+      {/* Quotes modal */}
+      {selectedCargoId && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between p-6 border-b">
+              <h2 className="text-lg font-semibold text-gray-900">Cotizaciones recibidas</h2>
+              <button
+                onClick={() => setSelectedCargoId(null)}
+                className="text-gray-400 hover:text-gray-600 text-xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="overflow-y-auto flex-1 p-6">
+              {detailLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin h-6 w-6 border-2 border-blue-600 border-t-transparent rounded-full" />
+                </div>
+              ) : !cargoDetail?.quotes?.length ? (
+                <p className="text-center text-gray-400 py-8">No hay cotizaciones aún</p>
+              ) : (
+                <div className="space-y-3">
+                  {cargoDetail.quotes.map((quote) => (
+                    <div
+                      key={quote.id}
+                      className="flex items-center justify-between p-4 border border-gray-200 rounded-lg"
+                    >
+                      <div>
+                        <p className="font-semibold text-gray-900">
+                          ${quote.amount.toLocaleString('es-AR')}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          {(quote.transportCompany as { name: string } | undefined)?.name ?? quote.transportCompanyId}
+                        </p>
+                        {quote.notes && (
+                          <p className="text-xs text-gray-400 mt-1">{quote.notes}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <StatusBadge status={quote.status} />
+                        {quote.status === 'PENDIENTE' && (
+                          <Button
+                            size="sm"
+                            loading={selectQuoteMutation.isPending}
+                            onClick={() =>
+                              selectQuoteMutation.mutate({
+                                cargoId: selectedCargoId,
+                                quoteId: quote.id,
+                              })
+                            }
+                          >
+                            Seleccionar
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>

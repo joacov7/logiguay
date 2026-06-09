@@ -1,4 +1,4 @@
-import { IsString, IsNumber, IsOptional, IsEnum } from 'class-validator';
+import { IsString, IsNumber, IsOptional, IsEnum, IsPositive } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { QuoteStatus } from '@prisma/client';
 
@@ -13,6 +13,7 @@ export class CreateQuoteDto {
 
   @ApiProperty()
   @IsNumber()
+  @IsPositive()
   amount: number;
 
   @ApiPropertyOptional()

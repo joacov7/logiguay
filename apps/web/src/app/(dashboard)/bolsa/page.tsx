@@ -2,7 +2,16 @@
 
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ShoppingBag, MapPin, Weight, DollarSign } from 'lucide-react';
+import {
+  ShoppingBag,
+  MapPin,
+  Weight,
+  DollarSign,
+  Calendar,
+  Search,
+  ChevronDown,
+  ChevronUp,
+} from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { StatusBadge } from '@/components/ui/Badge';
@@ -11,34 +20,88 @@ import { Cargo, PaginatedResponse } from '@/types';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
+interface Filters {
+  search: string;
+  type: string;
+  minWeight: string;
+  maxWeight: string;
+  minValue: string;
+  maxValue: string;
+  requiredDateFrom: string;
+  requiredDateTo: string;
+  orderBy: string;
+  orderDir: string;
+}
+
+const CARGO_TYPES = ['Cereal', 'Fertilizante', 'Maquinaria', 'General', 'Otro', 'Granos', 'Combustible', 'Materiales', 'Refrigerados'];
+
 export default function BolsaPage() {
   const [page, setPage] = useState(1);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [quotingCargoId, setQuotingCargoId] = useState<string | null>(null);
-  const [amount, setAmount] = useState('');
+  const [quoteAmount, setQuoteAmount] = useState('');
+  const [quoteNotes, setQuoteNotes] = useState('');
+  const [filters, setFilters] = useState<Filters>({
+    search: '',
+    type: '',
+    minWeight: '',
+    maxWeight: '',
+    minValue: '',
+    maxValue: '',
+    requiredDateFrom: '',
+    requiredDateTo: '',
+    orderBy: 'createdAt',
+    orderDir: 'desc',
+  });
+
   const queryClient = useQueryClient();
 
+  const buildParams = () => {
+    const params = new URLSearchParams();
+    params.set('page', String(page));
+    params.set('limit', '12');
+    if (filters.search) params.set('search', filters.search);
+    if (filters.type) params.set('type', filters.type);
+    if (filters.minWeight) params.set('minWeight', filters.minWeight);
+    if (filters.maxWeight) params.set('maxWeight', filters.maxWeight);
+    if (filters.minValue) params.set('minValue', filters.minValue);
+    if (filters.maxValue) params.set('maxValue', filters.maxValue);
+    if (filters.requiredDateFrom) params.set('requiredDateFrom', filters.requiredDateFrom);
+    if (filters.requiredDateTo) params.set('requiredDateTo', filters.requiredDateTo);
+    params.set('orderBy', filters.orderBy);
+    params.set('orderDir', filters.orderDir);
+    return params.toString();
+  };
+
   const { data, isLoading } = useQuery<PaginatedResponse<Cargo>>({
-    queryKey: ['bolsa', page],
+    queryKey: ['bolsa', page, filters],
     queryFn: async () => {
-      const res = await api.get(`/cargo/marketplace?page=${page}&limit=20`);
+      const res = await api.get(`/cargo/marketplace?${buildParams()}`);
       return res.data;
     },
   });
 
   const quoteMutation = useMutation({
-    mutationFn: async ({ cargoId, quoteAmount }: { cargoId: string; quoteAmount: number }) => {
+    mutationFn: async ({ cargoId, amount, notes }: { cargoId: string; amount: number; notes: string }) => {
       return api.post('/quotes', {
         cargoId,
         transportCompanyId: 'placeholder',
-        amount: quoteAmount,
+        amount,
+        notes: notes || undefined,
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bolsa'] });
       setQuotingCargoId(null);
-      setAmount('');
+      setQuoteAmount('');
+      setQuoteNotes('');
     },
   });
+
+  const handleFilterChange = (key: keyof Filters, value: string) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+    setPage(1);
+  };
 
   return (
     <div className="space-y-6">
@@ -46,6 +109,143 @@ export default function BolsaPage() {
         <h1 className="text-2xl font-bold text-gray-900">Bolsa de cargas</h1>
         <p className="text-sm text-gray-500 mt-1">Cargas disponibles para cotizar</p>
       </div>
+
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Buscar por tipo, dirección, descripción..."
+            value={filters.search}
+            onChange={(e) => handleFilterChange('search', e.target.value)}
+            className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+        <select
+          value={`${filters.orderBy}:${filters.orderDir}`}
+          onChange={(e) => {
+            const [ob, od] = e.target.value.split(':');
+            setFilters((prev) => ({ ...prev, orderBy: ob, orderDir: od }));
+            setPage(1);
+          }}
+          className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="createdAt:desc">Más reciente</option>
+          <option value="estimatedValue:asc">Menor valor</option>
+          <option value="estimatedValue:desc">Mayor valor</option>
+          <option value="requiredDate:asc">Fecha más próxima</option>
+        </select>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setFiltersOpen((v) => !v)}
+          className="flex items-center gap-2"
+        >
+          Filtros
+          {filtersOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </Button>
+      </div>
+
+      {filtersOpen && (
+        <Card>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Tipo de carga</label>
+              <select
+                value={filters.type}
+                onChange={(e) => handleFilterChange('type', e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Todos</option>
+                {CARGO_TYPES.map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Peso mín. (t)</label>
+              <input
+                type="number"
+                value={filters.minWeight}
+                onChange={(e) => handleFilterChange('minWeight', e.target.value)}
+                placeholder="0"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Peso máx. (t)</label>
+              <input
+                type="number"
+                value={filters.maxWeight}
+                onChange={(e) => handleFilterChange('maxWeight', e.target.value)}
+                placeholder="Sin límite"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Valor mín. (ARS)</label>
+              <input
+                type="number"
+                value={filters.minValue}
+                onChange={(e) => handleFilterChange('minValue', e.target.value)}
+                placeholder="0"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Valor máx. (ARS)</label>
+              <input
+                type="number"
+                value={filters.maxValue}
+                onChange={(e) => handleFilterChange('maxValue', e.target.value)}
+                placeholder="Sin límite"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Fecha desde</label>
+              <input
+                type="date"
+                value={filters.requiredDateFrom}
+                onChange={(e) => handleFilterChange('requiredDateFrom', e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Fecha hasta</label>
+              <input
+                type="date"
+                value={filters.requiredDateTo}
+                onChange={(e) => handleFilterChange('requiredDateTo', e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div className="flex items-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setFilters({
+                    search: '',
+                    type: '',
+                    minWeight: '',
+                    maxWeight: '',
+                    minValue: '',
+                    maxValue: '',
+                    requiredDateFrom: '',
+                    requiredDateTo: '',
+                    orderBy: 'createdAt',
+                    orderDir: 'desc',
+                  });
+                  setPage(1);
+                }}
+              >
+                Limpiar filtros
+              </Button>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {isLoading ? (
         <div className="flex items-center justify-center py-16">
@@ -55,11 +255,12 @@ export default function BolsaPage() {
         <div className="flex flex-col items-center justify-center py-16 text-gray-400">
           <ShoppingBag className="h-12 w-12 mb-3 opacity-50" />
           <p className="font-medium">No hay cargas disponibles</p>
+          <p className="text-sm mt-1">Probá ajustando los filtros de búsqueda</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {data.data.map((cargo) => (
-            <Card key={cargo.id} className="hover:shadow-md transition-shadow">
+            <Card key={cargo.id} className="hover:shadow-md transition-shadow flex flex-col">
               <div className="flex items-start justify-between mb-3">
                 <div>
                   <p className="font-semibold text-gray-900">{cargo.type}</p>
@@ -79,70 +280,90 @@ export default function BolsaPage() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-4 text-xs text-gray-500 mb-4">
-                {cargo.weightTons && (
+              <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 mb-3">
+                {cargo.weightTons != null && (
                   <span className="flex items-center gap-1">
                     <Weight className="h-3 w-3" />
                     {cargo.weightTons}t
                   </span>
                 )}
-                {cargo.estimatedValue && (
+                {cargo.estimatedValue != null && (
                   <span className="flex items-center gap-1">
                     <DollarSign className="h-3 w-3" />
                     ${cargo.estimatedValue.toLocaleString('es-AR')}
                   </span>
                 )}
                 {cargo.requiredDate && (
-                  <span>{format(new Date(cargo.requiredDate), 'dd MMM', { locale: es })}</span>
+                  <span className="flex items-center gap-1">
+                    <Calendar className="h-3 w-3" />
+                    {format(new Date(cargo.requiredDate), 'dd MMM yyyy', { locale: es })}
+                  </span>
                 )}
               </div>
 
-              <div className="flex items-center justify-between text-xs text-gray-400 mb-3">
-                <span>{cargo._count?.quotes || 0} cotizaciones</span>
+              <div className="flex items-center justify-between text-xs text-gray-400 mb-4">
+                <span>
+                  {cargo._count?.quotes ?? 0}{' '}
+                  {cargo._count?.quotes === 1 ? 'oferta' : 'ofertas'}
+                </span>
               </div>
 
-              {quotingCargoId === cargo.id ? (
-                <div className="space-y-2">
-                  <input
-                    type="number"
-                    placeholder="Monto en ARS"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      className="flex-1"
-                      loading={quoteMutation.isPending}
-                      onClick={() =>
-                        quoteMutation.mutate({
-                          cargoId: cargo.id,
-                          quoteAmount: parseFloat(amount),
-                        })
-                      }
-                      disabled={!amount || isNaN(parseFloat(amount))}
-                    >
-                      Enviar
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setQuotingCargoId(null)}
-                    >
-                      Cancelar
-                    </Button>
+              <div className="mt-auto">
+                {quotingCargoId === cargo.id ? (
+                  <div className="space-y-2">
+                    <input
+                      type="number"
+                      placeholder="Monto en ARS"
+                      value={quoteAmount}
+                      onChange={(e) => setQuoteAmount(e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <textarea
+                      placeholder="Notas adicionales (opcional)"
+                      value={quoteNotes}
+                      onChange={(e) => setQuoteNotes(e.target.value)}
+                      rows={2}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        className="flex-1"
+                        loading={quoteMutation.isPending}
+                        onClick={() =>
+                          quoteMutation.mutate({
+                            cargoId: cargo.id,
+                            amount: parseFloat(quoteAmount),
+                            notes: quoteNotes,
+                          })
+                        }
+                        disabled={!quoteAmount || isNaN(parseFloat(quoteAmount))}
+                      >
+                        Enviar cotización
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setQuotingCargoId(null);
+                          setQuoteAmount('');
+                          setQuoteNotes('');
+                        }}
+                      >
+                        Cancelar
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <Button
-                  size="sm"
-                  className="w-full"
-                  onClick={() => setQuotingCargoId(cargo.id)}
-                >
-                  Cotizar
-                </Button>
-              )}
+                ) : (
+                  <Button
+                    size="sm"
+                    className="w-full"
+                    onClick={() => setQuotingCargoId(cargo.id)}
+                  >
+                    Cotizar
+                  </Button>
+                )}
+              </div>
             </Card>
           ))}
         </div>
@@ -150,11 +371,23 @@ export default function BolsaPage() {
 
       {data && data.pages > 1 && (
         <div className="flex items-center justify-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page === 1}
+          >
             Anterior
           </Button>
-          <span className="text-sm text-gray-500">Página {page} de {data.pages}</span>
-          <Button variant="outline" size="sm" onClick={() => setPage((p) => p + 1)} disabled={page >= data.pages}>
+          <span className="text-sm text-gray-500">
+            Página {page} de {data.pages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPage((p) => p + 1)}
+            disabled={page >= data.pages}
+          >
             Siguiente
           </Button>
         </div>
