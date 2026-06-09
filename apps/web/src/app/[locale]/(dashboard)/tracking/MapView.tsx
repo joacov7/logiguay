@@ -1,12 +1,11 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { VehiclePositionWS } from '@/hooks/useTracking';
 
-// Fix default marker icons in webpack
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
@@ -15,97 +14,153 @@ L.Icon.Default.mergeOptions({
 });
 
 const truckIcon = new L.DivIcon({
-  html: `<div style="
-    width:32px;height:32px;background:#2563eb;border-radius:50% 50% 50% 0;
-    transform:rotate(-45deg);border:3px solid white;
-    box-shadow:0 2px 8px rgba(0,0,0,0.3);
-    display:flex;align-items:center;justify-content:center;
-  ">
-    <span style="transform:rotate(45deg);font-size:14px;">🚛</span>
-  </div>`,
+  html: `<div style="width:34px;height:34px;background:#2563eb;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:16px;">🚛</div>`,
   className: '',
-  iconSize: [32, 32],
-  iconAnchor: [16, 32],
-  popupAnchor: [0, -32],
+  iconSize: [34, 34],
+  iconAnchor: [17, 17],
+  popupAnchor: [0, -20],
 });
 
-const selectedIcon = new L.DivIcon({
-  html: `<div style="
-    width:38px;height:38px;background:#dc2626;border-radius:50% 50% 50% 0;
-    transform:rotate(-45deg);border:3px solid white;
-    box-shadow:0 2px 12px rgba(220,38,38,0.5);
-    display:flex;align-items:center;justify-content:center;
-  ">
-    <span style="transform:rotate(45deg);font-size:16px;">🚛</span>
-  </div>`,
+const selectedTruckIcon = new L.DivIcon({
+  html: `<div style="width:40px;height:40px;background:#dc2626;border-radius:50%;border:3px solid white;box-shadow:0 2px 12px rgba(220,38,38,0.5);display:flex;align-items:center;justify-content:center;font-size:18px;">🚛</div>`,
   className: '',
-  iconSize: [38, 38],
-  iconAnchor: [19, 38],
-  popupAnchor: [0, -38],
+  iconSize: [40, 40],
+  iconAnchor: [20, 20],
+  popupAnchor: [0, -24],
 });
 
-function FitBounds({ positions }: { positions: VehiclePositionWS[] }) {
+const originIcon = new L.DivIcon({
+  html: `<div style="width:14px;height:14px;background:#16a34a;border-radius:50%;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.3);"></div>`,
+  className: '',
+  iconSize: [14, 14],
+  iconAnchor: [7, 7],
+});
+
+const destIcon = new L.DivIcon({
+  html: `<div style="width:14px;height:14px;background:#dc2626;border-radius:50%;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.3);"></div>`,
+  className: '',
+  iconSize: [14, 14],
+  iconAnchor: [7, 7],
+});
+
+export interface ActiveTrip {
+  id: string;
+  plate?: string;
+  originLat?: number;
+  originLng?: number;
+  destinationLat?: number;
+  destinationLng?: number;
+  originAddress?: string;
+  destinationAddress?: string;
+  status: string;
+  type?: string;
+}
+
+function FitBounds({ points }: { points: [number, number][] }) {
   const map = useMap();
-
   useEffect(() => {
-    if (positions.length === 0) return;
-    if (positions.length === 1) {
-      map.setView([positions[0].lat, positions[0].lng], 13, { animate: true });
-      return;
-    }
-    const bounds = L.latLngBounds(positions.map((p) => [p.lat, p.lng]));
-    map.fitBounds(bounds, { padding: [50, 50], animate: true });
-  }, [positions.length]);
-
+    if (points.length === 0) return;
+    if (points.length === 1) { map.setView(points[0], 12, { animate: true }); return; }
+    map.fitBounds(L.latLngBounds(points), { padding: [60, 60], animate: true });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [points.length]);
   return null;
 }
 
 interface MapViewProps {
   positions: VehiclePositionWS[];
   selectedVehicleId?: string | null;
+  activeTrips?: ActiveTrip[];
 }
 
-export default function MapView({ positions, selectedVehicleId }: MapViewProps) {
-  const center: [number, number] =
-    positions.length > 0
-      ? [positions[0].lat, positions[0].lng]
-      : [-34.6037, -58.3816]; // Buenos Aires default
+export default function MapView({ positions, selectedVehicleId, activeTrips = [] }: MapViewProps) {
+  const allPoints: [number, number][] = [
+    ...positions.map((p) => [p.lat, p.lng] as [number, number]),
+    ...activeTrips.flatMap((t) => {
+      const pts: [number, number][] = [];
+      if (t.originLat && t.originLng) pts.push([t.originLat, t.originLng]);
+      if (t.destinationLat && t.destinationLng) pts.push([t.destinationLat, t.destinationLng]);
+      return pts;
+    }),
+  ];
+
+  const center: [number, number] = allPoints.length > 0 ? allPoints[0] : [-34.6037, -58.3816];
 
   return (
-    <MapContainer
-      center={center}
-      zoom={positions.length === 0 ? 5 : 13}
-      style={{ height: '100%', width: '100%' }}
-      className="z-0"
-    >
+    <MapContainer center={center} zoom={allPoints.length === 0 ? 5 : 10} style={{ height: '100%', width: '100%' }} className="z-0">
       <TileLayer
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         attribution='&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>'
       />
+      <FitBounds points={allPoints} />
 
-      <FitBounds positions={positions} />
-
+      {/* Live GPS positions */}
       {positions.map((pos) => (
-        <Marker
-          key={pos.vehicleId}
-          position={[pos.lat, pos.lng]}
-          icon={selectedVehicleId === pos.vehicleId ? selectedIcon : truckIcon}
-        >
+        <Marker key={pos.vehicleId} position={[pos.lat, pos.lng]}
+          icon={selectedVehicleId === pos.vehicleId ? selectedTruckIcon : truckIcon}>
           <Popup>
             <div className="text-sm">
-              <p className="font-semibold mb-1">ID: {pos.vehicleId.slice(0, 12)}...</p>
-              <p>Lat: {pos.lat.toFixed(5)}</p>
-              <p>Lng: {pos.lng.toFixed(5)}</p>
-              {pos.speed !== undefined && (
-                <p>Velocidad: {Math.round((pos.speed || 0) * 3.6)} km/h</p>
-              )}
-              <p className="text-gray-400 text-xs mt-1">
-                {new Date(pos.timestamp).toLocaleTimeString('es-AR')}
-              </p>
+              <p className="font-semibold mb-1">🚛 Vehículo en vivo</p>
+              <p>{pos.lat.toFixed(5)}, {pos.lng.toFixed(5)}</p>
+              {pos.speed !== undefined && <p>Velocidad: {Math.round((pos.speed || 0) * 3.6)} km/h</p>}
+              <p className="text-gray-400 text-xs mt-1">{new Date(pos.timestamp).toLocaleTimeString('es-AR')}</p>
             </div>
           </Popup>
         </Marker>
       ))}
+
+      {/* Active trips — show route between origin and destination */}
+      {activeTrips.map((trip) => {
+        const hasOrigin = trip.originLat && trip.originLng;
+        const hasDest = trip.destinationLat && trip.destinationLng;
+        const hasRoute = hasOrigin && hasDest;
+        return (
+          <React.Fragment key={trip.id}>
+            {hasRoute && (
+              <Polyline
+                positions={[[trip.originLat!, trip.originLng!], [trip.destinationLat!, trip.destinationLng!]]}
+                pathOptions={{ color: '#2563eb', weight: 3, dashArray: '8 6', opacity: 0.7 }}
+              />
+            )}
+            {hasOrigin && (
+              <Marker position={[trip.originLat!, trip.originLng!]} icon={originIcon}>
+                <Popup>
+                  <div className="text-sm">
+                    <p className="font-semibold text-green-700">📍 Origen</p>
+                    <p>{trip.originAddress || 'Sin dirección'}</p>
+                    {trip.plate && <p className="text-gray-500 mt-1">Camión: {trip.plate}</p>}
+                    <p className="text-gray-400 text-xs mt-1">Viaje: {trip.type}</p>
+                  </div>
+                </Popup>
+              </Marker>
+            )}
+            {hasDest && (
+              <Marker position={[trip.destinationLat!, trip.destinationLng!]} icon={destIcon}>
+                <Popup>
+                  <div className="text-sm">
+                    <p className="font-semibold text-red-700">🏁 Destino</p>
+                    <p>{trip.destinationAddress || 'Sin dirección'}</p>
+                    {trip.plate && <p className="text-gray-500 mt-1">Camión: {trip.plate}</p>}
+                  </div>
+                </Popup>
+              </Marker>
+            )}
+            {/* Show truck at origin if in transit */}
+            {hasOrigin && !positions.find(p => p.vehicleId) && trip.status !== 'FINALIZADO' && (
+              <Marker position={[trip.originLat!, trip.originLng!]} icon={truckIcon}>
+                <Popup>
+                  <div className="text-sm">
+                    <p className="font-semibold">🚛 {trip.plate || 'Camión'}</p>
+                    <p className="text-gray-500">{trip.type}</p>
+                    <p className="text-xs text-blue-600 mt-1">Estado: {trip.status.replace(/_/g, ' ')}</p>
+                    <p className="text-xs text-gray-400">Sin GPS en tiempo real</p>
+                  </div>
+                </Popup>
+              </Marker>
+            )}
+          </React.Fragment>
+        );
+      })}
     </MapContainer>
   );
 }
