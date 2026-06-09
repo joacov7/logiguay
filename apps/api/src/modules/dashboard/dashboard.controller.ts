@@ -10,30 +10,21 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}
 
-  @Get('kpis')
-  @ApiOperation({ summary: 'KPIs principales del dashboard' })
-  getKPIs(@Query('companyId') companyId: string) {
-    return this.dashboardService.getKPIs(companyId);
-  }
-
-  @Get('trips-by-status')
-  @ApiOperation({ summary: 'Viajes agrupados por estado' })
-  getTripsByStatus(@Query('companyId') companyId: string) {
-    return this.dashboardService.getTripsByStatus(companyId);
-  }
-
-  @Get('monthly-trips')
-  @ApiOperation({ summary: 'Viajes mensuales (últimos N meses)' })
-  getMonthlyTrips(
-    @Query('companyId') companyId: string,
-    @Query('months') months?: number,
+  @Get('stats')
+  @ApiOperation({ summary: 'KPIs principales del dashboard ejecutivo' })
+  getStats(
+    @Query('companyId') companyId?: string,
+    @Query('role') role?: string,
   ) {
-    return this.dashboardService.getMonthlyTrips(companyId, months || 6);
+    return this.dashboardService.getStats(companyId, role);
   }
 
-  @Get('expiring-documents')
-  @ApiOperation({ summary: 'Documentos por vencer próximamente' })
-  getExpiringDocuments(@Query('companyId') companyId: string) {
-    return this.dashboardService.getExpiringDocuments(companyId);
+  @Get('time-series')
+  @ApiOperation({ summary: 'Serie temporal de viajes y facturación' })
+  getTimeSeries(
+    @Query('companyId') companyId?: string,
+    @Query('months') months?: string,
+  ) {
+    return this.dashboardService.getTripTimeSeries(companyId, months ? parseInt(months, 10) : 6);
   }
 }
