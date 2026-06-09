@@ -95,17 +95,18 @@ async function main() {
     },
   });
 
-  await prisma.driver.upsert({
-    where: { userId: choferUser.id },
-    update: {},
-    create: {
-      userId: choferUser.id,
-      companyId: transportCompany.id,
-      licenseNumber: 'LIC-001',
-      licenseExpiry: new Date('2027-12-31'),
-      status: 'ACTIVO',
-    },
-  });
+  const existingDriver = await prisma.driver.findFirst({ where: { userId: choferUser.id } });
+  if (!existingDriver) {
+    await prisma.driver.create({
+      data: {
+        userId: choferUser.id,
+        companyId: transportCompany.id,
+        licenseNumber: 'LIC-001',
+        licenseExpiry: new Date('2027-12-31'),
+        status: 'ACTIVO',
+      },
+    });
+  }
 
   await prisma.vehicle.upsert({
     where: { plate: 'ABC123' },
