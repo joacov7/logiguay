@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter } from '@/i18n/routing';
 import { User } from '../types';
 import { getCurrentUser, login, logout, register, isAuthenticated } from '../lib/auth';
 
