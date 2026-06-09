@@ -3,6 +3,7 @@
 import React from 'react';
 import { Bell, User } from 'lucide-react';
 import { User as UserType } from '../../types';
+import { LanguageSelector } from './LanguageSelector';
 
 interface NavbarProps {
   user?: UserType | null;
@@ -15,6 +16,8 @@ export function Navbar({ user, unreadAlerts = 0 }: NavbarProps) {
       <div className="flex-1" />
 
       <div className="flex items-center gap-4">
+        <LanguageSelector />
+
         <button className="relative p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
           <Bell className="h-5 w-5" />
           {unreadAlerts > 0 && (

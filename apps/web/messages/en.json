@@ -1,0 +1,251 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "search": "Search",
+    "filter": "Filter",
+    "export": "Export",
+    "noData": "No data",
+    "actions": "Actions",
+    "confirm": "Confirm",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "page": "Page",
+    "of": "of",
+    "results": "results",
+    "yes": "Yes",
+    "no": "No",
+    "all": "All",
+    "active": "Active",
+    "inactive": "Inactive",
+    "status": "Status",
+    "date": "Date",
+    "amount": "Amount",
+    "notes": "Notes",
+    "type": "Type",
+    "name": "Name",
+    "email": "Email",
+    "phone": "Phone",
+    "address": "Address",
+    "country": "Country",
+    "createdAt": "Created",
+    "updatedAt": "Updated"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "cargas": "Cargo",
+    "viajes": "Trips",
+    "flota": "Fleet",
+    "choferes": "Drivers",
+    "tracking": "Tracking",
+    "bolsa": "Cargo Board",
+    "documentos": "Documents",
+    "alertas": "Alerts",
+    "facturacion": "Billing",
+    "suscripcion": "Subscription",
+    "logout": "Log out"
+  },
+  "auth": {
+    "login": "Log in",
+    "register": "Sign up",
+    "logout": "Log out",
+    "email": "Email",
+    "password": "Password",
+    "firstName": "First name",
+    "lastName": "Last name",
+    "forgotPassword": "Forgot your password?",
+    "noAccount": "Don't have an account?",
+    "alreadyAccount": "Already have an account?",
+    "loginError": "Invalid credentials",
+    "welcome": "Welcome to LOGIGUAY",
+    "loginSubtitle": "Sign in to your LOGIGUAY account",
+    "registerSubtitle": "Create your free account"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "greeting": "Good morning",
+    "activeTrips": "Active trips",
+    "tripsThisMonth": "Trips this month",
+    "pendingRevenue": "Pending revenue",
+    "fleetUtilization": "Fleet utilization",
+    "totalWeight": "Tons transported",
+    "unreadAlerts": "Unread alerts",
+    "avgDelivery": "Average delivery time",
+    "recentTrips": "Recent trips",
+    "expiringDocs": "Expiring documents",
+    "viewAll": "View all",
+    "hours": "hours",
+    "tons": "tons"
+  },
+  "trips": {
+    "title": "Trips",
+    "newTrip": "New trip",
+    "status": {
+      "PENDIENTE": "Pending",
+      "PUBLICADO": "Published",
+      "COTIZANDO": "Quoting",
+      "ASIGNADO": "Assigned",
+      "EN_CAMINO_ORIGEN": "En route to origin",
+      "EN_CARGA": "Loading",
+      "EN_TRANSITO": "In transit",
+      "EN_DESCARGA": "Unloading",
+      "FINALIZADO": "Completed",
+      "CANCELADO": "Cancelled"
+    },
+    "cargo": "Cargo",
+    "origin": "Origin",
+    "destination": "Destination",
+    "vehicle": "Vehicle",
+    "driver": "Driver",
+    "rate": "Rate",
+    "startedAt": "Started",
+    "eta": "ETA",
+    "cancelReason": "Cancellation reason"
+  },
+  "cargo": {
+    "title": "Cargo",
+    "newCargo": "New cargo",
+    "type": "Cargo type",
+    "description": "Description",
+    "weight": "Weight (tons)",
+    "volume": "Volume (m³)",
+    "origin": "Origin",
+    "destination": "Destination",
+    "requiredDate": "Required date",
+    "estimatedValue": "Estimated value",
+    "observations": "Observations",
+    "isAuction": "Auction mode",
+    "auctionEndsAt": "Auction deadline",
+    "publishNow": "Publish now",
+    "saveDraft": "Save draft",
+    "quotes": "Quotes",
+    "noQuotes": "No quotes yet",
+    "selectWinner": "Select winner",
+    "types": {
+      "Cereal": "Grain",
+      "Fertilizante": "Fertilizer",
+      "Maquinaria": "Machinery",
+      "General": "General cargo",
+      "Otro": "Other"
+    }
+  },
+  "fleet": {
+    "title": "Fleet",
+    "addVehicle": "Add vehicle",
+    "plate": "License plate",
+    "brand": "Brand",
+    "model": "Model",
+    "year": "Year",
+    "capacityTons": "Capacity (tons)",
+    "capacityM3": "Capacity (m³)",
+    "type": {
+      "CAMION": "Truck",
+      "ACOPLADO": "Trailer",
+      "SEMIRREMOLQUE": "Semi-trailer"
+    },
+    "status": {
+      "ACTIVO": "Active",
+      "INACTIVO": "Inactive",
+      "MANTENIMIENTO": "Under maintenance"
+    }
+  },
+  "drivers": {
+    "title": "Drivers",
+    "addDriver": "Add driver",
+    "licenseNumber": "License number",
+    "licenseExpiry": "License expiry",
+    "licenseExpired": "Expired license"
+  },
+  "documents": {
+    "title": "Documents",
+    "addDocument": "Add document",
+    "fileUrl": "File URL",
+    "expiresAt": "Expiry date",
+    "checkExpiries": "Check expiries",
+    "daysRemaining": "days remaining",
+    "expired": "Expired",
+    "expiresIn": "Expires in",
+    "types": {
+      "SEGURO": "Insurance",
+      "CEDULA": "Vehicle registration",
+      "LICENCIA": "License",
+      "RTO": "Vehicle inspection",
+      "HABILITACION": "Authorization",
+      "OTRO": "Other"
+    },
+    "status": {
+      "VIGENTE": "Valid",
+      "POR_VENCER": "Expiring soon",
+      "VENCIDO": "Expired"
+    }
+  },
+  "tracking": {
+    "title": "Live tracking",
+    "connected": "Live",
+    "disconnected": "Disconnected",
+    "activeVehicles": "active vehicle(s)",
+    "noVehicles": "No vehicles online",
+    "speed": "Speed",
+    "heading": "Heading",
+    "lastUpdate": "Last update",
+    "fleet": "Active fleet",
+    "detail": "Vehicle detail",
+    "alerts": "Alerts"
+  },
+  "marketplace": {
+    "title": "Cargo Board",
+    "subtitle": "Available loads for carriers",
+    "searchPlaceholder": "Search by type, origin, destination...",
+    "filters": "Filters",
+    "offers": "offer(s)",
+    "makeOffer": "Make offer",
+    "offerAmount": "Offer amount",
+    "noResults": "No loads available with the applied filters"
+  },
+  "billing": {
+    "title": "Billing",
+    "totalPaid": "Total collected",
+    "pendingPayment": "Pending collection",
+    "commissions": "Commissions",
+    "totalInvoices": "Total invoices",
+    "types": {
+      "VIAJE": "Trip",
+      "COMISION": "Commission",
+      "SUSCRIPCION": "Subscription"
+    },
+    "status": {
+      "PENDIENTE": "Pending",
+      "PAGADA": "Paid",
+      "CANCELADA": "Cancelled"
+    }
+  },
+  "subscription": {
+    "title": "Subscription",
+    "currentPlan": "Current plan",
+    "upgradePlan": "Upgrade plan",
+    "activate": "Activate",
+    "cancel": "Cancel subscription",
+    "months": "months",
+    "recommended": "Recommended",
+    "plans": {
+      "FREE": "Free",
+      "PRO": "Professional",
+      "EMPRESA": "Enterprise",
+      "FLOTA": "Fleet"
+    },
+    "limits": {
+      "maxVehicles": "Vehicles",
+      "maxDrivers": "Drivers",
+      "maxActiveTrips": "Active trips",
+      "maxMonthlyPublications": "Publications/month",
+      "commissionRate": "Platform commission",
+      "canExportReports": "Export reports",
+      "canUsePremiumListings": "Featured listings"
+    }
+  }
+}

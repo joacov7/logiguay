@@ -9,6 +9,7 @@ import { Truck } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/hooks/useAuth';
+import { useTranslations } from 'next-intl';
 
 const schema = z.object({
   email: z.string().email('Email inválido'),
@@ -20,6 +21,7 @@ type FormData = z.infer<typeof schema>;
 export default function LoginPage() {
   const { login } = useAuth();
   const [error, setError] = useState<string | null>(null);
+  const t = useTranslations('auth');
 
   const {
     register,
@@ -32,7 +34,7 @@ export default function LoginPage() {
     try {
       await login(data.email, data.password);
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Error al iniciar sesión');
+      setError(err?.response?.data?.message || t('loginError'));
     }
   };
 
@@ -43,8 +45,8 @@ export default function LoginPage() {
           <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-600 rounded-xl mb-4">
             <Truck className="h-6 w-6 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Iniciar sesión</h1>
-          <p className="text-gray-500 text-sm mt-1">Accede a tu cuenta de LOGIGUAY</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('login')}</h1>
+          <p className="text-gray-500 text-sm mt-1">{t('loginSubtitle')}</p>
         </div>
 
         {error && (
@@ -55,7 +57,7 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <Input
-            label="Email"
+            label={t('email')}
             type="email"
             autoComplete="email"
             required
@@ -63,7 +65,7 @@ export default function LoginPage() {
             {...register('email')}
           />
           <Input
-            label="Contraseña"
+            label={t('password')}
             type="password"
             autoComplete="current-password"
             required
@@ -72,14 +74,14 @@ export default function LoginPage() {
           />
 
           <Button type="submit" className="w-full" loading={isSubmitting} size="lg">
-            Ingresar
+            {t('login')}
           </Button>
         </form>
 
         <p className="text-center text-sm text-gray-500 mt-6">
-          ¿No tenés cuenta?{' '}
+          {t('noAccount')}{' '}
           <Link href="/register" className="text-blue-600 font-medium hover:underline">
-            Registrarse
+            {t('register')}
           </Link>
         </p>
       </div>

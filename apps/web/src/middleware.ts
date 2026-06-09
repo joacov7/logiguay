@@ -1,4 +1,8 @@
+import createMiddleware from 'next-intl/middleware';
+import { routing } from './i18n/routing';
 import { NextRequest, NextResponse } from 'next/server';
+
+const intlMiddleware = createMiddleware(routing);
 
 const PUBLIC_PATHS = ['/login', '/register', '/'];
 
@@ -21,7 +25,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
-  return NextResponse.next();
+  return intlMiddleware(request);
 }
 
 export const config = {

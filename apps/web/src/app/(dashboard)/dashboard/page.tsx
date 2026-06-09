@@ -27,6 +27,7 @@ import Link from 'next/link';
 import KpiCard from '@/components/ui/KpiCard';
 import api from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
+import { useTranslations } from 'next-intl';
 
 interface DashboardStats {
   trips: {
@@ -132,6 +133,7 @@ function daysUntil(dateStr: string) {
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const t = useTranslations('dashboard');
   const companyId = (user as any)?.companyId as string | undefined;
   const role = user?.role;
 
@@ -199,7 +201,7 @@ export default function DashboardPage() {
       {/* KPI Row 1 — 4 cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <KpiCard
-          title="Viajes activos"
+          title={t('activeTrips')}
           value={stats?.trips.active ?? 0}
           icon={<Navigation className="h-5 w-5 text-blue-600" />}
           subtitle="En curso ahora"
@@ -207,7 +209,7 @@ export default function DashboardPage() {
           variant="default"
         />
         <KpiCard
-          title="Viajes este mes"
+          title={t('tripsThisMonth')}
           value={tripsThisMonth}
           icon={<Navigation className="h-5 w-5 text-indigo-600" />}
           trend={tripsLastMonth > 0 ? { value: tripTrend, label: 'vs mes anterior' } : undefined}
@@ -215,7 +217,7 @@ export default function DashboardPage() {
           loading={statsLoading}
         />
         <KpiCard
-          title="Facturación pendiente"
+          title={t('pendingRevenue')}
           value={statsLoading ? '—' : formatCurrency(stats?.billing.pendingRevenue ?? 0)}
           icon={<DollarSign className="h-5 w-5 text-amber-600" />}
           subtitle="Viajes sin cobrar"
@@ -223,7 +225,7 @@ export default function DashboardPage() {
           variant={stats && stats.billing.pendingRevenue > 0 ? 'warning' : 'default'}
         />
         <KpiCard
-          title="Utilización de flota"
+          title={t('fleetUtilization')}
           value={`${stats?.fleet.utilization ?? 0}%`}
           icon={<Truck className="h-5 w-5 text-green-600" />}
           subtitle={`${stats?.fleet.onTrip ?? 0} de ${stats?.fleet.active ?? 0} vehículos`}
@@ -235,14 +237,14 @@ export default function DashboardPage() {
       {/* KPI Row 2 — 3 cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <KpiCard
-          title="Toneladas transportadas"
+          title={t('totalWeight')}
           value={statsLoading ? '—' : `${stats?.logistics.totalWeightTons ?? 0} t`}
           icon={<Package className="h-5 w-5 text-gray-600" />}
           subtitle="Histórico total"
           loading={statsLoading}
         />
         <KpiCard
-          title="Alertas sin leer"
+          title={t('unreadAlerts')}
           value={stats?.logistics.alertsUnread ?? 0}
           icon={<Bell className="h-5 w-5 text-red-500" />}
           subtitle="Requieren atención"
@@ -250,7 +252,7 @@ export default function DashboardPage() {
           variant={stats && stats.logistics.alertsUnread > 0 ? 'danger' : 'default'}
         />
         <KpiCard
-          title="Tiempo promedio de entrega"
+          title={t('avgDelivery')}
           value={statsLoading ? '—' : `${stats?.logistics.avgDeliveryHours ?? 0} h`}
           icon={<Clock className="h-5 w-5 text-purple-600" />}
           subtitle="Viajes finalizados"
@@ -291,8 +293,8 @@ export default function DashboardPage() {
         {/* Recent Trips */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-semibold text-gray-800">Viajes recientes</h2>
-            <Link href="/viajes" className="text-sm text-blue-600 hover:underline">Ver todos</Link>
+            <h2 className="text-base font-semibold text-gray-800">{t('recentTrips')}</h2>
+            <Link href="/viajes" className="text-sm text-blue-600 hover:underline">{t('viewAll')}</Link>
           </div>
           {statsLoading ? (
             <div className="space-y-3">
@@ -343,8 +345,8 @@ export default function DashboardPage() {
         {/* Expiring Documents */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-semibold text-gray-800">Documentos por vencer</h2>
-            <Link href="/documentos" className="text-sm text-blue-600 hover:underline">Ver todos</Link>
+            <h2 className="text-base font-semibold text-gray-800">{t('expiringDocs')}</h2>
+            <Link href="/documentos" className="text-sm text-blue-600 hover:underline">{t('viewAll')}</Link>
           </div>
           {statsLoading ? (
             <div className="space-y-3">

@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   LayoutDashboard,
   Package,
@@ -19,18 +20,18 @@ import {
 } from 'lucide-react';
 
 const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/cargas', label: 'Cargas', icon: Package },
-  { href: '/bolsa', label: 'Bolsa', icon: ShoppingBag },
-  { href: '/viajes', label: 'Viajes', icon: Navigation },
-  { href: '/flota', label: 'Flota', icon: Truck },
-  { href: '/choferes', label: 'Choferes', icon: Users },
-  { href: '/tracking', label: 'Tracking', icon: MapPin },
-  { href: '/documentos', label: 'Documentos', icon: FileText },
-  { href: '/alertas', label: 'Alertas', icon: Bell },
-  { href: '/facturacion', label: 'Facturación', icon: CreditCard },
-  { href: '/suscripcion', label: 'Suscripción', icon: Crown },
-];
+  { href: '/dashboard', key: 'dashboard', icon: LayoutDashboard },
+  { href: '/cargas', key: 'cargas', icon: Package },
+  { href: '/bolsa', key: 'bolsa', icon: ShoppingBag },
+  { href: '/viajes', key: 'viajes', icon: Navigation },
+  { href: '/flota', key: 'flota', icon: Truck },
+  { href: '/choferes', key: 'choferes', icon: Users },
+  { href: '/tracking', key: 'tracking', icon: MapPin },
+  { href: '/documentos', key: 'documentos', icon: FileText },
+  { href: '/alertas', key: 'alertas', icon: Bell },
+  { href: '/facturacion', key: 'facturacion', icon: CreditCard },
+  { href: '/suscripcion', key: 'suscripcion', icon: Crown },
+] as const;
 
 interface SidebarProps {
   onLogout?: () => void;
@@ -38,6 +39,7 @@ interface SidebarProps {
 
 export function Sidebar({ onLogout }: SidebarProps) {
   const pathname = usePathname();
+  const t = useTranslations('nav');
 
   return (
     <aside className="flex flex-col w-64 h-screen bg-gray-900 text-white fixed left-0 top-0 z-40">
@@ -50,7 +52,7 @@ export function Sidebar({ onLogout }: SidebarProps) {
 
       <nav className="flex-1 p-4 overflow-y-auto">
         <ul className="space-y-1">
-          {navItems.map(({ href, label, icon: Icon }) => {
+          {navItems.map(({ href, key, icon: Icon }) => {
             const active = pathname === href || pathname.startsWith(href + '/');
             return (
               <li key={href}>
@@ -66,7 +68,7 @@ export function Sidebar({ onLogout }: SidebarProps) {
                   `}
                 >
                   <Icon className="h-4 w-4 shrink-0" />
-                  {label}
+                  {t(key)}
                 </Link>
               </li>
             );
@@ -80,7 +82,7 @@ export function Sidebar({ onLogout }: SidebarProps) {
           className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
         >
           <LogOut className="h-4 w-4" />
-          Cerrar sesión
+          {t('logout')}
         </button>
       </div>
     </aside>
