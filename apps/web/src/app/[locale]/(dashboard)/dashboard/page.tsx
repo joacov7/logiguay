@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Navigation,
@@ -10,7 +10,10 @@ import {
   Bell,
   Clock,
   AlertTriangle,
+  FileDown,
+  ChevronDown,
 } from 'lucide-react';
+import { exportToExcel, exportToPDF } from '@/lib/export';
 import {
   LineChart,
   Line,
@@ -135,6 +138,53 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const t = useTranslations('dashboard');
   const companyId = (user as any)?.companyId as string | undefined;
+  const [exportOpen, setExportOpen] = useState(false);
+  const exportRef = useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (exportRef.current && !exportRef.current.contains(e.target as Node)) setExportOpen(false);
+    };
+    if (exportOpen) document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [exportOpen]);
+
+  const handleExportExcel = () => {
+    if (!stats) return;
+    exportToExcel([
+      { Métrica: 'Viajes activos', Valor: stats.trips.active },
+      { Métrica: 'Viajes este mes', Valor: stats.trips.thisMonth },
+      { Métrica: 'Viajes finalizados', Valor: stats.trips.finalized },
+      { Métrica: 'Cargas totales', Valor: stats.cargo.total },
+      { Métrica: 'Cargas publicadas', Valor: stats.cargo.published },
+      { Métrica: 'Ingresos pendientes (ARS)', Valor: stats.billing.pendingRevenue },
+      { Métrica: 'Ingresos este mes (ARS)', Valor: stats.billing.thisMonth },
+      { Métrica: 'Vehículos activos', Valor: stats.fleet.active },
+      { Métrica: 'Utilización flota %', Valor: stats.fleet.utilization },
+      { Métrica: 'Alertas no leídas', Valor: stats.logistics.alertsUnread },
+    ], `dashboard-${new Date().toISOString().slice(0, 10)}`, 'Dashboard');
+    setExportOpen(false);
+  };
+
+  const handleExportPDF = async () => {
+    if (!stats) return;
+    await exportToPDF(
+      'Resumen del Dashboard',
+      ['Métrica', 'Valor'],
+      [[
+        ['Viajes activos', stats.trips.active],
+        ['Viajes este mes', stats.trips.thisMonth],
+        ['Viajes finalizados', stats.trips.finalized],
+        ['Cargas totales', stats.cargo.total],
+        ['Ingresos pendientes (ARS)', stats.billing.pendingRevenue],
+        ['Ingresos este mes (ARS)', stats.billing.thisMonth],
+        ['Utilización flota %', `${stats.fleet.utilization}%`],
+        ['Alertas no leídas', stats.logistics.alertsUnread],
+      ]],
+      `dashboard-${new Date().toISOString().slice(0, 10)}`,
+    );
+    setExportOpen(false);
+  };
   const role = user?.role;
 
   const queryParams = new URLSearchParams();
@@ -191,11 +241,27 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6 p-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">
-          {greeting}{user?.firstName ? `, ${user.firstName}` : ''}
-        </h1>
-        <p className="text-gray-500 text-sm mt-1 capitalize">{todayLabel}</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {greeting}{user?.firstName ? `, ${user.firstName}` : ''}
+          </h1>
+          <p className="text-gray-500 text-sm mt-1 capitalize">{todayLabel}</p>
+        </div>
+        <div className="relative" ref={exportRef}>
+          <button onClick={() => setExportOpen((o) => !o)}
+            className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+            <FileDown className="h-4 w-4" />
+            Exportar
+            <ChevronDown className="h-3.5 w-3.5 text-gray-400" />
+          </button>
+          {exportOpen && (
+            <div className="absolute right-0 mt-1 w-44 bg-white border border-gray-200 rounded-xl shadow-lg z-20 overflow-hidden">
+              <button onClick={handleExportExcel} className="block w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">Excel (.xlsx)</button>
+              <button onClick={handleExportPDF} className="block w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 border-t border-gray-100">PDF</button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* KPI Row 1 — 4 cards */}

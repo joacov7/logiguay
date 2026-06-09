@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { CreditCard, DollarSign, Clock, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
+import { CreditCard, DollarSign, Clock, FileText, ChevronLeft, ChevronRight, FileDown } from 'lucide-react';
+import { exportToExcel, exportToPDF } from '@/lib/export';
 import { Card } from '@/components/ui/Card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
 import { Badge } from '@/components/ui/Badge';
@@ -73,6 +74,43 @@ export default function FacturacionPage() {
   const [typeFilter, setTypeFilter] = useState<InvoiceType | ''>('');
   const [statusFilter, setStatusFilter] = useState<InvoiceStatus | ''>('');
   const queryClient = useQueryClient();
+  const [exportOpen, setExportOpen] = useState(false);
+  const exportRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (exportRef.current && !exportRef.current.contains(e.target as Node)) {
+        setExportOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const getExportFilename = () => `facturas-${new Date().toISOString().slice(0, 10)}`;
+
+  const handleExportExcel = () => {
+    const rows = (invoicesQuery.data?.data ?? []).map((inv) => ({
+      Tipo: TYPE_LABELS[inv.type],
+      Monto: inv.amount,
+      Estado: STATUS_LABELS[inv.status],
+      Fecha: new Date(inv.createdAt).toLocaleDateString('es-AR'),
+    }));
+    exportToExcel(rows, getExportFilename(), 'Facturas');
+    setExportOpen(false);
+  };
+
+  const handleExportPDF = () => {
+    const columns = ['Tipo', 'Monto', 'Estado', 'Fecha'];
+    const rows = (invoicesQuery.data?.data ?? []).map((inv) => [[
+      TYPE_LABELS[inv.type],
+      inv.amount,
+      STATUS_LABELS[inv.status],
+      new Date(inv.createdAt).toLocaleDateString('es-AR'),
+    ]]);
+    exportToPDF('Facturas', columns, rows, getExportFilename());
+    setExportOpen(false);
+  };
 
   const summaryQuery = useQuery<Summary>({
     queryKey: ['billing-summary', companyId],
@@ -141,9 +179,36 @@ export default function FacturacionPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Facturación</h1>
-        <p className="text-sm text-gray-500 mt-1">Historial de facturas y resumen financiero</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Facturación</h1>
+          <p className="text-sm text-gray-500 mt-1">Historial de facturas y resumen financiero</p>
+        </div>
+        <div className="relative" ref={exportRef}>
+          <button
+            onClick={() => setExportOpen((o) => !o)}
+            className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            <FileDown className="h-4 w-4" />
+            Exportar
+          </button>
+          {exportOpen && (
+            <div className="absolute right-0 mt-1 w-44 bg-white border border-gray-200 rounded-lg shadow-lg z-10 py-1">
+              <button
+                onClick={handleExportExcel}
+                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+              >
+                Excel (.xlsx)
+              </button>
+              <button
+                onClick={handleExportPDF}
+                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+              >
+                PDF
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Stat cards */}

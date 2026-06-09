@@ -1,14 +1,15 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Package, Eye } from 'lucide-react';
+import { Plus, Package, Eye, FileDown } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
 import { StatusBadge } from '@/components/ui/Badge';
 import api from '@/lib/api';
+import { exportToExcel, exportToPDF } from '@/lib/export';
 import { Cargo, PaginatedResponse, Quote } from '@/types';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -26,11 +27,71 @@ interface CargoWithQuotes extends Cargo {
   quotes: Quote[];
 }
 
+const EXPORT_COLUMNS = ['Tipo', 'Descripción', 'Peso (t)', 'Volumen (m³)', 'Origen', 'Destino', 'Fecha requerida', 'Valor estimado', 'Estado'];
+
+function getFilename() {
+  return `cargas-${format(new Date(), 'yyyy-MM-dd')}`;
+}
+
+function buildExcelData(cargas: Cargo[]) {
+  return cargas.map((c) => ({
+    'Tipo': c.type ?? '',
+    'Descripción': (c as any).description ?? '',
+    'Peso (t)': c.weightTons ?? '',
+    'Volumen (m³)': (c as any).volumeM3 ?? '',
+    'Origen': c.originAddress ?? '',
+    'Destino': c.destinationAddress ?? '',
+    'Fecha requerida': c.requiredDate ? format(new Date(c.requiredDate), 'dd/MM/yyyy') : '',
+    'Valor estimado': c.estimatedValue ?? '',
+    'Estado': c.status ?? '',
+  }));
+}
+
+function buildPDFRows(cargas: Cargo[]): (string | number)[][][] {
+  return cargas.map((c) => [
+    [c.type ?? ''],
+    [(c as any).description ?? ''],
+    [c.weightTons ?? ''],
+    [(c as any).volumeM3 ?? ''],
+    [c.originAddress ?? ''],
+    [c.destinationAddress ?? ''],
+    [c.requiredDate ? format(new Date(c.requiredDate), 'dd/MM/yyyy') : ''],
+    [c.estimatedValue ?? ''],
+    [c.status ?? ''],
+  ]);
+}
+
 export default function CargasPage() {
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState('');
   const [selectedCargoId, setSelectedCargoId] = useState<string | null>(null);
+  const [exportOpen, setExportOpen] = useState(false);
+  const exportRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (exportRef.current && !exportRef.current.contains(e.target as Node)) {
+        setExportOpen(false);
+      }
+    }
+    if (exportOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [exportOpen]);
+
+  function handleExportExcel() {
+    const cargas = data?.data ?? [];
+    exportToExcel(buildExcelData(cargas), getFilename(), 'Cargas');
+    setExportOpen(false);
+  }
+
+  function handleExportPDF() {
+    const cargas = data?.data ?? [];
+    exportToPDF('Cargas', EXPORT_COLUMNS, buildPDFRows(cargas), getFilename());
+    setExportOpen(false);
+  }
 
   const { data, isLoading } = useQuery<PaginatedResponse<Cargo>>({
     queryKey: ['cargas', page, statusFilter],
@@ -70,12 +131,36 @@ export default function CargasPage() {
           <h1 className="text-2xl font-bold text-gray-900">Cargas</h1>
           <p className="text-sm text-gray-500 mt-1">Gestión de cargas y envíos</p>
         </div>
-        <Link href="/cargas/nueva">
-          <Button>
-            <Plus className="h-4 w-4 mr-1" />
-            Nueva carga
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <div className="relative" ref={exportRef}>
+            <Button variant="outline" onClick={() => setExportOpen((v) => !v)}>
+              <FileDown className="h-4 w-4 mr-1" />
+              Exportar
+            </Button>
+            {exportOpen && (
+              <div className="absolute right-0 mt-1 w-44 bg-white border border-gray-200 rounded-lg shadow-lg z-10 py-1">
+                <button
+                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  onClick={handleExportExcel}
+                >
+                  Excel (.xlsx)
+                </button>
+                <button
+                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  onClick={handleExportPDF}
+                >
+                  PDF
+                </button>
+              </div>
+            )}
+          </div>
+          <Link href="/cargas/nueva">
+            <Button>
+              <Plus className="h-4 w-4 mr-1" />
+              Nueva carga
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Status filter */}

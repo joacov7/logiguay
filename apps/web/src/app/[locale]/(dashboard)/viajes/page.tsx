@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Navigation, ChevronRight, X, Truck, User, MapPin, CheckCircle, Circle, Clock } from 'lucide-react';
+import { Navigation, ChevronRight, X, Truck, User, MapPin, CheckCircle, Circle, Clock, FileDown } from 'lucide-react';
+import { exportToExcel, exportToPDF } from '@/lib/export';
 import { Card } from '@/components/ui/Card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
 import { StatusBadge } from '@/components/ui/Badge';
@@ -46,6 +47,57 @@ export default function ViajesPage() {
   const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
   const [cancelReason, setCancelReason] = useState('');
   const [showCancel, setShowCancel] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  const exportRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (exportRef.current && !exportRef.current.contains(e.target as Node)) {
+        setExportOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const getExportFilename = () => `viajes-${new Date().toISOString().slice(0, 10)}`;
+
+  const handleExportExcel = () => {
+    const rows = (data?.data ?? []).map((t) => ({
+      Carga: t.cargo?.type ?? '',
+      Origen: t.cargo?.originAddress ?? '',
+      Destino: t.cargo?.destinationAddress ?? '',
+      'Vehículo': (t.vehicle as any)?.plate ?? '',
+      Chofer: (t.driver as any)?.user
+        ? `${(t.driver as any).user.firstName} ${(t.driver as any).user.lastName}`
+        : '',
+      Tarifa: t.agreedRate ?? '',
+      Estado: t.status,
+      Iniciado: (t as any).startedAt ?? '',
+      Finalizado: (t as any).finishedAt ?? '',
+    }));
+    exportToExcel(rows, getExportFilename(), 'Viajes');
+    setExportOpen(false);
+  };
+
+  const handleExportPDF = () => {
+    const columns = ['Carga', 'Origen', 'Destino', 'Vehículo', 'Chofer', 'Tarifa', 'Estado', 'Iniciado', 'Finalizado'];
+    const rows = (data?.data ?? []).map((t) => [[
+      t.cargo?.type ?? '',
+      t.cargo?.originAddress ?? '',
+      t.cargo?.destinationAddress ?? '',
+      (t.vehicle as any)?.plate ?? '',
+      (t.driver as any)?.user
+        ? `${(t.driver as any).user.firstName} ${(t.driver as any).user.lastName}`
+        : '',
+      t.agreedRate ?? '',
+      t.status,
+      (t as any).startedAt ?? '',
+      (t as any).finishedAt ?? '',
+    ]]);
+    exportToPDF('Viajes', columns, rows, getExportFilename());
+    setExportOpen(false);
+  };
   const [showAssign, setShowAssign] = useState(false);
   const [assignVehicle, setAssignVehicle] = useState('');
   const [assignDriver, setAssignDriver] = useState('');
@@ -119,9 +171,36 @@ export default function ViajesPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Viajes</h1>
-        <p className="text-sm text-gray-500 mt-1">Seguimiento y gestión de viajes</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Viajes</h1>
+          <p className="text-sm text-gray-500 mt-1">Seguimiento y gestión de viajes</p>
+        </div>
+        <div className="relative" ref={exportRef}>
+          <button
+            onClick={() => setExportOpen((o) => !o)}
+            className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            <FileDown className="h-4 w-4" />
+            Exportar
+          </button>
+          {exportOpen && (
+            <div className="absolute right-0 mt-1 w-44 bg-white border border-gray-200 rounded-lg shadow-lg z-10 py-1">
+              <button
+                onClick={handleExportExcel}
+                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+              >
+                Excel (.xlsx)
+              </button>
+              <button
+                onClick={handleExportPDF}
+                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+              >
+                PDF
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="flex gap-2 flex-wrap">
