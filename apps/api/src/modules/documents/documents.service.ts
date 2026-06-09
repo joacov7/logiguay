@@ -3,16 +3,17 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { RedisService } from '../../common/redis/redis.service';
 import { AlertsService } from '../alerts/alerts.service';
 import { CreateDocumentDto, UpdateDocumentDto } from './dto/document.dto';
-import { DocumentStatus } from '@prisma/client';
 
-function computeStatus(expiresAt: Date): DocumentStatus {
+type DocStatus = 'VIGENTE' | 'VENCIDO' | 'POR_VENCER';
+
+function computeStatus(expiresAt: Date): DocStatus {
   const now = new Date();
   const thirtyDaysFromNow = new Date();
   thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
 
-  if (expiresAt < now) return DocumentStatus.VENCIDO;
-  if (expiresAt < thirtyDaysFromNow) return DocumentStatus.POR_VENCER;
-  return DocumentStatus.VIGENTE;
+  if (expiresAt < now) return 'VENCIDO';
+  if (expiresAt < thirtyDaysFromNow) return 'POR_VENCER';
+  return 'VIGENTE';
 }
 
 @Injectable()
@@ -25,7 +26,7 @@ export class DocumentsService {
 
   async create(dto: CreateDocumentDto) {
     const expiresAt = dto.expiresAt ? new Date(dto.expiresAt) : null;
-    const status: DocumentStatus = expiresAt ? computeStatus(expiresAt) : DocumentStatus.VIGENTE;
+    const status: DocStatus = expiresAt ? computeStatus(expiresAt) : 'VIGENTE';
 
     return this.prisma.document.create({
       data: {
@@ -36,7 +37,7 @@ export class DocumentsService {
         type: dto.type,
         fileUrl: dto.fileUrl,
         expiresAt,
-        status,
+        status: status as any,
       },
     });
   }
@@ -56,7 +57,7 @@ export class DocumentsService {
     if (filters.entityId) where.entityId = filters.entityId;
     if (filters.vehicleId) where.vehicleId = filters.vehicleId;
     if (filters.driverId) where.driverId = filters.driverId;
-    if (filters.status) where.status = filters.status as DocumentStatus;
+    if (filters.status) where.status = filters.status;
     if (filters.type) where.type = filters.type;
 
     if (filters.companyId) {
@@ -92,7 +93,7 @@ export class DocumentsService {
     await this.findOne(id);
 
     const expiresAt = dto.expiresAt !== undefined ? new Date(dto.expiresAt) : undefined;
-    const status = expiresAt ? computeStatus(expiresAt) : undefined;
+    const status: DocStatus | undefined = expiresAt ? computeStatus(expiresAt) : undefined;
 
     return this.prisma.document.update({
       where: { id },
@@ -100,7 +101,7 @@ export class DocumentsService {
         ...(dto.fileUrl !== undefined && { fileUrl: dto.fileUrl }),
         ...(dto.type !== undefined && { type: dto.type }),
         ...(expiresAt !== undefined && { expiresAt }),
-        ...(status !== undefined && { status }),
+        ...(status !== undefined && { status: status as any }),
       },
     });
   }
@@ -136,14 +137,14 @@ export class DocumentsService {
     for (const doc of documents) {
       const newStatus = computeStatus(doc.expiresAt as Date);
 
-      if (newStatus === DocumentStatus.VENCIDO) vencidos++;
-      else if (newStatus === DocumentStatus.POR_VENCER) porVencer++;
+      if (newStatus === 'VENCIDO') vencidos++;
+      else if (newStatus === 'POR_VENCER') porVencer++;
       else vigentes++;
 
-      if (doc.status !== newStatus) {
+      if ((doc.status as string) !== newStatus) {
         await this.prisma.document.update({
           where: { id: doc.id },
-          data: { status: newStatus },
+          data: { status: newStatus as any },
         });
         recalculated++;
       }
@@ -159,7 +160,7 @@ export class DocumentsService {
     return this.prisma.document.findMany({
       where: {
         expiresAt: { not: null, lte: futureDate },
-        status: { in: [DocumentStatus.POR_VENCER, DocumentStatus.VENCIDO] },
+        status: { in: ['POR_VENCER', 'VENCIDO'] as any[] },
         OR: [
           { vehicle: { companyId } },
           { driver: { companyId } },
@@ -178,7 +179,8 @@ export class DocumentsService {
     let alertsGenerated = 0;
 
     for (const doc of documents) {
-      if (doc.status !== DocumentStatus.POR_VENCER && doc.status !== DocumentStatus.VENCIDO) {
+      const docStatus = doc.status as string;
+      if (docStatus !== 'POR_VENCER' && docStatus !== 'VENCIDO') {
         continue;
       }
 
@@ -186,14 +188,16 @@ export class DocumentsService {
       const existing = await this.redis.get(redisKey);
       if (existing) continue;
 
-      const entityLabel =
-        doc.vehicle
-          ? `Vehículo ${doc.vehicle.plate}`
-          : doc.driver
-          ? `Chofer ${(doc.driver as { firstName: string; lastName: string }).firstName} ${(doc.driver as { firstName: string; lastName: string }).lastName}`
-          : doc.entityId;
+      const vehicle = doc.vehicle as { plate: string } | null;
+      const driver = doc.driver as { firstName: string; lastName: string } | null;
 
-      const statusLabel = doc.status === DocumentStatus.VENCIDO ? 'vencido' : 'por vencer';
+      const entityLabel = vehicle
+        ? `Vehículo ${vehicle.plate}`
+        : driver
+        ? `Chofer ${driver.firstName} ${driver.lastName}`
+        : doc.entityId;
+
+      const statusLabel = docStatus === 'VENCIDO' ? 'vencido' : 'por vencer';
       const message = `Documento ${doc.type} de ${entityLabel} está ${statusLabel}${doc.expiresAt ? ` (vence: ${doc.expiresAt.toLocaleDateString('es-AR')})` : ''}.`;
 
       await this.alertsService.create({
