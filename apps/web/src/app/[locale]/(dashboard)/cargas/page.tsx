@@ -48,17 +48,17 @@ function buildExcelData(cargas: Cargo[]) {
 }
 
 function buildPDFRows(cargas: Cargo[]): (string | number)[][][] {
-  return cargas.map((c) => [
-    [c.type ?? ''],
-    [(c as any).description ?? ''],
-    [c.weightTons ?? ''],
-    [(c as any).volumeM3 ?? ''],
-    [c.originAddress ?? ''],
-    [c.destinationAddress ?? ''],
-    [c.requiredDate ? format(new Date(c.requiredDate), 'dd/MM/yyyy') : ''],
-    [c.estimatedValue ?? ''],
-    [c.status ?? ''],
-  ]);
+  return cargas.map((c) => [[
+    c.type ?? '',
+    (c as any).description ?? '',
+    c.weightTons ?? '',
+    (c as any).volumeM3 ?? '',
+    c.originAddress ?? '',
+    c.destinationAddress ?? '',
+    c.requiredDate ? format(new Date(c.requiredDate), 'dd/MM/yyyy') : '',
+    c.estimatedValue ?? '',
+    c.status ?? '',
+  ]]);
 }
 
 export default function CargasPage() {
