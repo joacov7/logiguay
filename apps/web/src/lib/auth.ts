@@ -43,6 +43,8 @@ export async function register(data: {
 export async function logout(): Promise<void> {
   try {
     await api.post('/auth/logout');
+  } catch {
+    // ignore network errors — clean up locally regardless
   } finally {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
