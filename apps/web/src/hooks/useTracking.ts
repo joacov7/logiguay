@@ -2,64 +2,90 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { VehiclePosition } from '../types';
 
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001';
-
-interface FleetPosition {
+export interface VehiclePositionWS {
   vehicleId: string;
-  position: VehiclePosition;
+  lat: number;
+  lng: number;
+  speed?: number;
+  heading?: number;
+  timestamp: string;
+  connectionStatus: string;
 }
 
-export function useTracking(companyId?: string) {
+export interface TripStatusUpdate {
+  tripId: string;
+  status: string;
+}
+
+interface UseTrackingOptions {
+  vehicleIds?: string[];
+  companyId?: string;
+  tripId?: string;
+  onPosition?: (pos: VehiclePositionWS) => void;
+  onTripStatus?: (update: TripStatusUpdate) => void;
+  onAlert?: (alert: any) => void;
+}
+
+export function useTracking(options: UseTrackingOptions = {}) {
   const socketRef = useRef<Socket | null>(null);
-  const [positions, setPositions] = useState<Map<string, VehiclePosition>>(new Map());
   const [connected, setConnected] = useState(false);
+  const [positions, setPositions] = useState<Record<string, VehiclePositionWS>>({});
   const [alerts, setAlerts] = useState<any[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
 
   useEffect(() => {
-    socketRef.current = io(`${WS_URL}/tracking`, {
-      auth: {
-        token: typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null,
-      },
-      transports: ['websocket', 'polling'],
+    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+    if (!token) return;
+
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    const socket = io(`${API_URL}/tracking`, {
+      auth: { token },
+      transports: ['websocket'],
+      reconnectionAttempts: 5,
+      reconnectionDelay: 2000,
     });
 
-    const socket = socketRef.current;
+    socketRef.current = socket;
 
     socket.on('connect', () => {
       setConnected(true);
-      if (companyId) {
-        socket.emit('subscribe-company', companyId);
-      }
+      setError(null);
+      const { vehicleIds, companyId, tripId } = optionsRef.current;
+      vehicleIds?.forEach((id) => socket.emit('subscribe-vehicle', id));
+      if (companyId) socket.emit('subscribe-company', companyId);
+      if (tripId) socket.emit('subscribe-trip', tripId);
     });
 
     socket.on('disconnect', () => setConnected(false));
+    socket.on('connect_error', (err) => setError(err.message));
 
-    socket.on('vehicle-position', (data: FleetPosition) => {
-      setPositions((prev) => {
-        const next = new Map(prev);
-        next.set(data.vehicleId, data.position);
-        return next;
-      });
+    socket.on('position', (pos: VehiclePositionWS) => {
+      setPositions((prev) => ({ ...prev, [pos.vehicleId]: pos }));
+      optionsRef.current.onPosition?.(pos);
     });
 
-    socket.on('position', (data: VehiclePosition) => {
-      setPositions((prev) => {
-        const next = new Map(prev);
-        next.set(data.vehicleId, data);
-        return next;
-      });
+    socket.on('vehicle-position', (pos: VehiclePositionWS) => {
+      setPositions((prev) => ({ ...prev, [pos.vehicleId]: pos }));
+      optionsRef.current.onPosition?.(pos);
+    });
+
+    socket.on('trip-status', (update: TripStatusUpdate) => {
+      optionsRef.current.onTripStatus?.(update);
     });
 
     socket.on('alert', (alert: any) => {
       setAlerts((prev) => [alert, ...prev.slice(0, 49)]);
+      optionsRef.current.onAlert?.(alert);
     });
 
     return () => {
       socket.disconnect();
     };
-  }, [companyId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const subscribeVehicle = useCallback((vehicleId: string) => {
     socketRef.current?.emit('subscribe-vehicle', vehicleId);
@@ -69,22 +95,12 @@ export function useTracking(companyId?: string) {
     socketRef.current?.emit('unsubscribe-vehicle', vehicleId);
   }, []);
 
-  const sendPosition = useCallback((data: {
-    vehicleId: string;
-    lat: number;
-    lng: number;
-    speed?: number;
-    heading?: number;
-  }) => {
-    socketRef.current?.emit('position-update', data);
-  }, []);
+  const sendPosition = useCallback(
+    (payload: { vehicleId: string; lat: number; lng: number; speed?: number; heading?: number }) => {
+      socketRef.current?.emit('position-update', payload);
+    },
+    [],
+  );
 
-  return {
-    positions,
-    connected,
-    alerts,
-    subscribeVehicle,
-    unsubscribeVehicle,
-    sendPosition,
-  };
+  return { connected, positions, alerts, error, subscribeVehicle, unsubscribeVehicle, sendPosition };
 }
