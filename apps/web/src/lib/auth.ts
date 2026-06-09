@@ -1,6 +1,15 @@
 import api from './api';
 import { LoginResponse, User } from '../types';
 
+function setAuthCookie(token: string) {
+  const maxAge = 15 * 60; // 15 minutes — matches JWT_EXPIRES_IN
+  document.cookie = `accessToken=${token}; path=/; max-age=${maxAge}; SameSite=Lax`;
+}
+
+function clearAuthCookie() {
+  document.cookie = 'accessToken=; path=/; max-age=0; SameSite=Lax';
+}
+
 export async function login(email: string, password: string): Promise<LoginResponse> {
   const response = await api.post<LoginResponse>('/auth/login', { email, password });
   const { accessToken, refreshToken, user } = response.data;
@@ -8,6 +17,7 @@ export async function login(email: string, password: string): Promise<LoginRespo
   localStorage.setItem('accessToken', accessToken);
   localStorage.setItem('refreshToken', refreshToken);
   localStorage.setItem('user', JSON.stringify(user));
+  setAuthCookie(accessToken);
 
   return response.data;
 }
@@ -25,6 +35,7 @@ export async function register(data: {
   localStorage.setItem('accessToken', accessToken);
   localStorage.setItem('refreshToken', refreshToken);
   localStorage.setItem('user', JSON.stringify(user));
+  setAuthCookie(accessToken);
 
   return response.data;
 }
@@ -36,6 +47,7 @@ export async function logout(): Promise<void> {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
+    clearAuthCookie();
   }
 }
 

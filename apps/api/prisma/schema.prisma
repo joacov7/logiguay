@@ -235,8 +235,10 @@ model Document {
   createdAt  DateTime       @default(now())
   updatedAt  DateTime       @updatedAt
 
-  vehicle Vehicle? @relation(fields: [entityId], references: [id], map: "document_vehicle_fk")
-  driver  Driver?  @relation(fields: [entityId], references: [id], map: "document_driver_fk")
+  vehicle Vehicle? @relation(fields: [vehicleId], references: [id])
+  vehicleId String?
+  driver  Driver?  @relation(fields: [driverId], references: [id])
+  driverId String?
 
   @@map("documents")
 }
