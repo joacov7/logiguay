@@ -33,6 +33,7 @@ export interface User {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  companyId?: string;
 }
 
 export interface Company {
@@ -58,6 +59,7 @@ export interface Vehicle {
   capacityM3?: number;
   status: VehicleStatus;
   createdAt: string;
+  _count?: { trips: number };
 }
 
 export interface Driver {
@@ -68,12 +70,15 @@ export interface Driver {
   licenseExpiry: string;
   status: string;
   user: Pick<User, 'id' | 'email' | 'firstName' | 'lastName' | 'phone'>;
+  _count?: { trips: number };
 }
 
 export interface Document {
   id: string;
   entityType: string;
   entityId: string;
+  vehicleId?: string;
+  driverId?: string;
   type: string;
   fileUrl: string;
   expiresAt?: string;
@@ -97,9 +102,11 @@ export interface Cargo {
   requiredDate?: string;
   estimatedValue?: number;
   observations?: string;
+  isAuction: boolean;
+  auctionEndsAt?: string;
   status: CargoStatus;
   createdAt: string;
-  company?: Pick<Company, 'id' | 'name'>;
+  company?: Pick<Company, 'id' | 'name' | 'country'>;
   _count?: { quotes: number };
 }
 
@@ -133,7 +140,7 @@ export interface Quote {
   notes?: string;
   status: QuoteStatus;
   createdAt: string;
-  transportCompany?: Pick<Company, 'id' | 'name'>;
+  transportCompany?: Pick<Company, 'id' | 'name' | 'country'>;
 }
 
 export interface Alert {
@@ -157,7 +164,7 @@ export interface Invoice {
 }
 
 export interface VehiclePosition {
-  id: string;
+  id?: string;
   vehicleId: string;
   lat: number;
   lng: number;

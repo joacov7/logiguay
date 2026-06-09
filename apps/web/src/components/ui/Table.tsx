@@ -1,6 +1,6 @@
 import React from 'react';
 
-export function Table({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+export function Table({ children, className = '' }: { children?: React.ReactNode; className?: string }) {
   return (
     <div className={`overflow-x-auto ${className}`}>
       <table className="min-w-full divide-y divide-gray-200">{children}</table>
@@ -16,11 +16,11 @@ export function TableBody({ children }: { children: React.ReactNode }) {
   return <tbody className="bg-white divide-y divide-gray-200">{children}</tbody>;
 }
 
-export function TableRow({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+export function TableRow({ children, className = '' }: { children?: React.ReactNode; className?: string }) {
   return <tr className={`hover:bg-gray-50 ${className}`}>{children}</tr>;
 }
 
-export function TableHead({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+export function TableHead({ children, className = '' }: { children?: React.ReactNode; className?: string }) {
   return (
     <th
       scope="col"
@@ -31,6 +31,6 @@ export function TableHead({ children, className = '' }: { children: React.ReactN
   );
 }
 
-export function TableCell({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+export function TableCell({ children, className = '' }: { children?: React.ReactNode; className?: string }) {
   return <td className={`px-4 py-4 text-sm text-gray-900 ${className}`}>{children}</td>;
 }
