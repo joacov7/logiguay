@@ -11,11 +11,10 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import { StatusBadge } from '@/components/ui/Badge';
 import { useToast } from '@/components/ui/Toast';
 import api from '@/lib/api';
+import { useAuth } from '@/hooks/useAuth';
 import { Document, Vehicle, Driver } from '@/types';
 import { format, differenceInDays } from 'date-fns';
 import { es } from 'date-fns/locale';
-
-const COMPANY_ID = 'placeholder';
 
 const ENTITY_TYPES = ['VEHICLE', 'DRIVER', 'COMPANY'] as const;
 const DOC_TYPES = ['SEGURO', 'CEDULA', 'LICENCIA', 'RTO', 'HABILITACION', 'OTRO'] as const;
@@ -80,6 +79,8 @@ function DaysRemaining({ expiresAt }: { expiresAt?: string }) {
 }
 
 export default function DocumentosPage() {
+  const { user } = useAuth();
+  const companyId = user?.companyId;
   const queryClient = useQueryClient();
   const { showToast } = useToast();
 
@@ -98,17 +99,18 @@ export default function DocumentosPage() {
     expiresAt: '',
   });
 
-  const params = new URLSearchParams({ companyId: COMPANY_ID });
+  const params = new URLSearchParams({ companyId: companyId ?? '' });
   if (filterEntityType) params.set('entityType', filterEntityType);
   if (filterType) params.set('type', filterType);
   if (filterStatus) params.set('status', filterStatus);
 
   const { data: documents, isLoading } = useQuery<DocumentWithRelations[]>({
-    queryKey: ['documentos', filterEntityType, filterType, filterStatus],
+    queryKey: ['documentos', companyId, filterEntityType, filterType, filterStatus],
     queryFn: async () => {
       const res = await api.get(`/documents?${params}`);
       return res.data;
     },
+    enabled: !!companyId,
   });
 
   const { data: vehicles } = useQuery<{ data: Vehicle[] }>({
@@ -128,11 +130,12 @@ export default function DocumentosPage() {
   });
 
   const { data: expiring } = useQuery<DocumentWithRelations[]>({
-    queryKey: ['documentos-expiring'],
+    queryKey: ['documentos-expiring', companyId],
     queryFn: async () => {
-      const res = await api.get(`/documents/expiring/${COMPANY_ID}?daysAhead=30`);
+      const res = await api.get(`/documents/expiring/${companyId}?daysAhead=30`);
       return res.data;
     },
+    enabled: !!companyId,
   });
 
   const createMutation = useMutation({
@@ -148,7 +151,7 @@ export default function DocumentosPage() {
   });
 
   const checkExpiriesMutation = useMutation({
-    mutationFn: () => api.post(`/documents/check-expiries/${COMPANY_ID}`),
+    mutationFn: () => api.post(`/documents/check-expiries/${companyId}`),
     onSuccess: (res) => {
       const result: CheckExpiriesResult = res.data;
       queryClient.invalidateQueries({ queryKey: ['documentos'] });

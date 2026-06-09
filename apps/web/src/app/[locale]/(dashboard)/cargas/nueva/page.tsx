@@ -11,6 +11,7 @@ import Link from 'next/link';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
 
 const CARGO_TYPES = [
@@ -56,6 +57,7 @@ type FormData = z.infer<typeof schema>;
 
 export default function NuevaCargaPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const [isAuction, setIsAuction] = useState(false);
 
   const {
@@ -73,7 +75,7 @@ export default function NuevaCargaPage() {
       const { publish, ...cargoData } = data;
       const res = await api.post('/cargo', {
         ...cargoData,
-        companyId: 'placeholder',
+        companyId: user?.companyId,
       });
       return { cargo: res.data, publish };
     },

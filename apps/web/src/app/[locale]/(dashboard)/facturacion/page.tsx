@@ -7,8 +7,7 @@ import { Card } from '@/components/ui/Card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
 import { Badge } from '@/components/ui/Badge';
 import api from '@/lib/api';
-
-const COMPANY_ID = 'placeholder';
+import { useAuth } from '@/hooks/useAuth';
 
 type InvoiceType = 'VIAJE' | 'COMISION' | 'SUSCRIPCION';
 type InvoiceStatus = 'PENDIENTE' | 'PAGADA' | 'CANCELADA';
@@ -68,17 +67,20 @@ function formatCurrency(amount: number) {
 }
 
 export default function FacturacionPage() {
+  const { user } = useAuth();
+  const companyId = user?.companyId;
   const [page, setPage] = useState(1);
   const [typeFilter, setTypeFilter] = useState<InvoiceType | ''>('');
   const [statusFilter, setStatusFilter] = useState<InvoiceStatus | ''>('');
   const queryClient = useQueryClient();
 
   const summaryQuery = useQuery<Summary>({
-    queryKey: ['billing-summary', COMPANY_ID],
+    queryKey: ['billing-summary', companyId],
     queryFn: async () => {
-      const res = await api.get(`/billing/invoices/${COMPANY_ID}/summary`);
+      const res = await api.get(`/billing/invoices/${companyId}/summary`);
       return res.data;
     },
+    enabled: !!companyId,
   });
 
   const params = new URLSearchParams({ page: String(page), limit: '20' });
@@ -86,11 +88,12 @@ export default function FacturacionPage() {
   if (statusFilter) params.set('status', statusFilter);
 
   const invoicesQuery = useQuery<InvoicesResponse>({
-    queryKey: ['billing-invoices', COMPANY_ID, page, typeFilter, statusFilter],
+    queryKey: ['billing-invoices', companyId, page, typeFilter, statusFilter],
     queryFn: async () => {
-      const res = await api.get(`/billing/invoices/${COMPANY_ID}?${params}`);
+      const res = await api.get(`/billing/invoices/${companyId}?${params}`);
       return res.data;
     },
+    enabled: !!companyId,
   });
 
   const cancelMutation = useMutation({

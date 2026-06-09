@@ -7,8 +7,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import api from '@/lib/api';
-
-const COMPANY_ID = 'placeholder';
+import { useAuth } from '@/hooks/useAuth';
 
 type PlanType = 'FREE' | 'PRO' | 'EMPRESA' | 'FLOTA';
 
@@ -128,29 +127,33 @@ function formatCurrency(amount: number) {
 }
 
 export default function SuscripcionPage() {
+  const { user } = useAuth();
+  const companyId = user?.companyId;
   const [selectedPlan, setSelectedPlan] = useState<PlanType | null>(null);
   const [months, setMonths] = useState(1);
   const queryClient = useQueryClient();
 
   const currentQuery = useQuery<Subscription | null>({
-    queryKey: ['subscription-current', COMPANY_ID],
+    queryKey: ['subscription-current', companyId],
+    enabled: !!companyId,
     queryFn: async () => {
-      const res = await api.get(`/subscriptions/current/${COMPANY_ID}`);
+      const res = await api.get(`/subscriptions/current/${companyId}`);
       return res.data;
     },
   });
 
   const limitsQuery = useQuery<PlanLimits>({
-    queryKey: ['subscription-limits', COMPANY_ID],
+    queryKey: ['subscription-limits', companyId],
+    enabled: !!companyId,
     queryFn: async () => {
-      const res = await api.get(`/subscriptions/limits/${COMPANY_ID}`);
+      const res = await api.get(`/subscriptions/limits/${companyId}`);
       return res.data;
     },
   });
 
   const activateMutation = useMutation({
     mutationFn: ({ plan, months: m }: { plan: PlanType; months: number }) =>
-      api.post('/subscriptions/activate', { companyId: COMPANY_ID, plan, months: m }),
+      api.post('/subscriptions/activate', { companyId, plan, months: m }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['subscription-current'] });
       queryClient.invalidateQueries({ queryKey: ['subscription-limits'] });

@@ -6,22 +6,23 @@ import { Bell, CheckCheck } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import api from '@/lib/api';
+import { useAuth } from '@/hooks/useAuth';
 import { Alert, PaginatedResponse } from '@/types';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
-const COMPANY_ID = 'placeholder';
-
 export default function AlertasPage() {
+  const { user } = useAuth();
+  const companyId = user?.companyId;
   const [page, setPage] = useState(1);
   const [onlyUnread, setOnlyUnread] = useState(false);
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery<PaginatedResponse<Alert>>({
-    queryKey: ['alertas', page, onlyUnread],
+    queryKey: ['alertas', companyId, page, onlyUnread],
     queryFn: async () => {
       const params = new URLSearchParams({
-        companyId: COMPANY_ID,
+        companyId: companyId ?? '',
         page: String(page),
         limit: '20',
         ...(onlyUnread && { unread: 'true' }),
@@ -29,10 +30,11 @@ export default function AlertasPage() {
       const res = await api.get(`/alerts?${params}`);
       return res.data;
     },
+    enabled: !!companyId,
   });
 
   const markAllMutation = useMutation({
-    mutationFn: () => api.patch(`/alerts/read-all?companyId=${COMPANY_ID}`),
+    mutationFn: () => api.patch(`/alerts/read-all?companyId=${companyId}`),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['alertas'] }),
   });
 
