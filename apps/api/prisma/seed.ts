@@ -1,4 +1,4 @@
-import { PrismaClient, Role, PlanType, VehicleType, VehicleStatus } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
@@ -14,7 +14,7 @@ async function main() {
       cuit: '20-12345678-9',
       address: 'Av. Corrientes 1234, Buenos Aires',
       country: 'AR',
-      planType: PlanType.PRO,
+      planType: 'PRO',
     },
   });
 
@@ -26,7 +26,7 @@ async function main() {
       cuit: '30-98765432-1',
       address: 'Ruta 9 km 45, Córdoba',
       country: 'AR',
-      planType: PlanType.EMPRESA,
+      planType: 'EMPRESA',
     },
   });
 
@@ -37,7 +37,7 @@ async function main() {
     create: {
       email: 'admin@logiguay.com',
       password: adminPassword,
-      role: Role.ADMIN,
+      role: 'ADMIN',
       firstName: 'Super',
       lastName: 'Admin',
       phone: '+54911234567',
@@ -51,15 +51,12 @@ async function main() {
     create: {
       email: 'dador@logiguay.com',
       password: dadorPassword,
-      role: Role.DADOR,
+      role: 'DADOR',
       firstName: 'Juan',
       lastName: 'García',
       phone: '+54911111111',
       companyUsers: {
-        create: {
-          companyId: dadoresCompany.id,
-          role: Role.DADOR,
-        },
+        create: { companyId: dadoresCompany.id, role: 'DADOR' },
       },
     },
   });
@@ -71,15 +68,12 @@ async function main() {
     create: {
       email: 'transportista@logiguay.com',
       password: transportPassword,
-      role: Role.TRANSPORTISTA,
+      role: 'TRANSPORTISTA',
       firstName: 'Carlos',
       lastName: 'López',
       phone: '+54922222222',
       companyUsers: {
-        create: {
-          companyId: transportCompany.id,
-          role: Role.TRANSPORTISTA,
-        },
+        create: { companyId: transportCompany.id, role: 'TRANSPORTISTA' },
       },
     },
   });
@@ -89,14 +83,14 @@ async function main() {
     update: {},
     create: {
       companyId: transportCompany.id,
-      type: VehicleType.CAMION,
+      type: 'CAMION',
       plate: 'ABC123',
       brand: 'Mercedes-Benz',
       model: 'Actros 2651',
       year: 2021,
       capacityTons: 28,
       capacityM3: 90,
-      status: VehicleStatus.ACTIVO,
+      status: 'ACTIVO',
     },
   });
 
@@ -105,14 +99,14 @@ async function main() {
     update: {},
     create: {
       companyId: transportCompany.id,
-      type: VehicleType.SEMIRREMOLQUE,
+      type: 'SEMIRREMOLQUE',
       plate: 'XYZ789',
       brand: 'Scania',
       model: 'R 450',
       year: 2022,
       capacityTons: 30,
       capacityM3: 95,
-      status: VehicleStatus.ACTIVO,
+      status: 'ACTIVO',
     },
   });
 
@@ -126,7 +120,7 @@ async function main() {
     create: {
       id: 'seed-sub-transport-1',
       companyId: transportCompany.id,
-      plan: PlanType.EMPRESA,
+      plan: 'EMPRESA',
       status: 'ACTIVA',
       startDate: now,
       endDate,
@@ -134,18 +128,12 @@ async function main() {
     },
   });
 
-  console.log('\nSeed completed successfully!');
-  console.log('\nTest credentials:');
+  console.log('\nSeed completado!');
   console.log('  Admin:          admin@logiguay.com         / Admin123!');
   console.log('  Dador:          dador@logiguay.com         / Test123!');
   console.log('  Transportista:  transportista@logiguay.com / Test123!');
 }
 
 main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+  .catch((e) => { console.error(e); process.exit(1); })
+  .finally(() => prisma.$disconnect());
