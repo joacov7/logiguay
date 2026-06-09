@@ -78,6 +78,35 @@ async function main() {
     },
   });
 
+  const choferPassword = await bcrypt.hash('Test123!', 10);
+  const choferUser = await prisma.user.upsert({
+    where: { email: 'chofer@logiguay.com' },
+    update: {},
+    create: {
+      email: 'chofer@logiguay.com',
+      password: choferPassword,
+      role: 'CHOFER',
+      firstName: 'Pedro',
+      lastName: 'Martínez',
+      phone: '+54933333333',
+      companyUsers: {
+        create: { companyId: transportCompany.id, role: 'CHOFER' },
+      },
+    },
+  });
+
+  await prisma.driver.upsert({
+    where: { userId: choferUser.id },
+    update: {},
+    create: {
+      userId: choferUser.id,
+      companyId: transportCompany.id,
+      licenseNumber: 'LIC-001',
+      licenseExpiry: new Date('2027-12-31'),
+      status: 'ACTIVO',
+    },
+  });
+
   await prisma.vehicle.upsert({
     where: { plate: 'ABC123' },
     update: {},
@@ -132,6 +161,7 @@ async function main() {
   console.log('  Admin:          admin@logiguay.com         / Admin123!');
   console.log('  Dador:          dador@logiguay.com         / Test123!');
   console.log('  Transportista:  transportista@logiguay.com / Test123!');
+  console.log('  Chofer:         chofer@logiguay.com         / Test123!');
 }
 
 main()
