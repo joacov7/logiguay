@@ -12,7 +12,7 @@ export interface PositionPayload {
   heading?: number;
 }
 
-interface StoredPosition {
+export interface StoredPosition {
   lat: number;
   lng: number;
   speed?: number;

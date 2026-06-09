@@ -72,7 +72,7 @@ export class DocumentsService {
       orderBy: { createdAt: 'desc' },
       include: {
         vehicle: { select: { id: true, plate: true, brand: true, model: true, companyId: true } },
-        driver: { select: { id: true, firstName: true, lastName: true, companyId: true } },
+        driver: { select: { id: true, companyId: true, user: { select: { firstName: true, lastName: true } } } },
       },
     });
   }
@@ -82,7 +82,7 @@ export class DocumentsService {
       where: { id },
       include: {
         vehicle: { select: { id: true, plate: true, brand: true, model: true, companyId: true } },
-        driver: { select: { id: true, firstName: true, lastName: true, companyId: true } },
+        driver: { select: { id: true, companyId: true, user: { select: { firstName: true, lastName: true } } } },
       },
     });
     if (!doc) throw new NotFoundException('Documento no encontrado');
@@ -169,7 +169,7 @@ export class DocumentsService {
       orderBy: { expiresAt: 'asc' },
       include: {
         vehicle: { select: { id: true, plate: true, brand: true, model: true } },
-        driver: { select: { id: true, firstName: true, lastName: true } },
+        driver: { select: { id: true, user: { select: { firstName: true, lastName: true } } } },
       },
     });
   }
@@ -188,13 +188,13 @@ export class DocumentsService {
       const existing = await this.redis.get(redisKey);
       if (existing) continue;
 
-      const vehicle = doc.vehicle as { plate: string } | null;
-      const driver = doc.driver as { firstName: string; lastName: string } | null;
+      const vehicle = (doc as any).vehicle as { plate: string } | null;
+      const driver = (doc as any).driver as { user: { firstName: string; lastName: string } } | null;
 
       const entityLabel = vehicle
         ? `Vehículo ${vehicle.plate}`
         : driver
-        ? `Chofer ${driver.firstName} ${driver.lastName}`
+        ? `Chofer ${driver.user.firstName} ${driver.user.lastName}`
         : doc.entityId;
 
       const statusLabel = docStatus === 'VENCIDO' ? 'vencido' : 'por vencer';

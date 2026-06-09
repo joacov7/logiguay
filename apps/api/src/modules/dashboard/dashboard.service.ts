@@ -1,12 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { TripStatus } from '@prisma/client';
 
-const ACTIVE_TRIP_STATUSES = [
-  'ASIGNADO',
-  'EN_CAMINO_ORIGEN',
-  'EN_CARGA',
-  'EN_TRANSITO',
-  'EN_DESCARGA',
+const ACTIVE_TRIP_STATUSES: TripStatus[] = [
+  TripStatus.ASIGNADO,
+  TripStatus.EN_CAMINO_ORIGEN,
+  TripStatus.EN_CARGA,
+  TripStatus.EN_TRANSITO,
+  TripStatus.EN_DESCARGA,
 ];
 
 @Injectable()

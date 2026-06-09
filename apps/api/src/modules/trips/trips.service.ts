@@ -303,7 +303,7 @@ export class TripsService {
     };
   }
 
-  async cancel(id: string, reason: string, requesterId: string) {
+  async cancel(id: string, reason: string, _requesterId?: string) {
     const trip = await this.findOne(id);
 
     if (trip.status === TripStatus.FINALIZADO || trip.status === TripStatus.CANCELADO) {
