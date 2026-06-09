@@ -32,6 +32,9 @@ export class DashboardService {
       cargoWhere.companyId = companyId;
       alertWhere.companyId = companyId;
       invoiceWhere.companyId = companyId;
+      // DADORs don't own vehicles — force empty fleet filters so counts = 0
+      vehicleWhere.companyId = 'none';
+      driverWhere.companyId = 'none';
     } else if (companyId) {
       tripWhere.transportCompanyId = companyId;
       vehicleWhere.companyId = companyId;
