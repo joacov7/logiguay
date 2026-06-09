@@ -1,9 +1,8 @@
-import { IsString, IsOptional, IsDateString, IsEnum } from 'class-validator';
+import { IsString, IsOptional, IsDateString } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { DocumentStatus } from '@prisma/client';
 
 export class CreateDocumentDto {
-  @ApiProperty({ example: 'vehicle' })
+  @ApiProperty({ example: 'VEHICLE', description: 'VEHICLE | DRIVER | COMPANY' })
   @IsString()
   entityType: string;
 
@@ -11,7 +10,17 @@ export class CreateDocumentDto {
   @IsString()
   entityId: string;
 
-  @ApiProperty({ example: 'VTV' })
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  vehicleId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  driverId?: string;
+
+  @ApiProperty({ example: 'SEGURO', description: 'SEGURO | CEDULA | LICENCIA | RTO | HABILITACION | OTRO' })
   @IsString()
   type: string;
 
@@ -19,17 +28,17 @@ export class CreateDocumentDto {
   @IsString()
   fileUrl: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ description: 'ISO date string' })
   @IsOptional()
   @IsDateString()
   expiresAt?: string;
 }
 
 export class UpdateDocumentDto {
-  @ApiPropertyOptional({ enum: DocumentStatus })
+  @ApiPropertyOptional()
   @IsOptional()
-  @IsEnum(DocumentStatus)
-  status?: DocumentStatus;
+  @IsString()
+  fileUrl?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -39,5 +48,5 @@ export class UpdateDocumentDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  fileUrl?: string;
+  type?: string;
 }
