@@ -1,14 +1,27 @@
-import { IsString, IsDateString } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsString, IsOptional, IsDateString, IsEmail } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateDriverDto {
   @ApiProperty()
   @IsString()
-  userId: string;
+  companyId: string;
 
   @ApiProperty()
   @IsString()
-  companyId: string;
+  firstName: string;
+
+  @ApiProperty()
+  @IsString()
+  lastName: string;
+
+  @ApiProperty()
+  @IsEmail()
+  email: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  phone?: string;
 
   @ApiProperty()
   @IsString()
@@ -20,15 +33,33 @@ export class CreateDriverDto {
 }
 
 export class UpdateDriverDto {
-  @ApiProperty({ required: false })
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  firstName?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  lastName?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsEmail()
+  email?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsString()
   licenseNumber?: string;
 
-  @ApiProperty({ required: false })
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsDateString()
   licenseExpiry?: string;
-
-  @ApiProperty({ required: false })
-  @IsString()
-  status?: string;
 }

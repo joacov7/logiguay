@@ -1,4 +1,12 @@
-import { IsString, IsOptional, IsEnum, IsNumber, IsInt } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsEnum,
+  IsNumber,
+  IsInt,
+  Min,
+  Max,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { VehicleType, VehicleStatus } from '@prisma/client';
 
@@ -28,24 +36,27 @@ export class CreateVehicleDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsInt()
+  @Min(1950)
   year?: number;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsNumber()
+  @Min(0)
   capacityTons?: number;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsNumber()
+  @Min(0)
   capacityM3?: number;
 }
 
 export class UpdateVehicleDto {
-  @ApiPropertyOptional({ enum: VehicleStatus })
+  @ApiPropertyOptional()
   @IsOptional()
-  @IsEnum(VehicleStatus)
-  status?: VehicleStatus;
+  @IsString()
+  plate?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -59,11 +70,25 @@ export class UpdateVehicleDto {
 
   @ApiPropertyOptional()
   @IsOptional()
+  @IsInt()
+  @Min(1950)
+  year?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsNumber()
+  @Min(0)
   capacityTons?: number;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsNumber()
+  @Min(0)
   capacityM3?: number;
+}
+
+export class UpdateVehicleStatusDto {
+  @ApiProperty({ enum: VehicleStatus })
+  @IsEnum(VehicleStatus)
+  status: VehicleStatus;
 }

@@ -1,20 +1,53 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
-import { CreateVehicleDto, UpdateVehicleDto } from './dto/vehicle.dto';
+import { CreateVehicleDto, UpdateVehicleDto, UpdateVehicleStatusDto } from './dto/vehicle.dto';
+import { VehicleType, VehicleStatus } from '@prisma/client';
+
+interface FindAllFilters {
+  companyId: string;
+  type?: VehicleType;
+  status?: VehicleStatus;
+  search?: string;
+  page?: number;
+  limit?: number;
+}
 
 @Injectable()
 export class VehiclesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(dto: CreateVehicleDto) {
-    const existing = await this.prisma.vehicle.findUnique({ where: { plate: dto.plate } });
+  async create(companyId: string, dto: CreateVehicleDto) {
+    const existing = await this.prisma.vehicle.findUnique({ where: { plate: dto.plate.toUpperCase() } });
     if (existing) throw new ConflictException('Patente ya registrada');
-    return this.prisma.vehicle.create({ data: dto });
+    return this.prisma.vehicle.create({
+      data: {
+        ...dto,
+        companyId,
+        plate: dto.plate.toUpperCase(),
+      },
+    });
   }
 
-  async findAll(companyId?: string, page = 1, limit = 20) {
+  async findAll(filters: FindAllFilters) {
+    const { companyId, type, status, search, page = 1, limit = 20 } = filters;
     const skip = (page - 1) * limit;
-    const where = companyId ? { companyId } : {};
+
+    const where: any = { companyId };
+    if (type) where.type = type;
+    if (status) where.status = status;
+    if (search) {
+      where.OR = [
+        { plate: { contains: search, mode: 'insensitive' } },
+        { brand: { contains: search, mode: 'insensitive' } },
+        { model: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
     const [data, total] = await Promise.all([
       this.prisma.vehicle.findMany({
         where,
@@ -23,11 +56,11 @@ export class VehiclesService {
         orderBy: { createdAt: 'desc' },
         include: {
           _count: { select: { trips: true } },
-          positions: { take: 1, orderBy: { timestamp: 'desc' } },
         },
       }),
       this.prisma.vehicle.count({ where }),
     ]);
+
     return { data, total, page, limit, pages: Math.ceil(total / limit) };
   }
 
@@ -35,9 +68,15 @@ export class VehiclesService {
     const vehicle = await this.prisma.vehicle.findUnique({
       where: { id },
       include: {
-        documents: true,
-        positions: { take: 10, orderBy: { timestamp: 'desc' } },
-        trips: { take: 5, orderBy: { createdAt: 'desc' } },
+        company: true,
+        documents: { orderBy: { expiresAt: 'asc' } },
+        trips: {
+          where: {
+            status: {
+              notIn: ['FINALIZADO', 'CANCELADO'],
+            },
+          },
+        },
       },
     });
     if (!vehicle) throw new NotFoundException('Vehículo no encontrado');
@@ -46,18 +85,83 @@ export class VehiclesService {
 
   async update(id: string, dto: UpdateVehicleDto) {
     await this.findOne(id);
-    return this.prisma.vehicle.update({ where: { id }, data: dto });
+    const data: any = { ...dto };
+    if (data.companyId) delete data.companyId;
+    if (data.plate) data.plate = data.plate.toUpperCase();
+    return this.prisma.vehicle.update({ where: { id }, data });
+  }
+
+  async updateStatus(id: string, dto: UpdateVehicleStatusDto) {
+    const vehicle = await this.findOne(id);
+    if (dto.status === VehicleStatus.ACTIVO) {
+      const expiredDocs = (vehicle as any).documents?.filter(
+        (d: any) => d.status === 'VENCIDO',
+      );
+      if (expiredDocs && expiredDocs.length > 0) {
+        throw new BadRequestException(
+          'No se puede activar un vehículo con documentos vencidos',
+        );
+      }
+    }
+    return this.prisma.vehicle.update({
+      where: { id },
+      data: { status: dto.status },
+    });
   }
 
   async delete(id: string) {
-    await this.findOne(id);
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id },
+      include: {
+        trips: {
+          where: {
+            status: {
+              notIn: ['FINALIZADO', 'CANCELADO'],
+            },
+          },
+        },
+      },
+    });
+    if (!vehicle) throw new NotFoundException('Vehículo no encontrado');
+    if (vehicle.trips.length > 0) {
+      throw new BadRequestException('No se puede eliminar un vehículo con viajes activos');
+    }
     return this.prisma.vehicle.delete({ where: { id } });
   }
 
-  async getLastPosition(vehicleId: string) {
-    return this.prisma.vehiclePosition.findFirst({
-      where: { vehicleId },
-      orderBy: { timestamp: 'desc' },
-    });
+  async getStats(companyId: string) {
+    const [all, onTrip] = await Promise.all([
+      this.prisma.vehicle.findMany({
+        where: { companyId },
+        select: { status: true, type: true },
+      }),
+      this.prisma.vehicle.count({
+        where: {
+          companyId,
+          trips: {
+            some: {
+              status: {
+                notIn: ['FINALIZADO', 'CANCELADO'],
+              },
+            },
+          },
+        },
+      }),
+    ]);
+
+    const byStatus = {} as Record<VehicleStatus, number>;
+    const byType = {} as Record<VehicleType, number>;
+
+    for (const v of all) {
+      byStatus[v.status] = (byStatus[v.status] || 0) + 1;
+      byType[v.type] = (byType[v.type] || 0) + 1;
+    }
+
+    return {
+      total: all.length,
+      byStatus,
+      byType,
+      onTrip,
+    };
   }
 }
