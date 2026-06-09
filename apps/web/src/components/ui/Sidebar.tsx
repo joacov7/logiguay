@@ -15,6 +15,7 @@ import {
   ShoppingBag,
   Navigation,
   LogOut,
+  Crown,
 } from 'lucide-react';
 
 const navItems = [
@@ -28,6 +29,7 @@ const navItems = [
   { href: '/documentos', label: 'Documentos', icon: FileText },
   { href: '/alertas', label: 'Alertas', icon: Bell },
   { href: '/facturacion', label: 'Facturación', icon: CreditCard },
+  { href: '/suscripcion', label: 'Suscripción', icon: Crown },
 ];
 
 interface SidebarProps {

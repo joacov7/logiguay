@@ -1,14 +1,8 @@
-import { Controller, Get, Patch, Param, Query, Body, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import { Controller, Get, Patch, Param, Query, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { BillingService } from './billing.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { IsEnum } from 'class-validator';
-import { InvoiceStatus } from '@prisma/client';
-
-class UpdateInvoiceStatusDto {
-  @IsEnum(InvoiceStatus)
-  status: InvoiceStatus;
-}
+import { InvoiceType, InvoiceStatus } from '@prisma/client';
 
 @ApiTags('Billing')
 @ApiBearerAuth()
@@ -17,37 +11,43 @@ class UpdateInvoiceStatusDto {
 export class BillingController {
   constructor(private readonly billingService: BillingService) {}
 
-  @Get('invoices')
-  @ApiOperation({ summary: 'Listar facturas' })
-  findAll(
-    @Query('companyId') companyId: string,
+  @Get('invoices/:companyId')
+  @ApiOperation({ summary: 'Listar facturas con filtros' })
+  @ApiQuery({ name: 'type', enum: InvoiceType, required: false })
+  @ApiQuery({ name: 'status', enum: InvoiceStatus, required: false })
+  @ApiQuery({ name: 'page', required: false })
+  @ApiQuery({ name: 'limit', required: false })
+  getInvoices(
+    @Param('companyId') companyId: string,
+    @Query('type') type?: InvoiceType,
+    @Query('status') status?: InvoiceStatus,
     @Query('page') page?: number,
     @Query('limit') limit?: number,
   ) {
-    return this.billingService.findAll(companyId, page, limit);
+    return this.billingService.getInvoices(companyId, { type, status, page, limit });
   }
 
-  @Get('summary')
-  @ApiOperation({ summary: 'Resumen de facturación' })
-  getSummary(@Query('companyId') companyId: string) {
+  @Get('invoices/:companyId/summary')
+  @ApiOperation({ summary: 'Resumen financiero' })
+  getSummary(@Param('companyId') companyId: string) {
     return this.billingService.getSummary(companyId);
   }
 
-  @Get('invoices/:id')
-  @ApiOperation({ summary: 'Obtener factura' })
-  findOne(@Param('id') id: string) {
-    return this.billingService.findOne(id);
+  @Get('invoice/:id')
+  @ApiOperation({ summary: 'Detalle de factura' })
+  getInvoice(@Param('id') id: string) {
+    return this.billingService.getInvoice(id);
   }
 
-  @Patch('invoices/:id/status')
-  @ApiOperation({ summary: 'Actualizar estado de factura' })
-  updateStatus(@Param('id') id: string, @Body() dto: UpdateInvoiceStatusDto) {
-    return this.billingService.updateStatus(id, dto.status);
+  @Patch('invoice/:id/pay')
+  @ApiOperation({ summary: 'Marcar factura como pagada' })
+  markAsPaid(@Param('id') id: string) {
+    return this.billingService.markAsPaid(id);
   }
 
-  @Get('trips/:tripId/commission')
-  @ApiOperation({ summary: 'Calcular comisión de un viaje' })
-  calculateCommission(@Param('tripId') tripId: string) {
-    return this.billingService.calculateTripCommission(tripId);
+  @Patch('invoice/:id/cancel')
+  @ApiOperation({ summary: 'Cancelar factura' })
+  cancelInvoice(@Param('id') id: string) {
+    return this.billingService.cancel(id);
   }
 }

@@ -1,32 +1,51 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { PlanType } from '@prisma/client';
+import { PLAN_LIMITS, PlanLimits } from '../../common/config/plan-limits.config';
 
 const PLAN_PRICES: Record<PlanType, number> = {
   FREE: 0,
-  PRO: 4999,
-  EMPRESA: 14999,
-  FLOTA: 29999,
+  PRO: 29900,
+  EMPRESA: 89900,
+  FLOTA: 199900,
 };
 
 @Injectable()
 export class SubscriptionsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getActivePlan(companyId: string) {
-    const subscription = await this.prisma.subscription.findFirst({
-      where: {
-        companyId,
-        status: { in: ['ACTIVA', 'TRIAL'] },
-        endDate: { gte: new Date() },
-      },
-      orderBy: { createdAt: 'desc' },
+  async getCompanyPlan(companyId: string): Promise<PlanType> {
+    const company = await this.prisma.company.findUnique({
+      where: { id: companyId },
+      select: { planType: true },
     });
-
-    return subscription;
+    if (!company) throw new NotFoundException('Empresa no encontrada');
+    return company.planType;
   }
 
-  async subscribe(companyId: string, plan: PlanType) {
+  async getPlanLimits(companyId: string): Promise<PlanLimits> {
+    const plan = await this.getCompanyPlan(companyId);
+    return PLAN_LIMITS[plan] ?? PLAN_LIMITS['FREE'];
+  }
+
+  async checkLimit(
+    companyId: string,
+    limitKey: keyof PlanLimits,
+    currentCount: number,
+  ): Promise<void> {
+    const limits = await this.getPlanLimits(companyId);
+    const limit = limits[limitKey];
+    if (typeof limit === 'number' && currentCount >= limit) {
+      throw new ForbiddenException(
+        `Has alcanzado el límite de tu plan (${limit}). Actualizá tu plan para continuar.`,
+      );
+    }
+    if (typeof limit === 'boolean' && !limit) {
+      throw new ForbiddenException(`Tu plan no permite esta funcionalidad. Actualizá tu plan.`);
+    }
+  }
+
+  async activate(companyId: string, plan: PlanType, months: number) {
     const company = await this.prisma.company.findUnique({ where: { id: companyId } });
     if (!company) throw new NotFoundException('Empresa no encontrada');
 
@@ -37,7 +56,9 @@ export class SubscriptionsService {
 
     const startDate = new Date();
     const endDate = new Date();
-    endDate.setMonth(endDate.getMonth() + 1);
+    endDate.setMonth(endDate.getMonth() + months);
+
+    const amount = PLAN_PRICES[plan] * months;
 
     const subscription = await this.prisma.subscription.create({
       data: {
@@ -46,7 +67,16 @@ export class SubscriptionsService {
         status: 'ACTIVA',
         startDate,
         endDate,
-        amount: PLAN_PRICES[plan],
+        amount,
+      },
+    });
+
+    await this.prisma.invoice.create({
+      data: {
+        companyId,
+        type: 'SUSCRIPCION',
+        amount,
+        status: 'PENDIENTE',
       },
     });
 
@@ -56,7 +86,7 @@ export class SubscriptionsService {
   }
 
   async cancel(companyId: string) {
-    const active = await this.getActivePlan(companyId);
+    const active = await this.getCurrent(companyId);
     if (!active) throw new NotFoundException('No hay suscripción activa');
 
     await this.prisma.subscription.update({
@@ -74,6 +104,44 @@ export class SubscriptionsService {
       where: { companyId },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  async getCurrent(companyId: string) {
+    return this.prisma.subscription.findFirst({
+      where: {
+        companyId,
+        status: 'ACTIVA',
+        endDate: { gte: new Date() },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async checkExpiredSubscriptions(): Promise<number> {
+    const expired = await this.prisma.subscription.findMany({
+      where: {
+        status: 'ACTIVA',
+        endDate: { lt: new Date() },
+      },
+      select: { id: true, companyId: true },
+    });
+
+    if (expired.length === 0) return 0;
+
+    const ids = expired.map((s) => s.id);
+    const companyIds = [...new Set(expired.map((s) => s.companyId))];
+
+    await this.prisma.subscription.updateMany({
+      where: { id: { in: ids } },
+      data: { status: 'VENCIDA' },
+    });
+
+    await this.prisma.company.updateMany({
+      where: { id: { in: companyIds } },
+      data: { planType: 'FREE' },
+    });
+
+    return expired.length;
   }
 
   getPlanPrices() {

@@ -2,35 +2,42 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { InvoiceType, InvoiceStatus } from '@prisma/client';
 
+interface InvoiceFilters {
+  type?: InvoiceType;
+  status?: InvoiceStatus;
+  page?: number;
+  limit?: number;
+}
+
 @Injectable()
 export class BillingService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async createInvoice(data: {
-    companyId: string;
-    tripId?: string;
-    type: InvoiceType;
-    amount: number;
-  }) {
-    return this.prisma.invoice.create({ data });
-  }
-
-  async findAll(companyId: string, page = 1, limit = 20) {
+  async getInvoices(companyId: string, filters: InvoiceFilters = {}) {
+    const { type, status, page = 1, limit = 20 } = filters;
     const skip = (page - 1) * limit;
+
+    const where = {
+      companyId,
+      ...(type ? { type } : {}),
+      ...(status ? { status } : {}),
+    };
+
     const [data, total] = await Promise.all([
       this.prisma.invoice.findMany({
-        where: { companyId },
+        where,
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
         include: { trip: { select: { id: true, status: true } } },
       }),
-      this.prisma.invoice.count({ where: { companyId } }),
+      this.prisma.invoice.count({ where }),
     ]);
+
     return { data, total, page, limit, pages: Math.ceil(total / limit) };
   }
 
-  async findOne(id: string) {
+  async getInvoice(id: string) {
     const invoice = await this.prisma.invoice.findUnique({
       where: { id },
       include: { trip: true, company: true },
@@ -39,35 +46,92 @@ export class BillingService {
     return invoice;
   }
 
-  async updateStatus(id: string, status: InvoiceStatus) {
-    await this.findOne(id);
-    return this.prisma.invoice.update({ where: { id }, data: { status } });
+  async markAsPaid(id: string) {
+    await this.getInvoice(id);
+    return this.prisma.invoice.update({ where: { id }, data: { status: 'PAGADA' } });
+  }
+
+  async cancel(id: string) {
+    await this.getInvoice(id);
+    return this.prisma.invoice.update({ where: { id }, data: { status: 'CANCELADA' } });
   }
 
   async getSummary(companyId: string) {
-    const [pending, paid, total] = await Promise.all([
-      this.prisma.invoice.aggregate({
-        where: { companyId, status: 'PENDIENTE' },
-        _sum: { amount: true },
-        _count: true,
-      }),
+    const [paid, pending, cancelled, byTypeRaw] = await Promise.all([
       this.prisma.invoice.aggregate({
         where: { companyId, status: 'PAGADA' },
         _sum: { amount: true },
         _count: true,
       }),
       this.prisma.invoice.aggregate({
+        where: { companyId, status: 'PENDIENTE' },
+        _sum: { amount: true },
+        _count: true,
+      }),
+      this.prisma.invoice.aggregate({
+        where: { companyId, status: 'CANCELADA' },
+        _sum: { amount: true },
+        _count: true,
+      }),
+      this.prisma.invoice.groupBy({
+        by: ['type'],
         where: { companyId },
         _sum: { amount: true },
         _count: true,
       }),
     ]);
 
+    const byType = byTypeRaw.reduce<Record<string, { count: number; amount: number }>>(
+      (acc, row) => {
+        acc[row.type] = {
+          count: row._count,
+          amount: row._sum.amount ?? 0,
+        };
+        return acc;
+      },
+      {},
+    );
+
     return {
-      pending: { count: pending._count, amount: pending._sum.amount || 0 },
-      paid: { count: paid._count, amount: paid._sum.amount || 0 },
-      total: { count: total._count, amount: total._sum.amount || 0 },
+      totalPaid: paid._sum.amount ?? 0,
+      totalPending: pending._sum.amount ?? 0,
+      totalCancelled: cancelled._sum.amount ?? 0,
+      countPaid: paid._count,
+      countPending: pending._count,
+      countCancelled: cancelled._count,
+      byType,
     };
+  }
+
+  async createManual(
+    companyId: string,
+    type: InvoiceType,
+    amount: number,
+    tripId?: string,
+  ) {
+    return this.prisma.invoice.create({
+      data: {
+        companyId,
+        type,
+        amount,
+        status: 'PENDIENTE',
+        ...(tripId ? { tripId } : {}),
+      },
+    });
+  }
+
+  // Legacy methods kept for backwards compatibility
+  async findAll(companyId: string, page = 1, limit = 20) {
+    return this.getInvoices(companyId, { page, limit });
+  }
+
+  async findOne(id: string) {
+    return this.getInvoice(id);
+  }
+
+  async updateStatus(id: string, status: InvoiceStatus) {
+    await this.getInvoice(id);
+    return this.prisma.invoice.update({ where: { id }, data: { status } });
   }
 
   async calculateTripCommission(tripId: string) {
@@ -78,9 +142,7 @@ export class BillingService {
 
     if (trip.commissionType === 'PORCENTAJE') {
       return (trip.agreedRate * trip.commission) / 100;
-    } else if (trip.commissionType === 'FIJO') {
-      return trip.commission;
-    } else if (trip.commissionType === 'HIBRIDO') {
+    } else if (trip.commissionType === 'FIJO' || trip.commissionType === 'HIBRIDO') {
       return trip.commission;
     }
 
