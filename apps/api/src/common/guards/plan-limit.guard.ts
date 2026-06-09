@@ -35,7 +35,7 @@ export class PlanLimitGuard implements CanActivate {
     if (!companyId) return true;
 
     const limits = await this.subscriptionsService.getPlanLimits(companyId);
-    const limit = (limits as Record<string, unknown>)[meta.limitKey];
+    const limit = (limits as unknown as Record<string, unknown>)[meta.limitKey];
 
     if (typeof limit === 'boolean' && !limit) {
       throw new ForbiddenException(
