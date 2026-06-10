@@ -28,15 +28,8 @@ export interface Trip {
     destinationAddress: string;
     weightTons: number;
   };
-  vehicle: {
-    plate: string;
-  };
-  driver: {
-    user: {
-      firstName: string;
-      lastName: string;
-    };
-  };
+  vehicle?: { plate: string };
+  driver?: { user: { firstName: string; lastName: string } };
   startedAt?: string;
   finishedAt?: string;
 }

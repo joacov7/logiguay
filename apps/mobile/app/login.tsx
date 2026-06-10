@@ -21,7 +21,7 @@ export default function LoginScreen() {
 
   async function handleLogin() {
     if (!email.trim() || !password.trim()) {
-      setError('Por favor completá todos los campos.');
+      setError('Completá todos los campos.');
       return;
     }
     setLoading(true);
@@ -30,10 +30,10 @@ export default function LoginScreen() {
       await login(email.trim(), password);
       router.replace('/(tabs)/');
     } catch (e: any) {
-      const msg =
+      setError(
         e?.response?.data?.message ||
-        'No se pudo iniciar sesión. Revisá tus credenciales.';
-      setError(msg);
+          'No se pudo iniciar sesión. Revisá tus credenciales.',
+      );
     } finally {
       setLoading(false);
     }
@@ -47,9 +47,7 @@ export default function LoginScreen() {
       <View style={styles.card}>
         <Text style={styles.logo}>LOGIGUAY</Text>
         <Text style={styles.subtitle}>Plataforma logística</Text>
-
         {error ? <Text style={styles.error}>{error}</Text> : null}
-
         <TextInput
           style={styles.input}
           placeholder="Correo electrónico"
@@ -61,7 +59,6 @@ export default function LoginScreen() {
           autoCorrect={false}
           editable={!loading}
         />
-
         <TextInput
           style={styles.input}
           placeholder="Contraseña"
@@ -71,7 +68,6 @@ export default function LoginScreen() {
           secureTextEntry
           editable={!loading}
         />
-
         <TouchableOpacity
           style={[styles.button, loading && styles.buttonDisabled]}
           onPress={handleLogin}
@@ -137,14 +133,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 8,
   },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
+  buttonDisabled: { opacity: 0.6 },
+  buttonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   error: {
     color: '#dc2626',
     fontSize: 14,

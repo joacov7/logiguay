@@ -1,20 +1,33 @@
 import { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+  StatusBar,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { getUser, logout } from '../../src/lib/auth';
 import { User } from '../../src/lib/types';
 
+const ROLE_LABEL: Record<string, string> = {
+  DRIVER: 'Conductor',
+  ADMIN: 'Administrador',
+  COMPANY: 'Empresa',
+};
+
 export default function ProfileScreen() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
-  const [loggingOut, setLoggingOut] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     getUser().then(setUser);
   }, []);
 
   async function handleLogout() {
-    setLoggingOut(true);
+    setLoading(true);
     await logout();
     router.replace('/login');
   }
@@ -27,111 +40,130 @@ export default function ProfileScreen() {
     );
   }
 
+  const initials = `${user.firstName[0] ?? ''}${user.lastName[0] ?? ''}`.toUpperCase();
+
   return (
     <View style={styles.container}>
-      <View style={styles.avatarCircle}>
-        <Text style={styles.avatarText}>
-          {user.firstName.charAt(0).toUpperCase()}{user.lastName.charAt(0).toUpperCase()}
-        </Text>
+      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Perfil</Text>
       </View>
 
-      <Text style={styles.name}>{user.firstName} {user.lastName}</Text>
-      <Text style={styles.email}>{user.email}</Text>
+      <View style={styles.content}>
+        <View style={styles.avatarContainer}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{initials}</Text>
+          </View>
+          <Text style={styles.name}>
+            {user.firstName} {user.lastName}
+          </Text>
+          <View style={styles.roleBadge}>
+            <Text style={styles.roleText}>
+              {ROLE_LABEL[user.role] ?? user.role}
+            </Text>
+          </View>
+        </View>
 
-      <View style={styles.roleBadge}>
-        <Text style={styles.roleText}>{user.role}</Text>
+        <View style={styles.infoCard}>
+          <InfoRow label="Correo electrónico" value={user.email} />
+          {user.driverId && (
+            <InfoRow label="ID de conductor" value={user.driverId} />
+          )}
+          {user.companyId && (
+            <InfoRow label="ID de empresa" value={user.companyId} />
+          )}
+        </View>
+
+        <TouchableOpacity
+          style={[styles.logoutButton, loading && styles.logoutDisabled]}
+          onPress={handleLogout}
+          disabled={loading}
+          activeOpacity={0.7}
+        >
+          {loading ? (
+            <ActivityIndicator color="#dc2626" />
+          ) : (
+            <Text style={styles.logoutText}>Cerrar sesión</Text>
+          )}
+        </TouchableOpacity>
       </View>
+    </View>
+  );
+}
 
-      <View style={styles.divider} />
-
-      <TouchableOpacity
-        style={[styles.logoutButton, loggingOut && styles.logoutDisabled]}
-        onPress={handleLogout}
-        disabled={loggingOut}
-      >
-        {loggingOut ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.logoutText}>Cerrar sesión</Text>
-        )}
-      </TouchableOpacity>
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.infoRow}>
+      <Text style={styles.infoLabel}>{label}</Text>
+      <Text style={styles.infoValue}>{value}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f3f4f6',
-    alignItems: 'center',
-    paddingTop: 48,
-    paddingHorizontal: 24,
+  container: { flex: 1, backgroundColor: '#f1f5f9' },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  header: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 20,
+    paddingTop: 56,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
   },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f3f4f6',
-  },
-  avatarCircle: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
+  headerTitle: { fontSize: 24, fontWeight: '800', color: '#1e3a8a' },
+  content: { padding: 20, gap: 16 },
+  avatarContainer: { alignItems: 'center', paddingVertical: 24 },
+  avatar: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     backgroundColor: '#1e3a8a',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
-  avatarText: {
-    color: '#fff',
-    fontSize: 32,
-    fontWeight: '700',
-  },
+  avatarText: { fontSize: 28, fontWeight: '700', color: '#fff' },
   name: {
     fontSize: 22,
     fontWeight: '700',
     color: '#111827',
-    marginBottom: 4,
-  },
-  email: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginBottom: 12,
+    marginBottom: 6,
   },
   roleBadge: {
     backgroundColor: '#dbeafe',
-    borderColor: '#1e3a8a',
-    borderWidth: 1,
     borderRadius: 20,
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical: 4,
-    marginBottom: 32,
   },
-  roleText: {
-    color: '#1e3a8a',
-    fontSize: 13,
-    fontWeight: '600',
-    letterSpacing: 1,
+  roleText: { fontSize: 13, fontWeight: '600', color: '#1e40af' },
+  infoCard: {
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 6,
+    elevation: 2,
   },
-  divider: {
-    width: '100%',
-    height: 1,
-    backgroundColor: '#e5e7eb',
-    marginBottom: 32,
-  },
-  logoutButton: {
-    backgroundColor: '#dc2626',
-    borderRadius: 10,
+  infoRow: {
+    paddingHorizontal: 16,
     paddingVertical: 14,
-    paddingHorizontal: 48,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+  },
+  infoLabel: { fontSize: 12, color: '#9ca3af', marginBottom: 2 },
+  infoValue: { fontSize: 15, color: '#111827', fontWeight: '500' },
+  logoutButton: {
+    backgroundColor: '#fef2f2',
+    borderRadius: 12,
+    paddingVertical: 16,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#fecaca',
+    marginTop: 8,
   },
-  logoutDisabled: {
-    opacity: 0.6,
-  },
-  logoutText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
+  logoutDisabled: { opacity: 0.6 },
+  logoutText: { color: '#dc2626', fontSize: 16, fontWeight: '700' },
 });

@@ -1,43 +1,27 @@
 import { Tabs } from 'expo-router';
-import { Text } from 'react-native';
+import { Truck, User } from 'lucide-react-native';
 
-function TruckIcon({ color }: { color: string }) {
-  return <Text style={{ fontSize: 20, color }}>🚚</Text>;
-}
-
-function UserIcon({ color }: { color: string }) {
-  return <Text style={{ fontSize: 20, color }}>👤</Text>;
-}
-
-export default function TabLayout() {
+export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: '#1e3a8a',
         tabBarInactiveTintColor: '#9ca3af',
-        tabBarStyle: {
-          backgroundColor: '#fff',
-          borderTopColor: '#e5e7eb',
-        },
-        headerStyle: { backgroundColor: '#1e3a8a' },
-        headerTintColor: '#fff',
-        headerTitleStyle: { fontWeight: '700' },
+        headerShown: false,
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
           title: 'Mis viajes',
-          tabBarIcon: ({ color }) => <TruckIcon color={color} />,
-          headerTitle: 'Mis viajes',
+          tabBarIcon: ({ color, size }) => <Truck color={color} size={size} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: 'Perfil',
-          tabBarIcon: ({ color }) => <UserIcon color={color} />,
-          headerTitle: 'Perfil',
+          tabBarIcon: ({ color, size }) => <User color={color} size={size} />,
         }}
       />
     </Tabs>
