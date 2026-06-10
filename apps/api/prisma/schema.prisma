@@ -126,9 +126,11 @@ model User {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  companyUsers CompanyUser[]
-  drivers      Driver[]
-  auditLogs    AuditLog[]
+  companyUsers     CompanyUser[]
+  drivers          Driver[]
+  auditLogs        AuditLog[]
+  ratingsGiven     Rating[] @relation("RatingsGiven")
+  ratingsReceived  Rating[] @relation("RatingsReceived")
 
   @@map("users")
 }
@@ -298,6 +300,7 @@ model Trip {
   events           TripEvent[]
   alerts           Alert[]
   invoices         Invoice[]
+  ratings          Rating[]
 
   @@map("trips")
 }
@@ -407,6 +410,24 @@ model Invoice {
   trip    Trip?   @relation(fields: [tripId], references: [id])
 
   @@map("invoices")
+}
+
+model Rating {
+  id          String   @id @default(cuid())
+  tripId      String
+  fromUserId  String
+  toUserId    String
+  score       Int
+  comment     String?
+  role        String
+  createdAt   DateTime @default(now())
+
+  trip        Trip     @relation(fields: [tripId], references: [id])
+  fromUser    User     @relation("RatingsGiven", fields: [fromUserId], references: [id])
+  toUser      User     @relation("RatingsReceived", fields: [toUserId], references: [id])
+
+  @@unique([tripId, fromUserId])
+  @@map("ratings")
 }
 
 model AuditLog {

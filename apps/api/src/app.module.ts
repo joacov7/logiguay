@@ -25,6 +25,7 @@ import { AlertsModule } from './modules/alerts/alerts.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { BillingModule } from './modules/billing/billing.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
+import { RatingsModule } from './modules/ratings/ratings.module';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { SubscriptionsModule } from './modules/subscriptions/subscriptions.modul
     DashboardModule,
     BillingModule,
     SubscriptionsModule,
+    RatingsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

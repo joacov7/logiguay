@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/Card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
 import { StatusBadge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { RatingStars } from '@/components/ui/RatingStars';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
 import { Trip, TripEvent, PaginatedResponse } from '@/types';
@@ -38,6 +39,20 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
   LLEGADA_DESTINO: 'Llegada al destino',
   SALIDA_DESTINO: 'Entrega completada',
 };
+
+function DriverRatingBadge({ userId }: { userId: string }) {
+  const { data } = useQuery({
+    queryKey: ['driver-rating-badge', userId],
+    queryFn: async () => (await api.get(`/ratings/user/${userId}`)).data,
+    staleTime: 60_000,
+  });
+  if (!data || data.total === 0) return null;
+  return (
+    <span className="flex items-center gap-0.5 mt-0.5">
+      <RatingStars score={data.average} size="sm" showNumber={true} />
+    </span>
+  );
+}
 
 export default function ViajesPage() {
   const { user } = useAuth();
@@ -101,6 +116,11 @@ export default function ViajesPage() {
   const [showAssign, setShowAssign] = useState(false);
   const [assignVehicle, setAssignVehicle] = useState('');
   const [assignDriver, setAssignDriver] = useState('');
+  const [showRating, setShowRating] = useState(false);
+  const [ratingScore, setRatingScore] = useState(0);
+  const [ratingHover, setRatingHover] = useState(0);
+  const [ratingComment, setRatingComment] = useState('');
+  const [ratingSuccess, setRatingSuccess] = useState(false);
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery<PaginatedResponse<Trip>>({
@@ -133,10 +153,26 @@ export default function ViajesPage() {
     queryFn: async () => (await api.get(`/drivers?companyId=${companyId}&limit=100`)).data,
   });
 
+  const hasRatedQuery = useQuery({
+    queryKey: ['trip-has-rated', selectedTripId],
+    enabled: !!selectedTripId && trip?.status === 'FINALIZADO',
+    queryFn: async () => (await api.get(`/ratings/trip/${selectedTripId}/has-rated`)).data,
+  });
+
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['viajes'] });
     queryClient.invalidateQueries({ queryKey: ['trip-detail', selectedTripId] });
   };
+
+  const ratingMutation = useMutation({
+    mutationFn: (body: { tripId: string; toUserId: string; score: number; comment?: string }) =>
+      api.post('/ratings', body),
+    onSuccess: () => {
+      setRatingSuccess(true);
+      setShowRating(false);
+      queryClient.invalidateQueries({ queryKey: ['trip-has-rated', selectedTripId] });
+    },
+  });
 
   const statusMutation = useMutation({
     mutationFn: ({ status, notes }: { status: string; notes?: string }) =>
@@ -167,6 +203,11 @@ export default function ViajesPage() {
     setShowCancel(false);
     setShowAssign(false);
     setCancelReason('');
+    setShowRating(false);
+    setRatingScore(0);
+    setRatingHover(0);
+    setRatingComment('');
+    setRatingSuccess(false);
   };
 
   return (
@@ -245,9 +286,14 @@ export default function ViajesPage() {
                     <div className="truncate">{t.cargo?.destinationAddress || '—'}</div>
                   </TableCell>
                   <TableCell className="text-sm">
-                    {(t.vehicle as any)?.plate
-                      ? <span className="font-mono">{(t.vehicle as any).plate}</span>
-                      : <span className="text-orange-500 text-xs">Sin asignar</span>}
+                    <div>
+                      {(t.vehicle as any)?.plate
+                        ? <span className="font-mono">{(t.vehicle as any).plate}</span>
+                        : <span className="text-orange-500 text-xs">Sin asignar</span>}
+                    </div>
+                    {(t.driver as any)?.user && (
+                      <DriverRatingBadge userId={(t.driver as any).userId} />
+                    )}
                   </TableCell>
                   <TableCell><StatusBadge status={t.status} /></TableCell>
                   <TableCell>{t.agreedRate ? `$${t.agreedRate.toLocaleString('es-AR')}` : '—'}</TableCell>
@@ -484,9 +530,86 @@ export default function ViajesPage() {
                   )}
 
                   {trip.status === 'FINALIZADO' && (
-                    <div className="bg-green-50 border border-green-200 text-green-700 rounded-xl p-3 text-sm text-center flex items-center justify-center gap-2">
-                      <CheckCircle className="h-4 w-4" /> Viaje finalizado correctamente
-                    </div>
+                    <>
+                      <div className="bg-green-50 border border-green-200 text-green-700 rounded-xl p-3 text-sm text-center flex items-center justify-center gap-2">
+                        <CheckCircle className="h-4 w-4" /> Viaje finalizado correctamente
+                      </div>
+
+                      {/* Rating section */}
+                      {ratingSuccess ? (
+                        <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 rounded-xl p-3 text-sm text-center">
+                          ¡Calificación enviada! Gracias por tu opinión.
+                        </div>
+                      ) : !hasRatedQuery.data?.rated ? (
+                        !showRating ? (
+                          <button
+                            className="w-full text-sm font-medium text-blue-600 hover:text-blue-700 py-2 border border-blue-200 rounded-xl hover:bg-blue-50 transition-colors"
+                            onClick={() => setShowRating(true)}
+                          >
+                            ⭐ Calificá este viaje
+                          </button>
+                        ) : (
+                          <div className="border border-gray-200 rounded-xl p-4 space-y-3">
+                            <p className="text-sm font-semibold text-gray-800">Calificá este viaje</p>
+                            {/* Star selector */}
+                            <div className="flex gap-1 justify-center">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <button
+                                  key={star}
+                                  type="button"
+                                  className={`text-3xl transition-colors ${
+                                    star <= (ratingHover || ratingScore) ? 'text-yellow-400' : 'text-gray-300'
+                                  }`}
+                                  onMouseEnter={() => setRatingHover(star)}
+                                  onMouseLeave={() => setRatingHover(0)}
+                                  onClick={() => setRatingScore(star)}
+                                >
+                                  ★
+                                </button>
+                              ))}
+                            </div>
+                            <textarea
+                              className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                              rows={2}
+                              placeholder="¿Cómo fue la experiencia?"
+                              value={ratingComment}
+                              onChange={(e) => setRatingComment(e.target.value)}
+                            />
+                            {ratingMutation.isError && (
+                              <p className="text-xs text-red-600">Error al enviar la calificación.</p>
+                            )}
+                            <div className="flex gap-2">
+                              <button
+                                className="flex-1 text-sm text-gray-500 hover:text-gray-700 py-1"
+                                onClick={() => { setShowRating(false); setRatingScore(0); setRatingComment(''); }}
+                              >
+                                Cancelar
+                              </button>
+                              <Button
+                                size="sm"
+                                className="flex-1"
+                                loading={ratingMutation.isPending}
+                                disabled={ratingScore === 0}
+                                onClick={() => {
+                                  const toUserId = (trip.driver as any)?.userId ?? (trip.driver as any)?.user?.id;
+                                  if (!toUserId) return;
+                                  ratingMutation.mutate({
+                                    tripId: trip.id,
+                                    toUserId,
+                                    score: ratingScore,
+                                    comment: ratingComment || undefined,
+                                  });
+                                }}
+                              >
+                                Enviar calificación
+                              </Button>
+                            </div>
+                          </div>
+                        )
+                      ) : (
+                        <p className="text-xs text-center text-gray-400">Ya calificaste este viaje</p>
+                      )}
+                    </>
                   )}
 
                   {trip.finishedAt && (

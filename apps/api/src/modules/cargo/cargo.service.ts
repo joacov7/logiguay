@@ -31,18 +31,25 @@ export class CargoService {
     status?: string;
     page?: number;
     limit?: number;
+    lat?: number;
+    lng?: number;
+    radiusKm?: number;
+    province?: string;
   }) {
-    const { companyId, status, page = 1, limit = 20 } = filters;
+    const { companyId, status, page = 1, limit = 20, lat, lng, radiusKm, province } = filters;
     const skip = (page - 1) * limit;
     const where: Prisma.CargoWhereInput = {};
     if (companyId) where.companyId = companyId;
     if (status) where.status = status as Prisma.EnumCargoStatusFilter;
+    if (province) where.originAddress = { contains: province, mode: 'insensitive' };
 
-    const [data, total] = await Promise.all([
+    const geoActive = lat !== undefined && lng !== undefined;
+
+    const [rawData, total] = await Promise.all([
       this.prisma.cargo.findMany({
         where,
-        skip,
-        take: limit,
+        skip: geoActive ? 0 : skip,
+        take: geoActive ? undefined : limit,
         orderBy: { createdAt: 'desc' },
         include: {
           company: { select: { id: true, name: true } },
@@ -52,7 +59,31 @@ export class CargoService {
       this.prisma.cargo.count({ where }),
     ]);
 
-    return { data, total, page, limit, pages: Math.ceil(total / limit) };
+    if (geoActive) {
+      let annotated = rawData.map((cargo) => ({
+        ...cargo,
+        distanceKm:
+          cargo.originLat != null && cargo.originLng != null
+            ? Math.round(haversineKm(lat!, lng!, cargo.originLat, cargo.originLng) * 10) / 10
+            : null,
+      }));
+
+      if (radiusKm !== undefined) {
+        annotated = annotated.filter((c) => c.distanceKm === null || c.distanceKm <= radiusKm);
+      }
+
+      annotated.sort((a, b) => {
+        if (a.distanceKm === null) return 1;
+        if (b.distanceKm === null) return -1;
+        return a.distanceKm - b.distanceKm;
+      });
+
+      const filteredTotal = annotated.length;
+      const data = annotated.slice(skip, skip + limit);
+      return { data, total: filteredTotal, page, limit, pages: Math.ceil(filteredTotal / limit) };
+    }
+
+    return { data: rawData, total, page, limit, pages: Math.ceil(total / limit) };
   }
 
   async findOne(id: string) {
@@ -157,18 +188,27 @@ export class CargoService {
       ];
     }
 
+    if (province) {
+      where.originAddress = { contains: province, mode: 'insensitive' };
+    }
+
+    const geoActive = lat !== undefined && lng !== undefined;
+
     const orderByClause: Prisma.CargoOrderByWithRelationInput =
-      orderBy === 'estimatedValue'
+      geoActive
+        ? { createdAt: 'desc' }
+        : orderBy === 'estimatedValue'
         ? { estimatedValue: orderDir }
         : orderBy === 'requiredDate'
         ? { requiredDate: orderDir }
         : { createdAt: orderDir };
 
-    const [data, total] = await Promise.all([
+    const [rawData, total] = await Promise.all([
       this.prisma.cargo.findMany({
         where,
-        skip,
-        take: limit,
+        // When geo-filtering we fetch all matching records to sort/filter by distance
+        skip: geoActive ? 0 : skip,
+        take: geoActive ? undefined : limit,
         orderBy: orderByClause,
         include: {
           company: { select: { id: true, name: true, country: true } },
@@ -178,7 +218,36 @@ export class CargoService {
       this.prisma.cargo.count({ where }),
     ]);
 
-    return { data, total, page, limit, pages: Math.ceil(total / limit) };
+    if (geoActive) {
+      // Annotate with distance
+      let annotated = rawData.map((cargo) => ({
+        ...cargo,
+        distanceKm:
+          cargo.originLat != null && cargo.originLng != null
+            ? Math.round(haversineKm(lat!, lng!, cargo.originLat, cargo.originLng) * 10) / 10
+            : null,
+      }));
+
+      // Filter by radius
+      if (radiusKm !== undefined) {
+        annotated = annotated.filter(
+          (c) => c.distanceKm === null || c.distanceKm <= radiusKm,
+        );
+      }
+
+      // Sort by distance ascending (nulls last)
+      annotated.sort((a, b) => {
+        if (a.distanceKm === null) return 1;
+        if (b.distanceKm === null) return -1;
+        return a.distanceKm - b.distanceKm;
+      });
+
+      const filteredTotal = annotated.length;
+      const data = annotated.slice(skip, skip + limit);
+      return { data, total: filteredTotal, page, limit, pages: Math.ceil(filteredTotal / limit) };
+    }
+
+    return { data: rawData, total, page, limit, pages: Math.ceil(total / limit) };
   }
 
   async getCargoWithQuotes(id: string) {

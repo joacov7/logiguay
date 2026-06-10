@@ -39,8 +39,12 @@ export class CargoController {
     @Query('status') status?: string,
     @Query('page') page?: number,
     @Query('limit') limit?: number,
+    @Query('lat') lat?: number,
+    @Query('lng') lng?: number,
+    @Query('radiusKm') radiusKm?: number,
+    @Query('province') province?: string,
   ) {
-    return this.cargoService.findAll({ companyId, status, page, limit });
+    return this.cargoService.findAll({ companyId, status, page, limit, lat, lng, radiusKm, province });
   }
 
   @Get('marketplace')
