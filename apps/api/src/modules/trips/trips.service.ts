@@ -93,7 +93,9 @@ export class TripsService {
     page?: number;
     limit?: number;
   }) {
-    const { companyId, cargoCompanyId, status, driverId, vehicleId, page = 1, limit = 20 } = filters;
+    const { companyId, cargoCompanyId, status, driverId, vehicleId } = filters;
+    const page = Number(filters.page) || 1;
+    const limit = Number(filters.limit) || 20;
     const skip = (page - 1) * limit;
     const where: any = {};
 
