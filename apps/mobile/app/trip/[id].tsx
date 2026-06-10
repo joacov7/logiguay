@@ -89,9 +89,20 @@ export default function TripDetailScreen() {
     enabled: !!id,
   });
 
+  const NEXT_STATUS: Partial<Record<TripStatus, TripStatus>> = {
+    [TripStatus.ASIGNADO]: TripStatus.EN_CAMINO_ORIGEN,
+    [TripStatus.EN_CAMINO_ORIGEN]: TripStatus.EN_CARGA,
+    [TripStatus.EN_CARGA]: TripStatus.EN_TRANSITO,
+    [TripStatus.EN_TRANSITO]: TripStatus.EN_DESCARGA,
+    [TripStatus.EN_DESCARGA]: TripStatus.FINALIZADO,
+  };
+
   const advanceMutation = useMutation({
     mutationFn: async () => {
-      await api.patch(`/trips/${id}/advance`);
+      if (!trip) return;
+      const nextStatus = NEXT_STATUS[trip.status];
+      if (!nextStatus) return;
+      await api.patch(`/trips/${id}/status`, { status: nextStatus });
     },
     onSuccess: () => {
       setAdvanceError(null);
