@@ -18,6 +18,9 @@ import {
   LogOut,
   Crown,
   ShieldCheck,
+  ArrowLeftRight,
+  Calendar,
+  TruckIcon,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -76,6 +79,26 @@ export function Sidebar({ onLogout }: SidebarProps) {
               </li>
             );
           })}
+          {(user?.role === 'TRANSPORTISTA') && (
+            <li>
+              <Link href="/retorno" className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${pathname === '/retorno' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
+                <ArrowLeftRight className="h-4 w-4 shrink-0" />
+                Retorno
+              </Link>
+            </li>
+          )}
+          <li>
+            <Link href="/turnos" className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${pathname === '/turnos' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
+              <Calendar className="h-4 w-4 shrink-0" />
+              Turnos
+            </Link>
+          </li>
+          <li>
+            <Link href="/camiones-disponibles" className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${pathname === '/camiones-disponibles' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
+              <TruckIcon className="h-4 w-4 shrink-0" />
+              Camiones
+            </Link>
+          </li>
         </ul>
       </nav>
 

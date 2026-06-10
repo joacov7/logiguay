@@ -146,17 +146,20 @@ model Company {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  companyUsers  CompanyUser[]
-  branches      Branch[]
-  vehicles      Vehicle[]
-  drivers       Driver[]
-  cargos        Cargo[]
-  quotes        Quote[]
-  geoFences     GeoFence[]
-  alerts        Alert[]
-  subscriptions Subscription[]
-  invoices      Invoice[]
-  trips         Trip[]
+  companyUsers       CompanyUser[]
+  branches           Branch[]
+  vehicles           Vehicle[]
+  drivers            Driver[]
+  cargos             Cargo[]
+  quotes             Quote[]
+  geoFences          GeoFence[]
+  alerts             Alert[]
+  subscriptions      Subscription[]
+  invoices           Invoice[]
+  trips              Trip[]
+  turnSlots          TurnSlot[]
+  turnBookings       TurnBooking[]
+  truckAvailability  TruckAvailability[]
 
   @@map("companies")
 }
@@ -428,6 +431,64 @@ model Rating {
 
   @@unique([tripId, fromUserId])
   @@map("ratings")
+}
+
+model TurnSlot {
+  id          String   @id @default(cuid())
+  companyId   String
+  plantName   String
+  address     String
+  lat         Float?
+  lng         Float?
+  date        DateTime
+  startTime   String
+  endTime     String
+  capacity    Int      @default(1)
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  company   Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  bookings  TurnBooking[]
+
+  @@map("turn_slots")
+}
+
+model TurnBooking {
+  id           String   @id @default(cuid())
+  slotId       String
+  companyId    String
+  driverName   String?
+  vehiclePlate String?
+  notes        String?
+  status       String   @default("CONFIRMADO")
+  createdAt    DateTime @default(now())
+
+  slot    TurnSlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  company Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("turn_bookings")
+}
+
+model TruckAvailability {
+  id             String   @id @default(cuid())
+  companyId      String
+  vehicleId      String?
+  vehicleType    String
+  capacityTons   Float?
+  capacityM3     Float?
+  originAddress  String
+  originLat      Float?
+  originLng      Float?
+  availableFrom  DateTime
+  availableTo    DateTime
+  notes          String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("truck_availability")
 }
 
 model AuditLog {

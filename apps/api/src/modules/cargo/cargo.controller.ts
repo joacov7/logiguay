@@ -53,6 +53,20 @@ export class CargoController {
     return this.cargoService.getMarketplace(filters);
   }
 
+  @Get('retorno')
+  @ApiOperation({ summary: 'Bolsa de retorno: cargas cerca del destino del viaje' })
+  getRetorno(
+    @Query('lat') lat: string,
+    @Query('lng') lng: string,
+    @Query('radiusKm') radiusKm?: string,
+  ) {
+    return this.cargoService.getRetorno(
+      parseFloat(lat),
+      parseFloat(lng),
+      radiusKm ? parseFloat(radiusKm) : 150,
+    );
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Detalle de carga con cotizaciones' })
   findOne(@Param('id') id: string) {

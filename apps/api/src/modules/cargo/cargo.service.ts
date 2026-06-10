@@ -250,6 +250,40 @@ export class CargoService {
     return { data: rawData, total, page, limit, pages: Math.ceil(total / limit) };
   }
 
+  async getRetorno(lat: number, lng: number, radiusKm = 150) {
+    const cargos = await this.prisma.cargo.findMany({
+      where: {
+        status: { in: ['PUBLICADO', 'COTIZANDO'] },
+        originLat: { not: null },
+        originLng: { not: null },
+      },
+      include: {
+        company: { select: { id: true, name: true } },
+        _count: { select: { quotes: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const R = 6371;
+    const withDist = cargos
+      .map((c) => {
+        const dLat = ((c.originLat! - lat) * Math.PI) / 180;
+        const dLng = ((c.originLng! - lng) * Math.PI) / 180;
+        const a =
+          Math.sin(dLat / 2) ** 2 +
+          Math.cos((lat * Math.PI) / 180) *
+            Math.cos((c.originLat! * Math.PI) / 180) *
+            Math.sin(dLng / 2) ** 2;
+        const distKm = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return { ...c, distKm };
+      })
+      .filter((c) => c.distKm <= radiusKm)
+      .sort((a, b) => a.distKm - b.distKm)
+      .slice(0, 20);
+
+    return withDist;
+  }
+
   async getCargoWithQuotes(id: string) {
     const cargo = await this.prisma.cargo.findUnique({
       where: { id },
