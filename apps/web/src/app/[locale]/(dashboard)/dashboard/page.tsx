@@ -31,6 +31,7 @@ import KpiCard from '@/components/ui/KpiCard';
 import api from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 import { useTranslations } from 'next-intl';
+import { useDollarRates, useGrainPrices, useWeather } from '@/hooks/useMarketData';
 
 interface DashboardStats {
   trips: {
@@ -200,6 +201,10 @@ export default function DashboardPage() {
     },
   });
 
+  const { data: dollarRates, isLoading: dollarLoading, isError: dollarError } = useDollarRates();
+  const { data: grainPrices, isLoading: grainsLoading, isError: grainsError } = useGrainPrices();
+  const { data: weather, isLoading: weatherLoading, isError: weatherError } = useWeather();
+
   const { data: timeSeries, isLoading: tsLoading } = useQuery<TimeSeriesEntry[]>({
     queryKey: ['dashboard-timeseries', user?.id],
     queryFn: async () => {
@@ -222,6 +227,29 @@ export default function DashboardPage() {
     ...entry,
     monthLabel: formatMonth(entry.month),
   }));
+
+  function formatDollar(n: number) {
+    return `$${new Intl.NumberFormat('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n)}`;
+  }
+
+  function formatGrainPrice(n: number) {
+    return `$${new Intl.NumberFormat('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n)}/t`;
+  }
+
+  function minutesAgo(dateStr: string) {
+    const mins = Math.floor((Date.now() - new Date(dateStr).getTime()) / 60000);
+    if (mins < 1) return 'ahora';
+    if (mins === 1) return 'hace 1 min';
+    return `hace ${mins} min`;
+  }
+
+  function normalizeGrainName(nombre: string) {
+    const lower = nombre.toLowerCase();
+    if (lower.includes('soja')) return 'Soja';
+    if (lower.includes('ma')) return 'Maíz';
+    if (lower.includes('trigo')) return 'Trigo';
+    return nombre;
+  }
 
   if (statsError) {
     return (
@@ -324,6 +352,104 @@ export default function DashboardPage() {
           subtitle="Viajes finalizados"
           loading={statsLoading}
         />
+      </div>
+
+      {/* Mercado */}
+      <div>
+        <h2 className="text-base font-semibold text-gray-800 mb-3">Mercado</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Widget 1 — Dólar */}
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-semibold text-gray-800">💵 Dólar</span>
+              {dollarRates?.oficial?.fechaActualizacion && (
+                <span className="text-xs text-gray-400">{minutesAgo(dollarRates.oficial.fechaActualizacion)}</span>
+              )}
+            </div>
+            {dollarLoading ? (
+              <div className="space-y-2">
+                {[...Array(3)].map((_, i) => <div key={i} className="h-5 animate-pulse bg-gray-100 rounded" />)}
+              </div>
+            ) : dollarError || !dollarRates ? (
+              <p className="text-sm text-gray-400">No disponible</p>
+            ) : (
+              <div className="space-y-2">
+                {[
+                  { label: 'Oficial', data: dollarRates.oficial },
+                  { label: 'Blue', data: dollarRates.blue },
+                  { label: 'MEP', data: dollarRates.mep },
+                ].map(({ label, data }) => (
+                  <div key={label} className="flex items-center justify-between text-sm">
+                    <span className="text-gray-500">{label}</span>
+                    <span className="font-medium text-gray-800">
+                      {data ? formatDollar(data.venta) : <span className="text-gray-400">—</span>}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Widget 2 — Granos */}
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-semibold text-gray-800">🌾 Granos</span>
+            </div>
+            {grainsLoading ? (
+              <div className="space-y-2">
+                {[...Array(3)].map((_, i) => <div key={i} className="h-5 animate-pulse bg-gray-100 rounded" />)}
+              </div>
+            ) : grainsError || !grainPrices?.length ? (
+              <p className="text-sm text-gray-400">No disponible</p>
+            ) : (
+              <div className="space-y-2">
+                {grainPrices.map((grain) => (
+                  <div key={grain.nombre} className="flex items-center justify-between text-sm">
+                    <span className="text-gray-500">{normalizeGrainName(grain.nombre)}</span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="font-medium text-gray-800">{formatGrainPrice(grain.precio)}</span>
+                      {grain.variacion !== 0 && (
+                        <span className={grain.variacion > 0 ? 'text-green-600 text-xs' : 'text-red-500 text-xs'}>
+                          {grain.variacion > 0 ? '▲' : '▼'} {Math.abs(grain.variacion).toFixed(1)}%
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Widget 3 — Clima */}
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-semibold text-gray-800">🌤 Clima</span>
+              <span className="text-xs text-gray-400">Buenos Aires</span>
+            </div>
+            {weatherLoading ? (
+              <div className="space-y-2">
+                {[...Array(3)].map((_, i) => <div key={i} className="h-5 animate-pulse bg-gray-100 rounded" />)}
+              </div>
+            ) : weatherError || !weather ? (
+              <p className="text-sm text-gray-400">No disponible</p>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-500">Temperatura</span>
+                  <span className="font-medium text-gray-800">{weather.temp}°C</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-500">Condición</span>
+                  <span className="font-medium text-gray-800">{weather.description}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-500">Viento</span>
+                  <span className="font-medium text-gray-800">{weather.windspeed} km/h</span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Chart */}
