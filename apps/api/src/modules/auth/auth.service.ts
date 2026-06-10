@@ -59,7 +59,7 @@ export class AuthService {
       where: { email: dto.email },
       include: {
         companyUsers: { select: { companyId: true }, take: 1 },
-        driver: { select: { id: true } },
+        drivers: { select: { id: true }, take: 1 },
       },
     });
 
@@ -74,9 +74,9 @@ export class AuthService {
 
     const tokens = await this.generateTokens(user.id, user.email, user.role);
 
-    const { password: _p, companyUsers, driver, ...userWithoutPassword } = user;
+    const { password: _p, companyUsers, drivers, ...userWithoutPassword } = user;
     const companyId = companyUsers[0]?.companyId ?? null;
-    const driverId = driver?.id ?? null;
+    const driverId = drivers[0]?.id ?? null;
 
     return { user: { ...userWithoutPassword, companyId, driverId }, ...tokens };
   }
