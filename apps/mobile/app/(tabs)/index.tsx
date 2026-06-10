@@ -84,7 +84,7 @@ export default function TripsScreen() {
     if (!user) return [];
     const params: Record<string, string> = { limit: '20' };
     if (user.companyId) params.companyId = user.companyId;
-    if (user.id) params.driverId = user.id;
+    if (user.driverId) params.driverId = user.driverId;
     const res = await api.get('/trips', { params });
     return res.data?.data ?? res.data ?? [];
   }, [user]);

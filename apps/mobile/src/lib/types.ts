@@ -4,7 +4,8 @@ export interface User {
   firstName: string;
   lastName: string;
   role: string;
-  companyId: string;
+  companyId: string | null;
+  driverId: string | null;
 }
 
 export enum TripStatus {

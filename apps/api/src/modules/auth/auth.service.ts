@@ -57,7 +57,10 @@ export class AuthService {
   async login(dto: LoginDto) {
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
-      include: { companyUsers: { select: { companyId: true }, take: 1 } },
+      include: {
+        companyUsers: { select: { companyId: true }, take: 1 },
+        driver: { select: { id: true } },
+      },
     });
 
     if (!user || !user.isActive) {
@@ -71,10 +74,11 @@ export class AuthService {
 
     const tokens = await this.generateTokens(user.id, user.email, user.role);
 
-    const { password: _p, companyUsers, ...userWithoutPassword } = user;
+    const { password: _p, companyUsers, driver, ...userWithoutPassword } = user;
     const companyId = companyUsers[0]?.companyId ?? null;
+    const driverId = driver?.id ?? null;
 
-    return { user: { ...userWithoutPassword, companyId }, ...tokens };
+    return { user: { ...userWithoutPassword, companyId, driverId }, ...tokens };
   }
 
   async refreshTokens(refreshToken: string) {
