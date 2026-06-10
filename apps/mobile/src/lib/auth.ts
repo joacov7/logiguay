@@ -4,8 +4,8 @@ import { User } from './types';
 
 export async function login(email: string, password: string): Promise<User> {
   const response = await api.post('/auth/login', { email, password });
-  const { token, user } = response.data;
-  await AsyncStorage.setItem('token', token);
+  const { accessToken, user } = response.data;
+  await AsyncStorage.setItem('token', accessToken);
   await AsyncStorage.setItem('user', JSON.stringify(user));
   return user as User;
 }
