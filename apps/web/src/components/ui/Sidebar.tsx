@@ -17,7 +17,9 @@ import {
   Navigation,
   LogOut,
   Crown,
+  ShieldCheck,
 } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
 const navItems = [
   { href: '/dashboard', key: 'dashboard', icon: LayoutDashboard },
@@ -40,6 +42,7 @@ interface SidebarProps {
 export function Sidebar({ onLogout }: SidebarProps) {
   const pathname = usePathname();
   const t = useTranslations('nav');
+  const { user } = useAuth();
 
   return (
     <aside className="flex flex-col w-64 h-screen bg-gray-900 text-white fixed left-0 top-0 z-40">
@@ -75,6 +78,25 @@ export function Sidebar({ onLogout }: SidebarProps) {
           })}
         </ul>
       </nav>
+
+      {user?.role === 'ADMIN' && (
+        <div className="px-4 pb-2">
+          <Link
+            href="/admin"
+            className={`
+              flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium
+              transition-colors
+              ${pathname === '/admin' || pathname.startsWith('/admin/')
+                ? 'bg-blue-600 text-white'
+                : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+              }
+            `}
+          >
+            <ShieldCheck className="h-4 w-4 shrink-0" />
+            Administración
+          </Link>
+        </div>
+      )}
 
       <div className="p-4 border-t border-gray-700">
         <button
