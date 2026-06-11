@@ -27,8 +27,8 @@ export default function LoginScreen() {
     setLoading(true);
     setError(null);
     try {
-      await login(email.trim(), password);
-      router.replace('/(tabs)/');
+      const user = await login(email.trim(), password);
+      router.replace(user.role === 'DADOR' ? '/(dador)/' : '/(tabs)/');
     } catch (e: any) {
       setError(
         e?.response?.data?.message ||
