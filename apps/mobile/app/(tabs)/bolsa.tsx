@@ -177,7 +177,7 @@ export default function BolsaScreen() {
 
   async function fetchCargos() {
     try {
-      const res = await api.get('/cargo', { params: { status: 'PUBLICADO' } });
+      const res = await api.get('/cargo/marketplace');
       const data = Array.isArray(res.data) ? res.data : res.data?.data ?? [];
       setCargos(data);
       setError(null);
