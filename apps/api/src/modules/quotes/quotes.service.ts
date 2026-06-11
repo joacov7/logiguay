@@ -12,7 +12,7 @@ import { CreateQuoteDto } from './dto/quote.dto';
 export class QuotesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(dto: CreateQuoteDto) {
+  async create(dto: CreateQuoteDto & { transportCompanyId: string }) {
     const cargo = await this.prisma.cargo.findUnique({ where: { id: dto.cargoId } });
     if (!cargo) throw new NotFoundException('Carga no encontrada');
     if (!['PUBLICADO', 'COTIZANDO'].includes(cargo.status)) {
@@ -30,7 +30,12 @@ export class QuotesService {
     }
 
     const quote = await this.prisma.quote.create({
-      data: dto,
+      data: {
+        cargoId: dto.cargoId,
+        transportCompanyId: dto.transportCompanyId,
+        amount: dto.amount,
+        notes: dto.notes,
+      },
       include: {
         transportCompany: { select: { id: true, name: true } },
         cargo: {
