@@ -26,7 +26,7 @@
     "react-native-screens": "~4.10.0",
     "react-native-svg": "15.11.2",
     "socket.io-client": "^4.7.0",
-    "lucide-react-native": "^0.475.0"
+    "lucide-react-native": "^0.511.0"
   },
   "devDependencies": {
     "@babel/core": "^7.24.0",
