@@ -17,14 +17,15 @@ export class GeofencesService {
     });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, companyId?: string) {
     const fence = await this.prisma.geoFence.findUnique({ where: { id } });
     if (!fence) throw new NotFoundException('Geocerca no encontrada');
+    if (companyId && fence.companyId !== companyId) throw new NotFoundException('Geocerca no encontrada');
     return fence;
   }
 
-  async delete(id: string) {
-    await this.findOne(id);
+  async delete(id: string, companyId: string) {
+    await this.findOne(id, companyId);
     return this.prisma.geoFence.delete({ where: { id } });
   }
 

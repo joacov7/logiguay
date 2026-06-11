@@ -52,25 +52,25 @@ export class VehiclesController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Obtener vehículo' })
-  findOne(@Param('id') id: string) {
-    return this.vehiclesService.findOne(id);
+  findOne(@Param('id') id: string, @CurrentUser('companyId') companyId: string) {
+    return this.vehiclesService.findOne(id, companyId);
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Actualizar vehículo' })
-  update(@Param('id') id: string, @Body() dto: UpdateVehicleDto) {
-    return this.vehiclesService.update(id, dto);
+  update(@Param('id') id: string, @CurrentUser('companyId') companyId: string, @Body() dto: UpdateVehicleDto) {
+    return this.vehiclesService.update(id, dto, companyId);
   }
 
   @Patch(':id/status')
   @ApiOperation({ summary: 'Cambiar estado del vehículo' })
-  updateStatus(@Param('id') id: string, @Body() dto: UpdateVehicleStatusDto) {
-    return this.vehiclesService.updateStatus(id, dto);
+  updateStatus(@Param('id') id: string, @CurrentUser('companyId') companyId: string, @Body() dto: UpdateVehicleStatusDto) {
+    return this.vehiclesService.updateStatus(id, dto, companyId);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Eliminar vehículo' })
-  delete(@Param('id') id: string) {
-    return this.vehiclesService.delete(id);
+  delete(@Param('id') id: string, @CurrentUser('companyId') companyId: string) {
+    return this.vehiclesService.delete(id, companyId);
   }
 }

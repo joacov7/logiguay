@@ -64,7 +64,7 @@ export class VehiclesService {
     return { data, total, page, limit, pages: Math.ceil(total / limit) };
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, companyId?: string) {
     const vehicle = await this.prisma.vehicle.findUnique({
       where: { id },
       include: {
@@ -80,19 +80,22 @@ export class VehiclesService {
       },
     });
     if (!vehicle) throw new NotFoundException('Vehículo no encontrado');
+    if (companyId && vehicle.companyId !== companyId) {
+      throw new NotFoundException('Vehículo no encontrado');
+    }
     return vehicle;
   }
 
-  async update(id: string, dto: UpdateVehicleDto) {
-    await this.findOne(id);
+  async update(id: string, dto: UpdateVehicleDto, companyId: string) {
+    await this.findOne(id, companyId);
     const data: any = { ...dto };
     if (data.companyId) delete data.companyId;
     if (data.plate) data.plate = data.plate.toUpperCase();
     return this.prisma.vehicle.update({ where: { id }, data });
   }
 
-  async updateStatus(id: string, dto: UpdateVehicleStatusDto) {
-    const vehicle = await this.findOne(id);
+  async updateStatus(id: string, dto: UpdateVehicleStatusDto, companyId: string) {
+    const vehicle = await this.findOne(id, companyId);
     if (dto.status === VehicleStatus.ACTIVO) {
       const expiredDocs = (vehicle as any).documents?.filter(
         (d: any) => d.status === 'VENCIDO',
@@ -109,7 +112,7 @@ export class VehiclesService {
     });
   }
 
-  async delete(id: string) {
+  async delete(id: string, companyId: string) {
     const vehicle = await this.prisma.vehicle.findUnique({
       where: { id },
       include: {
@@ -123,6 +126,7 @@ export class VehiclesService {
       },
     });
     if (!vehicle) throw new NotFoundException('Vehículo no encontrado');
+    if (vehicle.companyId !== companyId) throw new NotFoundException('Vehículo no encontrado');
     if (vehicle.trips.length > 0) {
       throw new BadRequestException('No se puede eliminar un vehículo con viajes activos');
     }

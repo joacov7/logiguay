@@ -77,7 +77,7 @@ export class DocumentsService {
     });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, companyId?: string) {
     const doc = await this.prisma.document.findUnique({
       where: { id },
       include: {
@@ -86,11 +86,15 @@ export class DocumentsService {
       },
     });
     if (!doc) throw new NotFoundException('Documento no encontrado');
+    if (companyId) {
+      const docCompanyId = (doc as any).vehicle?.companyId ?? (doc as any).driver?.companyId;
+      if (docCompanyId && docCompanyId !== companyId) throw new NotFoundException('Documento no encontrado');
+    }
     return doc;
   }
 
-  async update(id: string, dto: UpdateDocumentDto) {
-    await this.findOne(id);
+  async update(id: string, dto: UpdateDocumentDto, companyId: string) {
+    await this.findOne(id, companyId);
 
     const expiresAt = dto.expiresAt !== undefined ? new Date(dto.expiresAt) : undefined;
     const status: DocStatus | undefined = expiresAt ? computeStatus(expiresAt) : undefined;
@@ -106,8 +110,8 @@ export class DocumentsService {
     });
   }
 
-  async delete(id: string) {
-    await this.findOne(id);
+  async delete(id: string, companyId: string) {
+    await this.findOne(id, companyId);
     await this.prisma.document.delete({ where: { id } });
     return { message: 'Documento eliminado' };
   }

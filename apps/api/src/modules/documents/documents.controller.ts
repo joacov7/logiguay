@@ -82,19 +82,19 @@ export class DocumentsController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Detalle de un documento' })
-  findOne(@Param('id') id: string) {
-    return this.documentsService.findOne(id);
+  findOne(@Param('id') id: string, @CurrentUser('companyId') companyId: string) {
+    return this.documentsService.findOne(id, companyId);
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Actualizar documento' })
-  update(@Param('id') id: string, @Body() dto: UpdateDocumentDto) {
-    return this.documentsService.update(id, dto);
+  update(@Param('id') id: string, @CurrentUser('companyId') companyId: string, @Body() dto: UpdateDocumentDto) {
+    return this.documentsService.update(id, dto, companyId);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Eliminar documento' })
-  remove(@Param('id') id: string) {
-    return this.documentsService.delete(id);
+  remove(@Param('id') id: string, @CurrentUser('companyId') companyId: string) {
+    return this.documentsService.delete(id, companyId);
   }
 }

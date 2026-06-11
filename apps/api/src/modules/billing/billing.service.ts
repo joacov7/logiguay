@@ -37,22 +37,23 @@ export class BillingService {
     return { data, total, page, limit, pages: Math.ceil(total / limit) };
   }
 
-  async getInvoice(id: string) {
+  async getInvoice(id: string, companyId?: string) {
     const invoice = await this.prisma.invoice.findUnique({
       where: { id },
       include: { trip: true, company: true },
     });
     if (!invoice) throw new NotFoundException('Factura no encontrada');
+    if (companyId && invoice.companyId !== companyId) throw new NotFoundException('Factura no encontrada');
     return invoice;
   }
 
-  async markAsPaid(id: string) {
-    await this.getInvoice(id);
+  async markAsPaid(id: string, companyId: string) {
+    await this.getInvoice(id, companyId);
     return this.prisma.invoice.update({ where: { id }, data: { status: 'PAGADA' } });
   }
 
-  async cancel(id: string) {
-    await this.getInvoice(id);
+  async cancel(id: string, companyId: string) {
+    await this.getInvoice(id, companyId);
     return this.prisma.invoice.update({ where: { id }, data: { status: 'CANCELADA' } });
   }
 

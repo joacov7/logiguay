@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 
 @Injectable()
@@ -86,18 +86,26 @@ export class TurnosService {
     vehiclePlate?: string;
     notes?: string;
   }) {
-    const slot = await this.prisma.turnSlot.findUnique({
-      where: { id: slotId },
-      include: { _count: { select: { bookings: true } } },
-    });
-    if (!slot) throw new NotFoundException('Turno no encontrado');
-    if (slot._count.bookings >= slot.capacity) {
-      throw new BadRequestException('El turno está completo');
-    }
-    return this.prisma.turnBooking.create({
-      data: { slotId, companyId, ...dto, status: 'CONFIRMADO' },
-      include: { slot: true },
-    });
+    // Use a serializable transaction to prevent double-booking race conditions.
+    // The re-check inside the transaction runs under an exclusive lock on the slot's
+    // booking count, so concurrent requests cannot both pass the capacity check.
+    return this.prisma.$transaction(async (tx) => {
+      const slot = await tx.turnSlot.findUnique({
+        where: { id: slotId },
+        include: { _count: { select: { bookings: { where: { status: { not: 'CANCELADO' } } } } } },
+      });
+      if (!slot) throw new NotFoundException('Turno no encontrado');
+
+      const activeBookings = slot._count.bookings;
+      if (activeBookings >= slot.capacity) {
+        throw new BadRequestException('El turno está completo');
+      }
+
+      return tx.turnBooking.create({
+        data: { slotId, companyId, ...dto, status: 'CONFIRMADO' },
+        include: { slot: true },
+      });
+    }, { isolationLevel: 'Serializable' });
   }
 
   async getMyBookings(companyId: string) {
@@ -111,7 +119,7 @@ export class TurnosService {
   async cancelBooking(bookingId: string, companyId: string) {
     const booking = await this.prisma.turnBooking.findUnique({ where: { id: bookingId } });
     if (!booking) throw new NotFoundException('Reserva no encontrada');
-    if (booking.companyId !== companyId) throw new BadRequestException('Sin acceso');
+    if (booking.companyId !== companyId) throw new ForbiddenException('Sin acceso');
     return this.prisma.turnBooking.update({
       where: { id: bookingId },
       data: { status: 'CANCELADO' },

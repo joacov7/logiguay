@@ -26,13 +26,13 @@ export class GeofencesController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Obtener geocerca' })
-  findOne(@Param('id') id: string) {
-    return this.geofencesService.findOne(id);
+  findOne(@Param('id') id: string, @CurrentUser('companyId') companyId: string) {
+    return this.geofencesService.findOne(id, companyId);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Eliminar geocerca' })
-  delete(@Param('id') id: string) {
-    return this.geofencesService.delete(id);
+  delete(@Param('id') id: string, @CurrentUser('companyId') companyId: string) {
+    return this.geofencesService.delete(id, companyId);
   }
 }

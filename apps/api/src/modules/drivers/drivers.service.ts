@@ -104,7 +104,7 @@ export class DriversService {
     return { data, total, page, limit, pages: Math.ceil(total / limit) };
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, companyId?: string) {
     const driver = await this.prisma.driver.findUnique({
       where: { id },
       include: {
@@ -121,11 +121,14 @@ export class DriversService {
       },
     });
     if (!driver) throw new NotFoundException('Chofer no encontrado');
+    if (companyId && driver.companyId !== companyId) {
+      throw new NotFoundException('Chofer no encontrado');
+    }
     return driver;
   }
 
-  async update(id: string, dto: UpdateDriverDto) {
-    const driver = await this.findOne(id);
+  async update(id: string, dto: UpdateDriverDto, companyId: string) {
+    const driver = await this.findOne(id, companyId);
 
     const driverData: any = {};
     if (dto.licenseNumber !== undefined) driverData.licenseNumber = dto.licenseNumber;
@@ -169,7 +172,7 @@ export class DriversService {
     });
   }
 
-  async delete(id: string) {
+  async delete(id: string, companyId: string) {
     const driver = await this.prisma.driver.findUnique({
       where: { id },
       include: {
@@ -183,6 +186,7 @@ export class DriversService {
       },
     });
     if (!driver) throw new NotFoundException('Chofer no encontrado');
+    if (driver.companyId !== companyId) throw new NotFoundException('Chofer no encontrado');
     if (driver.trips.length > 0) {
       throw new BadRequestException('No se puede eliminar un chofer con viajes activos');
     }

@@ -50,19 +50,19 @@ export class DriversController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Obtener chofer' })
-  findOne(@Param('id') id: string) {
-    return this.driversService.findOne(id);
+  findOne(@Param('id') id: string, @CurrentUser('companyId') companyId: string) {
+    return this.driversService.findOne(id, companyId);
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Actualizar chofer' })
-  update(@Param('id') id: string, @Body() dto: UpdateDriverDto) {
-    return this.driversService.update(id, dto);
+  update(@Param('id') id: string, @CurrentUser('companyId') companyId: string, @Body() dto: UpdateDriverDto) {
+    return this.driversService.update(id, dto, companyId);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Eliminar chofer' })
-  delete(@Param('id') id: string) {
-    return this.driversService.delete(id);
+  delete(@Param('id') id: string, @CurrentUser('companyId') companyId: string) {
+    return this.driversService.delete(id, companyId);
   }
 }

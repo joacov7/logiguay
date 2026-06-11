@@ -36,19 +36,19 @@ export class BillingController {
 
   @Get('invoice/:id')
   @ApiOperation({ summary: 'Detalle de factura' })
-  getInvoice(@Param('id') id: string) {
-    return this.billingService.getInvoice(id);
+  getInvoice(@Param('id') id: string, @CurrentUser('companyId') companyId: string) {
+    return this.billingService.getInvoice(id, companyId);
   }
 
   @Patch('invoice/:id/pay')
   @ApiOperation({ summary: 'Marcar factura como pagada' })
-  markAsPaid(@Param('id') id: string) {
-    return this.billingService.markAsPaid(id);
+  markAsPaid(@Param('id') id: string, @CurrentUser('companyId') companyId: string) {
+    return this.billingService.markAsPaid(id, companyId);
   }
 
   @Patch('invoice/:id/cancel')
   @ApiOperation({ summary: 'Cancelar factura' })
-  cancelInvoice(@Param('id') id: string) {
-    return this.billingService.cancel(id);
+  cancelInvoice(@Param('id') id: string, @CurrentUser('companyId') companyId: string) {
+    return this.billingService.cancel(id, companyId);
   }
 }
