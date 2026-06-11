@@ -386,6 +386,17 @@ export default function DashboardPage() {
                     </span>
                   </div>
                 ))}
+                <p className="text-[11px] text-gray-400 pt-1 border-t border-gray-100">
+                  Fuente:{' '}
+                  <a
+                    href="https://dolarapi.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:underline"
+                  >
+                    DolarApi.com
+                  </a>
+                </p>
               </div>
             )}
           </div>
@@ -416,6 +427,17 @@ export default function DashboardPage() {
                     </span>
                   </div>
                 ))}
+                <p className="text-[11px] text-gray-400 pt-1 border-t border-gray-100">
+                  Fuente: Pizarra{' '}
+                  <a
+                    href="https://www.cac.bcr.com.ar/es/precios-de-pizarra"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:underline"
+                  >
+                    Cámara Arbitral de Cereales — BCR
+                  </a>
+                </p>
               </div>
             )}
           </div>
