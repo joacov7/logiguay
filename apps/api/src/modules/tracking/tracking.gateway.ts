@@ -14,7 +14,10 @@ import { ConfigService } from '@nestjs/config';
 import { TrackingService, PositionPayload } from './tracking.service';
 
 @WebSocketGateway({
-  cors: { origin: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000', credentials: true },
+  cors: {
+    origin: process.env.API_CORS_ORIGIN?.split(',').map((s) => s.trim()).filter(Boolean) || 'http://localhost:3000',
+    credentials: true,
+  },
   namespace: '/tracking',
 })
 export class TrackingGateway implements OnGatewayConnection, OnGatewayDisconnect {

@@ -1,7 +1,12 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreateCargoDto, UpdateCargoDto, MarketplaceFilterDto } from './dto/cargo.dto';
 import { Prisma } from '@prisma/client';
+
+export interface RequestUser {
+  companyId?: string | null;
+  role?: string;
+}
 
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371;
@@ -99,8 +104,17 @@ export class CargoService {
     return cargo;
   }
 
-  async update(id: string, dto: UpdateCargoDto) {
+  // Toda operación de escritura exige que la carga pertenezca a la empresa del usuario (salvo ADMIN)
+  private assertOwnership(cargo: { companyId: string }, user?: RequestUser) {
+    if (!user || user.role === 'ADMIN') return;
+    if (!user.companyId || cargo.companyId !== user.companyId) {
+      throw new ForbiddenException('No tenés acceso a esta carga');
+    }
+  }
+
+  async update(id: string, dto: UpdateCargoDto, user?: RequestUser) {
     const cargo = await this.findOne(id);
+    this.assertOwnership(cargo, user);
 
     if (cargo.status !== 'PENDIENTE') {
       throw new BadRequestException('Solo se pueden editar cargas en estado PENDIENTE');
@@ -116,21 +130,24 @@ export class CargoService {
     });
   }
 
-  async publish(id: string) {
+  async publish(id: string, user?: RequestUser) {
     const cargo = await this.findOne(id);
+    this.assertOwnership(cargo, user);
     if (cargo.status !== 'PENDIENTE') {
       throw new BadRequestException('Solo se pueden publicar cargas en estado PENDIENTE');
     }
     return this.prisma.cargo.update({ where: { id }, data: { status: 'PUBLICADO' } });
   }
 
-  async cancel(id: string) {
-    await this.findOne(id);
+  async cancel(id: string, user?: RequestUser) {
+    const cargo = await this.findOne(id);
+    this.assertOwnership(cargo, user);
     return this.prisma.cargo.update({ where: { id }, data: { status: 'CANCELADO' } });
   }
 
-  async remove(id: string) {
+  async remove(id: string, user?: RequestUser) {
     const cargo = await this.findOne(id);
+    this.assertOwnership(cargo, user);
     if (cargo.status !== 'PENDIENTE') {
       throw new BadRequestException('Solo se pueden eliminar cargas en estado PENDIENTE');
     }
@@ -300,8 +317,9 @@ export class CargoService {
     return cargo;
   }
 
-  async selectQuote(cargoId: string, quoteId: string) {
+  async selectQuote(cargoId: string, quoteId: string, user?: RequestUser) {
     const cargo = await this.findOne(cargoId);
+    this.assertOwnership(cargo, user);
 
     if (!['PUBLICADO', 'COTIZANDO'].includes(cargo.status)) {
       throw new BadRequestException('La carga no está en un estado válido para seleccionar cotización');

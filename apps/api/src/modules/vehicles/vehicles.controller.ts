@@ -15,6 +15,7 @@ import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { VehiclesService } from './vehicles.service';
 import { CreateVehicleDto, UpdateVehicleDto, UpdateVehicleStatusDto } from './dto/vehicle.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { VehicleType, VehicleStatus } from '@prisma/client';
 
 @ApiTags('Vehicles')
@@ -26,14 +27,14 @@ export class VehiclesController {
 
   @Get('stats')
   @ApiOperation({ summary: 'Estadísticas de flota' })
-  getStats(@Query('companyId') companyId: string) {
+  getStats(@CurrentUser('companyId') companyId: string) {
     return this.vehiclesService.getStats(companyId);
   }
 
   @Get()
   @ApiOperation({ summary: 'Listar vehículos' })
   findAll(
-    @Query('companyId') companyId: string,
+    @CurrentUser('companyId') companyId: string,
     @Query('type') type?: VehicleType,
     @Query('status') status?: VehicleStatus,
     @Query('search') search?: string,
@@ -45,8 +46,8 @@ export class VehiclesController {
 
   @Post()
   @ApiOperation({ summary: 'Registrar vehículo' })
-  create(@Body() dto: CreateVehicleDto) {
-    return this.vehiclesService.create(dto.companyId, dto);
+  create(@CurrentUser('companyId') companyId: string, @Body() dto: CreateVehicleDto) {
+    return this.vehiclesService.create(companyId, dto);
   }
 
   @Get(':id')

@@ -38,7 +38,8 @@ api.interceptors.response.use(
         localStorage.setItem('accessToken', accessToken);
         localStorage.setItem('refreshToken', newRefreshToken);
         // Keep middleware cookie in sync
-        document.cookie = `accessToken=${accessToken}; path=/; max-age=${15 * 60}; SameSite=Lax`;
+        const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+        document.cookie = `accessToken=${accessToken}; path=/; max-age=${15 * 60}; SameSite=Lax${secure}`;
 
         if (originalRequest.headers) {
           originalRequest.headers.Authorization = `Bearer ${accessToken}`;

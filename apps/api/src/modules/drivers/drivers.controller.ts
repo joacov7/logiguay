@@ -15,6 +15,7 @@ import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { DriversService } from './drivers.service';
 import { CreateDriverDto, UpdateDriverDto } from './dto/driver.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
 @ApiTags('Drivers')
 @ApiBearerAuth()
@@ -25,14 +26,14 @@ export class DriversController {
 
   @Get('stats')
   @ApiOperation({ summary: 'Estadísticas de choferes' })
-  getStats(@Query('companyId') companyId: string) {
+  getStats(@CurrentUser('companyId') companyId: string) {
     return this.driversService.getStats(companyId);
   }
 
   @Get()
   @ApiOperation({ summary: 'Listar choferes' })
   findAll(
-    @Query('companyId') companyId: string,
+    @CurrentUser('companyId') companyId: string,
     @Query('status') status?: string,
     @Query('search') search?: string,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page?: number,
@@ -43,8 +44,8 @@ export class DriversController {
 
   @Post()
   @ApiOperation({ summary: 'Registrar chofer' })
-  create(@Body() dto: CreateDriverDto) {
-    return this.driversService.create(dto.companyId, dto);
+  create(@CurrentUser('companyId') companyId: string, @Body() dto: CreateDriverDto) {
+    return this.driversService.create(companyId, dto);
   }
 
   @Get(':id')

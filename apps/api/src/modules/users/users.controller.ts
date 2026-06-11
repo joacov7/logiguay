@@ -1,8 +1,8 @@
-import { Controller, Get, Put, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Put, Delete, Body, Param, Query, UseGuards, ForbiddenException } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { UsersService } from './users.service';
-import { UpdateUserDto } from './dto/user.dto';
+import { AdminUpdateUserDto } from './dto/user.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -44,11 +44,16 @@ export class UsersController {
   @ApiOperation({ summary: 'Actualizar usuario' })
   update(
     @Param('id') id: string,
-    @Body() dto: UpdateUserDto,
+    @Body() dto: AdminUpdateUserDto,
     @CurrentUser() user: any,
   ) {
     if (user.role !== Role.ADMIN && user.id !== id) {
-      throw new Error('No autorizado');
+      throw new ForbiddenException('No autorizado');
+    }
+    // role e isActive solo los puede modificar un ADMIN
+    if (user.role !== Role.ADMIN) {
+      delete dto.role;
+      delete dto.isActive;
     }
     return this.usersService.update(id, dto);
   }

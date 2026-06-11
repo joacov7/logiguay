@@ -37,7 +37,10 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   timezone?: string;
+}
 
+// Solo usable desde endpoints protegidos con @Roles(ADMIN)
+export class AdminUpdateUserDto extends UpdateUserDto {
   @ApiPropertyOptional({ enum: Role })
   @IsOptional()
   @IsEnum(Role)

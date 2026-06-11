@@ -7,7 +7,10 @@ const nextConfig = {
   reactStrictMode: true,
   images: {
     remotePatterns: [
-      { protocol: 'https', hostname: '**.amazonaws.com' },
+      // Solo el bucket propio — un wildcard **.amazonaws.com permitiría servir
+      // imágenes de cualquier bucket S3 ajeno a través del optimizador de Next
+      { protocol: 'https', hostname: 'logiguay-docs.s3.amazonaws.com' },
+      { protocol: 'https', hostname: 'logiguay-docs.s3.*.amazonaws.com' },
       { protocol: 'https', hostname: 'logiguay.com' },
     ],
   },

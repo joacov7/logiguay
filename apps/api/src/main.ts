@@ -1,16 +1,45 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import helmet from 'helmet';
 import { AppModule } from './app.module';
+
+const isProd = process.env.NODE_ENV === 'production';
+
+function assertSecretsAreSafe(logger: Logger) {
+  if (!isProd) return;
+  for (const key of ['JWT_SECRET', 'JWT_REFRESH_SECRET']) {
+    const value = process.env[key] || '';
+    if (value.length < 32 || value.includes('change_me')) {
+      logger.error(`${key} es débil o tiene el valor de ejemplo. Configurá un secreto real antes de desplegar.`);
+      process.exit(1);
+    }
+  }
+}
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const logger = new Logger('Bootstrap');
 
+  assertSecretsAreSafe(logger);
+
   app.setGlobalPrefix('api/v1');
 
+  // CSP deshabilitado para no romper Swagger UI en dev; el resto de los headers aplican
+  app.use(helmet({ contentSecurityPolicy: false }));
+
+  // API_CORS_ORIGIN acepta varios dominios separados por coma.
+  // Las apps móviles no envían header Origin, así que CORS no las afecta.
+  const corsOrigins = (process.env.API_CORS_ORIGIN || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (isProd && !corsOrigins.length) {
+    logger.error('API_CORS_ORIGIN no está configurado. En producción es obligatorio.');
+    process.exit(1);
+  }
   app.enableCors({
-    origin: true,
+    origin: corsOrigins.length ? corsOrigins : true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
@@ -47,16 +76,19 @@ async function bootstrap() {
     .addTag('Subscriptions', 'Planes y suscripciones')
     .build();
 
-  const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup('api/docs', app, document, {
-    swaggerOptions: { persistAuthorization: true },
-  });
+  // Swagger expone todo el esquema de la API: solo disponible fuera de producción
+  if (!isProd) {
+    const document = SwaggerModule.createDocument(app, swaggerConfig);
+    SwaggerModule.setup('api/docs', app, document, {
+      swaggerOptions: { persistAuthorization: true },
+    });
+  }
 
   const port = process.env.API_PORT || 3001;
   await app.listen(port);
 
   logger.log(`LOGIGUAY API running on http://localhost:${port}/api/v1`);
-  logger.log(`Swagger docs: http://localhost:${port}/api/docs`);
+  if (!isProd) logger.log(`Swagger docs: http://localhost:${port}/api/docs`);
 }
 
 bootstrap();

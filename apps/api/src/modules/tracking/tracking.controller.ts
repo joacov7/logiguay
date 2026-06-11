@@ -1,9 +1,12 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { TrackingService } from './tracking.service';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
 @ApiTags('Tracking')
 @ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
 @Controller('tracking')
 export class TrackingController {
   constructor(private readonly trackingService: TrackingService) {}
@@ -14,9 +17,9 @@ export class TrackingController {
     return this.trackingService.getVehiclePosition(vehicleId);
   }
 
-  @Get('company/:companyId/fleet')
-  @ApiOperation({ summary: 'Posición de toda la flota de una empresa' })
-  getFleetPositions(@Param('companyId') companyId: string) {
+  @Get('fleet')
+  @ApiOperation({ summary: 'Posición de toda la flota de la empresa autenticada' })
+  getFleetPositions(@CurrentUser('companyId') companyId: string) {
     return this.trackingService.getFleetPositions(companyId);
   }
 

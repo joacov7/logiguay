@@ -28,13 +28,16 @@ export class CargoController {
   @Post()
   @Roles(Role.DADOR, Role.ADMIN)
   @ApiOperation({ summary: 'Crear carga' })
-  create(@Body() dto: CreateCargoDto, @CurrentUser('companyId') companyId: string) {
-    return this.cargoService.create({ ...dto, companyId: dto.companyId || companyId });
+  create(@Body() dto: CreateCargoDto, @CurrentUser() user: any) {
+    // Solo ADMIN puede crear cargas a nombre de otra empresa
+    const companyId = user.role === Role.ADMIN && dto.companyId ? dto.companyId : user.companyId;
+    return this.cargoService.create({ ...dto, companyId });
   }
 
   @Get()
   @ApiOperation({ summary: 'Listar cargas de la empresa' })
   findAll(
+    @CurrentUser() user: any,
     @Query('companyId') companyId?: string,
     @Query('status') status?: string,
     @Query('page') page?: number,
@@ -44,7 +47,9 @@ export class CargoController {
     @Query('radiusKm') radiusKm?: number,
     @Query('province') province?: string,
   ) {
-    return this.cargoService.findAll({ companyId, status, page, limit, lat, lng, radiusKm, province });
+    // No-ADMIN solo ve cargas de su propia empresa
+    const effectiveCompanyId = user.role === Role.ADMIN ? companyId : user.companyId;
+    return this.cargoService.findAll({ companyId: effectiveCompanyId, status, page, limit, lat, lng, radiusKm, province });
   }
 
   @Get('marketplace')
@@ -76,35 +81,35 @@ export class CargoController {
   @Patch(':id')
   @Roles(Role.DADOR, Role.ADMIN)
   @ApiOperation({ summary: 'Editar carga (solo PENDIENTE)' })
-  update(@Param('id') id: string, @Body() dto: UpdateCargoDto) {
-    return this.cargoService.update(id, dto);
+  update(@Param('id') id: string, @Body() dto: UpdateCargoDto, @CurrentUser() user: any) {
+    return this.cargoService.update(id, dto, user);
   }
 
   @Patch(':id/publish')
   @Roles(Role.DADOR, Role.ADMIN)
   @ApiOperation({ summary: 'Publicar carga' })
-  publish(@Param('id') id: string) {
-    return this.cargoService.publish(id);
+  publish(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.cargoService.publish(id, user);
   }
 
   @Patch(':id/cancel')
   @Roles(Role.DADOR, Role.ADMIN)
   @ApiOperation({ summary: 'Cancelar carga' })
-  cancel(@Param('id') id: string) {
-    return this.cargoService.cancel(id);
+  cancel(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.cargoService.cancel(id, user);
   }
 
   @Delete(':id')
   @Roles(Role.DADOR, Role.ADMIN)
   @ApiOperation({ summary: 'Eliminar carga (solo PENDIENTE)' })
-  remove(@Param('id') id: string) {
-    return this.cargoService.remove(id);
+  remove(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.cargoService.remove(id, user);
   }
 
   @Patch(':id/select-quote/:quoteId')
   @Roles(Role.DADOR, Role.ADMIN)
   @ApiOperation({ summary: 'Seleccionar cotización ganadora' })
-  selectQuote(@Param('id') id: string, @Param('quoteId') quoteId: string) {
-    return this.cargoService.selectQuote(id, quoteId);
+  selectQuote(@Param('id') id: string, @Param('quoteId') quoteId: string, @CurrentUser() user: any) {
+    return this.cargoService.selectQuote(id, quoteId, user);
   }
 }

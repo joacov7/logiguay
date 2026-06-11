@@ -6,6 +6,7 @@ import {
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreateDriverDto, UpdateDriverDto } from './dto/driver.dto';
 import * as bcrypt from 'bcrypt';
+import { randomBytes } from 'crypto';
 
 interface FindAllFilters {
   companyId: string;
@@ -24,7 +25,7 @@ export class DriversService {
 
     let user = await this.prisma.user.findUnique({ where: { email } });
     if (!user) {
-      const tempPassword = await bcrypt.hash(Math.random().toString(36).slice(-8), 10);
+      const tempPassword = await bcrypt.hash(randomBytes(16).toString('hex'), 10);
       user = await this.prisma.user.create({
         data: {
           email,

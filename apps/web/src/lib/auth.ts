@@ -1,13 +1,19 @@
 import api from './api';
 import { LoginResponse, User } from '../types';
 
+function cookieFlags() {
+  // Secure solo aplica sobre HTTPS; en dev local (http) el navegador la descartaría
+  const secure = typeof window !== 'undefined' && window.location.protocol === 'https:' ? '; Secure' : '';
+  return `path=/; SameSite=Lax${secure}`;
+}
+
 function setAuthCookie(token: string) {
   const maxAge = 15 * 60; // 15 minutes — matches JWT_EXPIRES_IN
-  document.cookie = `accessToken=${token}; path=/; max-age=${maxAge}; SameSite=Lax`;
+  document.cookie = `accessToken=${token}; max-age=${maxAge}; ${cookieFlags()}`;
 }
 
 function clearAuthCookie() {
-  document.cookie = 'accessToken=; path=/; max-age=0; SameSite=Lax';
+  document.cookie = `accessToken=; max-age=0; ${cookieFlags()}`;
 }
 
 export async function login(email: string, password: string): Promise<LoginResponse> {

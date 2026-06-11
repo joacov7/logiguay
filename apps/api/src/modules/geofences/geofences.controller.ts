@@ -1,8 +1,9 @@
-import { Controller, Get, Post, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Body, Param, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { GeofencesService } from './geofences.service';
 import { CreateGeoFenceDto } from './dto/geofence.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
 @ApiTags('Geofences')
 @ApiBearerAuth()
@@ -13,13 +14,13 @@ export class GeofencesController {
 
   @Post()
   @ApiOperation({ summary: 'Crear geocerca' })
-  create(@Body() dto: CreateGeoFenceDto) {
-    return this.geofencesService.create(dto);
+  create(@CurrentUser('companyId') companyId: string, @Body() dto: CreateGeoFenceDto) {
+    return this.geofencesService.create({ ...dto, companyId });
   }
 
   @Get()
   @ApiOperation({ summary: 'Listar geocercas' })
-  findAll(@Query('companyId') companyId?: string) {
+  findAll(@CurrentUser('companyId') companyId: string) {
     return this.geofencesService.findAll(companyId);
   }
 

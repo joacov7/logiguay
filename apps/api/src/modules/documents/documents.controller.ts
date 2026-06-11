@@ -15,6 +15,7 @@ import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger'
 import { DocumentsService } from './documents.service';
 import { CreateDocumentDto, UpdateDocumentDto } from './dto/document.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
 @ApiTags('Documents')
 @ApiBearerAuth()
@@ -25,8 +26,8 @@ export class DocumentsController {
 
   @Post()
   @ApiOperation({ summary: 'Crear documento' })
-  create(@Body() dto: CreateDocumentDto) {
-    return this.documentsService.create(dto);
+  create(@CurrentUser('companyId') companyId: string, @Body() dto: CreateDocumentDto) {
+    return this.documentsService.create({ ...dto, companyId });
   }
 
   @Get()
@@ -37,46 +38,45 @@ export class DocumentsController {
   @ApiQuery({ name: 'driverId', required: false })
   @ApiQuery({ name: 'status', required: false })
   @ApiQuery({ name: 'type', required: false })
-  @ApiQuery({ name: 'companyId', required: false })
   findAll(
+    @CurrentUser('companyId') companyId: string,
     @Query('entityType') entityType?: string,
     @Query('entityId') entityId?: string,
     @Query('vehicleId') vehicleId?: string,
     @Query('driverId') driverId?: string,
     @Query('status') status?: string,
     @Query('type') type?: string,
-    @Query('companyId') companyId?: string,
   ) {
     return this.documentsService.findAll({ entityType, entityId, vehicleId, driverId, status, type, companyId });
   }
 
-  @Get('check-expiries/:companyId')
+  @Get('check-expiries')
   @ApiOperation({ summary: 'Preview expiries (GET)' })
-  checkExpiriesGet(@Param('companyId') companyId: string) {
+  checkExpiriesGet(@CurrentUser('companyId') companyId: string) {
     return this.documentsService.checkExpiries(companyId);
   }
 
-  @Post('check-expiries/:companyId')
+  @Post('check-expiries')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Recalcular estados de vencimiento' })
-  checkExpiries(@Param('companyId') companyId: string) {
+  checkExpiries(@CurrentUser('companyId') companyId: string) {
     return this.documentsService.checkExpiries(companyId);
   }
 
-  @Get('expiring/:companyId')
+  @Get('expiring')
   @ApiOperation({ summary: 'Documentos próximos a vencer' })
   @ApiQuery({ name: 'daysAhead', required: false, type: Number })
   getExpiring(
-    @Param('companyId') companyId: string,
+    @CurrentUser('companyId') companyId: string,
     @Query('daysAhead') daysAhead?: string,
   ) {
     return this.documentsService.getExpiringDocuments(companyId, daysAhead ? parseInt(daysAhead, 10) : 30);
   }
 
-  @Post('generate-alerts/:companyId')
+  @Post('generate-alerts')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Generar alertas de vencimiento' })
-  generateAlerts(@Param('companyId') companyId: string) {
+  generateAlerts(@CurrentUser('companyId') companyId: string) {
     return this.documentsService.generateExpiryAlerts(companyId).then((count) => ({ alertsGenerated: count }));
   }
 

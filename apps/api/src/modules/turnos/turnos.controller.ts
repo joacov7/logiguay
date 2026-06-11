@@ -1,19 +1,24 @@
 import { Controller, Get, Post, Patch, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import { Role } from '@prisma/client';
 import { TurnosService } from './turnos.service';
+import { CreateTurnSlotDto, BookTurnSlotDto } from './dto/turnos.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
 @ApiTags('Turnos')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('turnos')
 export class TurnosController {
   constructor(private readonly turnosService: TurnosService) {}
 
   @Post('slots')
+  @Roles(Role.DADOR, Role.ADMIN)
   @ApiOperation({ summary: 'Crear turno (DADOR)' })
-  createSlot(@CurrentUser('companyId') companyId: string, @Body() dto: any) {
+  createSlot(@CurrentUser('companyId') companyId: string, @Body() dto: CreateTurnSlotDto) {
     return this.turnosService.createSlot(companyId, dto);
   }
 
@@ -36,11 +41,12 @@ export class TurnosController {
   }
 
   @Post('slots/:slotId/book')
+  @Roles(Role.TRANSPORTISTA, Role.ADMIN)
   @ApiOperation({ summary: 'Reservar turno (TRANSPORTISTA)' })
   bookSlot(
     @Param('slotId') slotId: string,
     @CurrentUser('companyId') companyId: string,
-    @Body() dto: any,
+    @Body() dto: BookTurnSlotDto,
   ) {
     return this.turnosService.bookSlot(slotId, companyId, dto);
   }

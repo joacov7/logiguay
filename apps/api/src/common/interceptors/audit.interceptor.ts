@@ -32,13 +32,21 @@ export class AuditInterceptor implements NestInterceptor {
           const entity = urlParts[1] || 'unknown';
           const entityId = urlParts[2] || responseData?.id || null;
 
+          let sanitizedBody: any = null;
+          if (method !== 'DELETE' && body && typeof body === 'object') {
+            sanitizedBody = { ...body };
+            for (const field of ['password', 'currentPassword', 'newPassword', 'refreshToken', 'accessToken', 'token']) {
+              delete sanitizedBody[field];
+            }
+          }
+
           await this.prisma.auditLog.create({
             data: {
               userId: user?.id || null,
               action: method,
               entity,
               entityId,
-              newValue: method !== 'DELETE' ? (body as any) : null,
+              newValue: sanitizedBody,
               ip: ip || null,
             },
           });

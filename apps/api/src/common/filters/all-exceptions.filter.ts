@@ -26,7 +26,10 @@ export class AllExceptionsFilter implements ExceptionFilter {
       message = typeof res === 'string' ? res : (res as any).message || res;
     } else if (exception instanceof Error) {
       this.logger.error(`Unhandled exception: ${exception.message}`, exception.stack);
-      message = exception.message;
+      // En producción no exponemos detalles internos (Prisma, FS, etc.) al cliente
+      if (process.env.NODE_ENV !== 'production') {
+        message = exception.message;
+      }
     }
 
     response.status(status).json({

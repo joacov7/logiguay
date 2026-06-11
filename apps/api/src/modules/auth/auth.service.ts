@@ -37,7 +37,8 @@ export class AuthService {
         firstName: dto.firstName,
         lastName: dto.lastName,
         phone: dto.phone,
-        role: dto.role || 'DADOR',
+        // El rol siempre es DADOR en el registro público; la elevación la hace un ADMIN
+        role: 'DADOR',
       },
       select: {
         id: true,

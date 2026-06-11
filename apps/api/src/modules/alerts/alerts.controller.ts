@@ -2,6 +2,7 @@ import { Controller, Get, Patch, Param, Query, UseGuards } from '@nestjs/common'
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { AlertsService } from './alerts.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
 @ApiTags('Alerts')
 @ApiBearerAuth()
@@ -13,7 +14,7 @@ export class AlertsController {
   @Get()
   @ApiOperation({ summary: 'Listar alertas' })
   findAll(
-    @Query('companyId') companyId: string,
+    @CurrentUser('companyId') companyId: string,
     @Query('unread') unread?: string,
     @Query('page') page?: number,
     @Query('limit') limit?: number,
@@ -23,7 +24,7 @@ export class AlertsController {
 
   @Get('unread-count')
   @ApiOperation({ summary: 'Conteo de alertas no leídas' })
-  getUnreadCount(@Query('companyId') companyId: string) {
+  getUnreadCount(@CurrentUser('companyId') companyId: string) {
     return this.alertsService.getUnreadCount(companyId);
   }
 
@@ -35,7 +36,7 @@ export class AlertsController {
 
   @Patch('read-all')
   @ApiOperation({ summary: 'Marcar todas las alertas como leídas' })
-  markAllAsRead(@Query('companyId') companyId: string) {
+  markAllAsRead(@CurrentUser('companyId') companyId: string) {
     return this.alertsService.markAllAsRead(companyId);
   }
 }

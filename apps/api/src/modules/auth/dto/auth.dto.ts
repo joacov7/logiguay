@@ -35,11 +35,6 @@ export class RegisterDto {
   @IsOptional()
   @IsString()
   phone?: string;
-
-  @ApiPropertyOptional({ enum: Role, default: Role.DADOR })
-  @IsOptional()
-  @IsEnum(Role)
-  role?: Role;
 }
 
 export class RefreshTokenDto {
