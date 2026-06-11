@@ -50,9 +50,19 @@ export class CreateVehicleDto {
   @IsNumber()
   @Min(0)
   capacityM3?: number;
+
+  @ApiPropertyOptional({ description: 'IMEI del equipo GPS instalado (Traccar)' })
+  @IsOptional()
+  @IsString()
+  trackerDeviceId?: string;
 }
 
 export class UpdateVehicleDto {
+  @ApiPropertyOptional({ description: 'IMEI del equipo GPS instalado (Traccar)' })
+  @IsOptional()
+  @IsString()
+  trackerDeviceId?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()

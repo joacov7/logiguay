@@ -134,6 +134,10 @@ export class TrackingGateway implements OnGatewayConnection, OnGatewayDisconnect
     this.server.to(`company:${companyId}`).emit('alert', alert);
   }
 
+  broadcastPosition(vehicleId: string, position: any) {
+    this.server.to(`vehicle:${vehicleId}`).emit('position', { vehicleId, ...position });
+  }
+
   broadcastTripStatusChange(tripId: string, companyId: string, status: string) {
     this.server.to(`trip:${tripId}`).emit('trip-status', { tripId, status });
     this.server.to(`company:${companyId}`).emit('trip-status', { tripId, status });

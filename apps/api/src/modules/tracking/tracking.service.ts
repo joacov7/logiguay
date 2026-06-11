@@ -69,6 +69,38 @@ export class TrackingService {
     return position;
   }
 
+  /**
+   * Posición reenviada por Traccar (equipos GPS físicos como el West A10).
+   * Mapea el uniqueId del dispositivo (IMEI) al vehículo por trackerDeviceId.
+   * La velocidad de Traccar viene en nudos; se convierte a m/s.
+   */
+  async processTraccarPosition(payload: {
+    uniqueId: string;
+    lat: number;
+    lng: number;
+    speedKnots?: number;
+    course?: number;
+  }): Promise<{ vehicleId: string; position: StoredPosition } | null> {
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { trackerDeviceId: payload.uniqueId },
+      select: { id: true },
+    });
+    if (!vehicle) {
+      this.logger.warn(`Traccar: dispositivo ${payload.uniqueId} sin vehículo vinculado`);
+      return null;
+    }
+
+    const position = await this.processPosition({
+      vehicleId: vehicle.id,
+      lat: payload.lat,
+      lng: payload.lng,
+      speed: payload.speedKnots !== undefined ? payload.speedKnots * 0.514444 : undefined,
+      heading: payload.course,
+    });
+
+    return { vehicleId: vehicle.id, position };
+  }
+
   private async getActiveTrip(vehicleId: string) {
     return this.prisma.trip.findFirst({
       where: {

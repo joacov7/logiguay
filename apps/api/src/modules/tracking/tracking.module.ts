@@ -3,6 +3,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TrackingGateway } from './tracking.gateway';
 import { TrackingController } from './tracking.controller';
+import { TraccarWebhookController } from './traccar-webhook.controller';
 import { TrackingService } from './tracking.service';
 import { AlertsModule } from '../alerts/alerts.module';
 
@@ -15,7 +16,7 @@ import { AlertsModule } from '../alerts/alerts.module';
       inject: [ConfigService],
     }),
   ],
-  controllers: [TrackingController],
+  controllers: [TrackingController, TraccarWebhookController],
   providers: [TrackingGateway, TrackingService],
   exports: [TrackingGateway, TrackingService],
 })

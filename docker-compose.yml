@@ -38,6 +38,26 @@ services:
       timeout: 5s
       retries: 5
 
+  traccar:
+    image: traccar/traccar:6-alpine
+    container_name: logiguay_traccar
+    restart: unless-stopped
+    networks:
+      - logiguay
+    environment:
+      # Reenvía cada posición al API de LOGIGUAY (host.docker.internal = tu PC)
+      FORWARD_ENABLE: 'true'
+      FORWARD_URL: 'http://host.docker.internal:3001/api/v1/tracking/traccar?token=${TRACCAR_WEBHOOK_TOKEN:-traccar_secret_token}'
+      FORWARD_JSON: 'true'
+    ports:
+      - '8083:8082' # interfaz web de Traccar (http://localhost:8083)
+      - '5023:5023' # protocolo GT06 (West A10 y similares)
+    volumes:
+      - ./traccar/traccar.xml:/opt/traccar/conf/traccar.xml:ro
+      - traccar_data:/opt/traccar/data
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: logiguay_pgadmin
@@ -56,6 +76,7 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  traccar_data:
 
 networks:
   logiguay:

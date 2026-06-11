@@ -201,6 +201,8 @@ model Vehicle {
   capacityTons  Float?
   capacityM3    Float?
   status        VehicleStatus @default(ACTIVO)
+  // IMEI del equipo GPS instalado (ej: West A10), usado por el webhook de Traccar
+  trackerDeviceId String?     @unique
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
