@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Truck, User } from 'lucide-react-native';
+import { Truck, Briefcase, User } from 'lucide-react-native';
 
 export default function TabsLayout() {
   return (
@@ -21,6 +21,13 @@ export default function TabsLayout() {
         options={{
           title: 'Mis viajes',
           tabBarIcon: ({ color, size }) => <Truck color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="bolsa"
+        options={{
+          title: 'Bolsa',
+          tabBarIcon: ({ color, size }) => <Briefcase color={color} size={size} />,
         }}
       />
       <Tabs.Screen
