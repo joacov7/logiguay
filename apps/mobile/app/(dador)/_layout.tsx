@@ -1,7 +1,7 @@
 import { Tabs } from 'expo-router';
-import { Truck, User } from 'lucide-react-native';
+import { Package, PlusCircle, User } from 'lucide-react-native';
 
-export default function TabsLayout() {
+export default function DadorLayout() {
   return (
     <Tabs
       screenOptions={{
@@ -19,8 +19,15 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Mis viajes',
-          tabBarIcon: ({ color, size }) => <Truck color={color} size={size} />,
+          title: 'Mis cargas',
+          tabBarIcon: ({ color, size }) => <Package color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="nueva-carga"
+        options={{
+          title: 'Publicar',
+          tabBarIcon: ({ color, size }) => <PlusCircle color={color} size={size} />,
         }}
       />
       <Tabs.Screen

@@ -54,6 +54,14 @@ export class UsersService {
     });
   }
 
+  async savePushToken(userId: string, token: string) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { pushToken: token },
+      select: { id: true },
+    });
+  }
+
   async deactivate(id: string) {
     await this.findOne(id);
     return this.prisma.user.update({

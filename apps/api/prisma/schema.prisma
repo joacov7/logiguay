@@ -122,6 +122,7 @@ model User {
   language   String   @default("es")
   currency   String   @default("ARS")
   timezone   String   @default("America/Argentina/Buenos_Aires")
+  pushToken  String?
   isActive   Boolean  @default(true)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt

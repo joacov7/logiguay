@@ -1,4 +1,4 @@
-import { Controller, Get, Put, Delete, Body, Param, Query, UseGuards, ForbiddenException } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, ForbiddenException, IsString } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { UsersService } from './users.service';
@@ -56,6 +56,12 @@ export class UsersController {
       delete dto.isActive;
     }
     return this.usersService.update(id, dto);
+  }
+
+  @Post('push-token')
+  @ApiOperation({ summary: 'Registrar token de notificaciones push' })
+  savePushToken(@CurrentUser('sub') userId: string, @Body('token') token: string) {
+    return this.usersService.savePushToken(userId, token);
   }
 
   @Delete(':id')
