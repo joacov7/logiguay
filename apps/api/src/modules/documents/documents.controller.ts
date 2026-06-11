@@ -26,8 +26,8 @@ export class DocumentsController {
 
   @Post()
   @ApiOperation({ summary: 'Crear documento' })
-  create(@CurrentUser('companyId') companyId: string, @Body() dto: CreateDocumentDto) {
-    return this.documentsService.create({ ...dto, companyId });
+  create(@Body() dto: CreateDocumentDto) {
+    return this.documentsService.create(dto);
   }
 
   @Get()
