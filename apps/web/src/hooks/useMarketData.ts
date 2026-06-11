@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import api from '../lib/api';
 
 // ── Dollar rates ──────────────────────────────────────────────────────────────
 
@@ -46,18 +47,14 @@ export interface GrainEntry {
   variacion: number;
 }
 
-const GRAIN_NAMES = ['soja', 'maiz', 'maíz', 'trigo'];
-
 export function useGrainPrices() {
   return useQuery<GrainEntry[]>({
     queryKey: ['market-grain-prices'],
     queryFn: async () => {
-      const res = await fetch('https://argentinadatos.com/api/v1/cotizaciones/granos');
-      if (!res.ok) throw new Error('Error fetching grain prices');
-      const data: GrainEntry[] = await res.json();
-      return data.filter((g) =>
-        GRAIN_NAMES.some((name) => g.nombre.toLowerCase().includes(name)),
-      );
+      // Proxy vía nuestro backend: argentinadatos.com rechaza hosts fuera de su
+      // allowlist, así que el fetch se hace server-side y se cachea en Redis
+      const res = await api.get<GrainEntry[]>('/market/granos');
+      return res.data;
     },
     staleTime: 10 * 60 * 1000,
     retry: 1,
