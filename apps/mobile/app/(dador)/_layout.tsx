@@ -30,6 +30,7 @@ export default function DadorLayout() {
           tabBarIcon: ({ color, size }) => <PlusCircle color={color} size={size} />,
         }}
       />
+      <Tabs.Screen name="carga/[id]" options={{ href: null }} />
       <Tabs.Screen
         name="profile"
         options={{

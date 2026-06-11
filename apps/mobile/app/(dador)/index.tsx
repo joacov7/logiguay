@@ -99,7 +99,11 @@ export default function DadorCargasScreen() {
         renderItem={({ item }) => {
           const colors = STATUS_COLORS[item.status] ?? { bg: '#f3f4f6', text: '#6b7280' };
           return (
-            <View style={s.card}>
+            <TouchableOpacity
+              style={s.card}
+              activeOpacity={0.7}
+              onPress={() => router.push(`/(dador)/carga/${item.id}`)}
+            >
               <View style={s.cardTop}>
                 <Text style={s.cargoType}>{item.type}</Text>
                 <View style={[s.badge, { backgroundColor: colors.bg }]}>
@@ -120,7 +124,7 @@ export default function DadorCargasScreen() {
                 <Text style={s.meta}>{item.weightTons ? `${item.weightTons} t` : '—'}</Text>
                 <Text style={s.quotes}>{item._count?.quotes ?? 0} oferta{(item._count?.quotes ?? 0) !== 1 ? 's' : ''}</Text>
               </View>
-            </View>
+            </TouchableOpacity>
           );
         }}
       />

@@ -33,13 +33,29 @@ export class QuotesController {
   }
 
   @Get('cargo/:cargoId')
-  @ApiOperation({ summary: 'Cotizaciones de una carga' })
+  @ApiOperation({ summary: 'Cotizaciones de una carga (solo dueño de la carga)' })
   findByCargoId(
     @Param('cargoId') cargoId: string,
+    @CurrentUser('companyId') companyId: string,
+    @CurrentUser('role') role: string,
     @Query('page') page?: number,
     @Query('limit') limit?: number,
   ) {
-    return this.quotesService.findByCargoId(cargoId, page, limit);
+    return this.quotesService.findByCargoId(cargoId, companyId, role, page, limit);
+  }
+
+  @Patch(':id/accept')
+  @Roles(Role.DADOR, Role.ADMIN)
+  @ApiOperation({ summary: 'Aceptar cotización (asigna la carga y crea el viaje)' })
+  accept(@Param('id') id: string, @CurrentUser('companyId') companyId: string) {
+    return this.quotesService.accept(id, companyId);
+  }
+
+  @Patch(':id/reject')
+  @Roles(Role.DADOR, Role.ADMIN)
+  @ApiOperation({ summary: 'Rechazar cotización' })
+  reject(@Param('id') id: string, @CurrentUser('companyId') companyId: string) {
+    return this.quotesService.reject(id, companyId);
   }
 
   @Get('my')

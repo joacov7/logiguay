@@ -59,7 +59,16 @@ export class QuotesService {
     return quote;
   }
 
-  async findByCargoId(cargoId: string, page = 1, limit = 20) {
+  async findByCargoId(cargoId: string, companyId: string, role: string, page = 1, limit = 20) {
+    const cargo = await this.prisma.cargo.findUnique({
+      where: { id: cargoId },
+      select: { companyId: true },
+    });
+    if (!cargo) throw new NotFoundException('Carga no encontrada');
+    // Solo el dueño de la carga (o ADMIN) ve las cotizaciones recibidas
+    if (role !== 'ADMIN' && cargo.companyId !== companyId) {
+      throw new ForbiddenException('No tiene permisos sobre esta carga');
+    }
     const skip = (page - 1) * limit;
     const [data, total] = await Promise.all([
       this.prisma.quote.findMany({
@@ -101,18 +110,57 @@ export class QuotesService {
     return { data, total, page, limit, pages: Math.ceil(total / limit) };
   }
 
-  async accept(id: string) {
-    const quote = await this.prisma.quote.findUnique({ where: { id } });
+  async accept(id: string, companyId: string) {
+    const quote = await this.prisma.quote.findUnique({
+      where: { id },
+      include: { cargo: { select: { id: true, companyId: true, status: true } } },
+    });
     if (!quote) throw new NotFoundException('Cotización no encontrada');
+    if (quote.cargo.companyId !== companyId) {
+      throw new ForbiddenException('No tiene permisos sobre esta carga');
+    }
     if (quote.status !== 'PENDIENTE') {
       throw new BadRequestException('Esta cotización ya fue procesada');
     }
-    return this.prisma.quote.update({ where: { id }, data: { status: 'ACEPTADA' } });
+    if (!['PUBLICADO', 'COTIZANDO'].includes(quote.cargo.status)) {
+      throw new BadRequestException('La carga ya no está disponible');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const accepted = await tx.quote.update({
+        where: { id },
+        data: { status: 'ACEPTADA' },
+        include: { transportCompany: { select: { id: true, name: true } } },
+      });
+      await tx.quote.updateMany({
+        where: { cargoId: quote.cargoId, id: { not: id }, status: 'PENDIENTE' },
+        data: { status: 'RECHAZADA' },
+      });
+      await tx.cargo.update({
+        where: { id: quote.cargoId },
+        data: { status: 'ASIGNADO' },
+      });
+      await tx.trip.create({
+        data: {
+          cargoId: quote.cargoId,
+          transportCompanyId: quote.transportCompanyId,
+          agreedRate: quote.amount,
+          status: 'ASIGNADO',
+        },
+      });
+      return accepted;
+    });
   }
 
-  async reject(id: string) {
-    const quote = await this.prisma.quote.findUnique({ where: { id } });
+  async reject(id: string, companyId: string) {
+    const quote = await this.prisma.quote.findUnique({
+      where: { id },
+      include: { cargo: { select: { companyId: true } } },
+    });
     if (!quote) throw new NotFoundException('Cotización no encontrada');
+    if (quote.cargo.companyId !== companyId) {
+      throw new ForbiddenException('No tiene permisos sobre esta carga');
+    }
     if (quote.status !== 'PENDIENTE') {
       throw new BadRequestException('Esta cotización ya fue procesada');
     }
