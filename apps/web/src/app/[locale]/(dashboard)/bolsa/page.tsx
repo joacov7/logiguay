@@ -148,7 +148,6 @@ export default function BolsaPage() {
     mutationFn: async ({ cargoId, amount, notes }: { cargoId: string; amount: number; notes: string }) => {
       return api.post('/quotes', {
         cargoId,
-        transportCompanyId: companyId,
         amount,
         notes: notes || undefined,
       });

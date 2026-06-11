@@ -14,6 +14,7 @@ import { CreateQuoteDto } from './dto/quote.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Role } from '@prisma/client';
 
 @ApiTags('Quotes')
@@ -26,8 +27,9 @@ export class QuotesController {
   @Post()
   @Roles(Role.TRANSPORTISTA, Role.ADMIN)
   @ApiOperation({ summary: 'Presentar cotización' })
-  create(@Body() dto: CreateQuoteDto) {
-    return this.quotesService.create(dto);
+  create(@CurrentUser('companyId') companyId: string, @Body() dto: CreateQuoteDto) {
+    // transportCompanyId siempre sale del JWT, nunca del body
+    return this.quotesService.create({ ...dto, transportCompanyId: companyId });
   }
 
   @Get('cargo/:cargoId')
@@ -40,10 +42,11 @@ export class QuotesController {
     return this.quotesService.findByCargoId(cargoId, page, limit);
   }
 
-  @Get('company/:companyId')
-  @ApiOperation({ summary: 'Cotizaciones de una empresa transportista' })
-  findByCompany(
-    @Param('companyId') companyId: string,
+  @Get('my')
+  @Roles(Role.TRANSPORTISTA, Role.ADMIN)
+  @ApiOperation({ summary: 'Mis cotizaciones' })
+  findMyQuotes(
+    @CurrentUser('companyId') companyId: string,
     @Query('page') page?: number,
     @Query('limit') limit?: number,
   ) {
@@ -55,7 +58,7 @@ export class QuotesController {
   @ApiOperation({ summary: 'Retirar cotización propia' })
   withdraw(
     @Param('id') id: string,
-    @Query('companyId') companyId: string,
+    @CurrentUser('companyId') companyId: string,
   ) {
     return this.quotesService.withdraw(id, companyId);
   }

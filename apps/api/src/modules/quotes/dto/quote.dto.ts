@@ -7,9 +7,10 @@ export class CreateQuoteDto {
   @IsString()
   cargoId: string;
 
-  @ApiProperty()
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsString()
-  transportCompanyId: string;
+  transportCompanyId?: string;
 
   @ApiProperty()
   @IsNumber()
