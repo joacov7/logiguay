@@ -20,7 +20,7 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
 export class CargoService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(dto: CreateCargoDto) {
+  async create(dto: CreateCargoDto & { companyId: string }) {
     return this.prisma.cargo.create({
       data: {
         ...dto,

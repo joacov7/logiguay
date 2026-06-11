@@ -13,9 +13,11 @@ import { CargoStatus } from '@prisma/client';
 import { Type } from 'class-transformer';
 
 export class CreateCargoDto {
-  @ApiProperty()
+  // Solo lo usa ADMIN para crear a nombre de otra empresa; el resto sale del JWT
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsString()
-  companyId: string;
+  companyId?: string;
 
   @ApiProperty({ example: 'Granos' })
   @IsString()
