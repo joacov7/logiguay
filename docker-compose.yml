@@ -57,6 +57,9 @@ services:
     build:
       context: apps/web
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL}
     container_name: logiguay_web
     restart: unless-stopped
     networks:
