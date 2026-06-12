@@ -74,12 +74,14 @@ export class TripsController {
   }
 
   @Patch(':id/status')
+  @Roles('TRANSPORTISTA', 'CHOFER', 'ADMIN')
   @ApiOperation({ summary: 'Avanzar estado del viaje' })
   updateStatus(@Param('id') id: string, @Body() dto: UpdateTripStatusDto, @CurrentUser() user: any) {
     return this.tripsService.updateStatus(id, dto, user);
   }
 
   @Patch(':id/cancel')
+  @Roles('TRANSPORTISTA', 'CHOFER', 'ADMIN')
   @ApiOperation({ summary: 'Cancelar viaje' })
   cancel(
     @Param('id') id: string,
@@ -90,6 +92,7 @@ export class TripsController {
   }
 
   @Post(':id/events')
+  @Roles('TRANSPORTISTA', 'CHOFER', 'ADMIN')
   @ApiOperation({ summary: 'Registrar evento manual en el viaje' })
   addEvent(@Param('id') id: string, @Body() dto: AddTripEventDto) {
     return this.tripsService.addEvent(id, dto);
