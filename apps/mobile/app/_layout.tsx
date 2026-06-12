@@ -39,7 +39,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
       const accessToken = token[1];
       const user: User | null = userRaw[1] ? JSON.parse(userRaw[1]) : null;
 
-      const inAuth = segments[0] === 'login';
+      const inAuth = segments[0] === 'login' || segments[0] === 'register';
 
       if (!accessToken || !user) {
         if (!inAuth) router.replace('/login');
@@ -70,6 +70,7 @@ export default function RootLayout() {
       <AuthGuard>
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="login" />
+          <Stack.Screen name="register" />
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="(dador)" />
           <Stack.Screen name="(chofer)" />

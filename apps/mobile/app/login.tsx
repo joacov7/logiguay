@@ -83,6 +83,12 @@ export default function LoginScreen() {
             <Text style={styles.buttonText}>Iniciar sesión</Text>
           )}
         </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => router.push('/register')} style={{ alignItems: 'center', marginTop: 20 }}>
+          <Text style={{ color: '#93c5fd', fontSize: 14 }}>
+            ¿No tenés cuenta? <Text style={{ fontWeight: '700', color: '#fff' }}>Registrate</Text>
+          </Text>
+        </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
   );

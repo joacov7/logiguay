@@ -34,6 +34,7 @@ export async function register(data: {
   firstName: string;
   lastName: string;
   phone?: string;
+  role?: 'DADOR' | 'TRANSPORTISTA';
 }): Promise<LoginResponse> {
   const response = await api.post<LoginResponse>('/auth/register', data);
   const { accessToken, refreshToken, user } = response.data;

@@ -35,6 +35,11 @@ export class RegisterDto {
   @IsOptional()
   @IsString()
   phone?: string;
+
+  @ApiPropertyOptional({ enum: ['DADOR', 'TRANSPORTISTA'], default: 'DADOR' })
+  @IsOptional()
+  @IsEnum(['DADOR', 'TRANSPORTISTA'], { message: 'El rol debe ser DADOR o TRANSPORTISTA' })
+  role?: 'DADOR' | 'TRANSPORTISTA';
 }
 
 export class RefreshTokenDto {
