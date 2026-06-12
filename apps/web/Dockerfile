@@ -3,11 +3,11 @@ WORKDIR /app
 RUN apk add --no-cache libc6-compat
 
 FROM base AS deps
-COPY apps/web/package*.json ./
+COPY package*.json ./
 RUN npm install
 
 FROM deps AS builder
-COPY apps/web .
+COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
