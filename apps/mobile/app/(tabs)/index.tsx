@@ -93,7 +93,7 @@ export default function TripsScreen() {
       if (u.companyId) params.companyId = u.companyId;
       if (u.driverId) params.driverId = u.driverId;
       const res = await api.get('/trips', { params });
-      setTrips(res.data as Trip[]);
+      setTrips((res.data?.data ?? res.data) as Trip[]);
       setError(null);
     } catch (e: any) {
       setError(
