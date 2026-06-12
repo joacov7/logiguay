@@ -28,7 +28,11 @@ export default function LoginScreen() {
     setError(null);
     try {
       const user = await login(email.trim(), password);
-      router.replace(user.role === 'DADOR' ? '/(dador)/' : '/(tabs)/');
+      router.replace(
+        user.role === 'DADOR' ? '/(dador)/' :
+        user.role === 'CHOFER' ? '/(chofer)/' :
+        '/(tabs)/'
+      );
     } catch (e: any) {
       setError(
         e?.response?.data?.message ||

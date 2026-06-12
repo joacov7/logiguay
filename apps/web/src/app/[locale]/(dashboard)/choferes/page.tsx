@@ -25,6 +25,7 @@ const createDriverSchema = z.object({
   phone: z.string().optional(),
   licenseNumber: z.string().min(1, 'Requerido'),
   licenseExpiry: z.string().min(1, 'Requerido'),
+  password: z.string().min(6, 'Mínimo 6 caracteres'),
 });
 
 const updateDriverSchema = z.object({
@@ -50,6 +51,7 @@ export default function ChoferesPage() {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [editingDriver, setEditingDriver] = useState<any>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [createdPassword, setCreatedPassword] = useState<{ name: string; email: string; password: string } | null>(null);
 
   const queryParams = new URLSearchParams();
   if (companyId) queryParams.set('companyId', companyId);
@@ -86,10 +88,17 @@ export default function ChoferesPage() {
 
   const createMutation = useMutation({
     mutationFn: (data: any) => api.post('/drivers', data),
-    onSuccess: () => {
+    onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['choferes'] });
       queryClient.invalidateQueries({ queryKey: ['choferes-stats'] });
       setCreateModalOpen(false);
+      if (res.data?.tempPassword) {
+        setCreatedPassword({
+          name: `${res.data.user.firstName} ${res.data.user.lastName}`,
+          email: res.data.user.email,
+          password: res.data.tempPassword,
+        });
+      }
       createForm.reset();
     },
   });
@@ -305,6 +314,13 @@ export default function ChoferesPage() {
             {...createForm.register('licenseExpiry')}
             error={createForm.formState.errors.licenseExpiry?.message}
           />
+          <Input
+            label="Contraseña de acceso a la app *"
+            type="text"
+            placeholder="Mínimo 6 caracteres"
+            {...createForm.register('password')}
+            error={createForm.formState.errors.password?.message}
+          />
           <div className="flex justify-end gap-3 pt-2">
             <Button type="button" variant="outline" onClick={() => { setCreateModalOpen(false); createForm.reset(); }}>Cancelar</Button>
             <Button type="submit" disabled={createMutation.isPending}>
@@ -392,6 +408,34 @@ export default function ChoferesPage() {
               {deleteMutation.isPending ? 'Eliminando...' : 'Eliminar'}
             </Button>
           </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={!!createdPassword}
+        onClose={() => setCreatedPassword(null)}
+        title="✅ Chofer creado"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            El chofer <strong>{createdPassword?.name}</strong> fue creado correctamente.
+            Compartí estas credenciales para que pueda ingresar a la app:
+          </p>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-gray-500 font-medium">EMAIL</span>
+              <span className="text-sm font-mono font-bold">{createdPassword?.email}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-gray-500 font-medium">CONTRASEÑA</span>
+              <span className="text-sm font-mono font-bold text-blue-700">{createdPassword?.password}</span>
+            </div>
+          </div>
+          <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2">
+            ⚠️ Guardá esta contraseña. No se mostrará nuevamente.
+          </p>
+          <Button className="w-full" onClick={() => setCreatedPassword(null)}>Entendido</Button>
         </div>
       </Modal>
     </div>

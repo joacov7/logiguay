@@ -21,28 +21,40 @@ export class DriversService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(companyId: string, dto: CreateDriverDto) {
-    const { firstName, lastName, email, phone, licenseNumber, licenseExpiry } = dto;
+    const { firstName, lastName, email, phone, licenseNumber, licenseExpiry, password } = dto;
+
+    const plainPassword = password || randomBytes(8).toString('hex');
+    const hashedPassword = await bcrypt.hash(plainPassword, 10);
 
     let user = await this.prisma.user.findUnique({ where: { email } });
+    const isNewUser = !user;
+
     if (!user) {
-      const tempPassword = await bcrypt.hash(randomBytes(16).toString('hex'), 10);
       user = await this.prisma.user.create({
         data: {
           email,
-          password: tempPassword,
+          password: hashedPassword,
           firstName,
           lastName,
           phone,
           role: 'CHOFER' as any,
         },
       });
+    } else {
+      // Update password if explicitly provided
+      if (password) {
+        await this.prisma.user.update({
+          where: { id: user.id },
+          data: { password: hashedPassword, role: 'CHOFER' as any },
+        });
+      }
     }
 
     const expiry = new Date(licenseExpiry);
     const now = new Date();
     const status = expiry < now ? 'VENCIDO' : 'ACTIVO';
 
-    return this.prisma.driver.create({
+    const driver = await this.prisma.driver.create({
       data: {
         userId: user.id,
         companyId,
@@ -62,6 +74,9 @@ export class DriversService {
         },
       },
     });
+
+    // Return plain password only on creation so the transportista can share it with the chofer
+    return { ...driver, tempPassword: isNewUser || password ? plainPassword : undefined };
   }
 
   async findAll(filters: FindAllFilters) {

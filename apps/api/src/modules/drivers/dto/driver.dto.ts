@@ -1,11 +1,7 @@
-import { IsString, IsOptional, IsDateString, IsEmail } from 'class-validator';
+import { IsString, IsOptional, IsDateString, IsEmail, MinLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateDriverDto {
-  @ApiProperty()
-  @IsString()
-  companyId: string;
-
   @ApiProperty()
   @IsString()
   firstName: string;
@@ -30,6 +26,12 @@ export class CreateDriverDto {
   @ApiProperty()
   @IsDateString()
   licenseExpiry: string;
+
+  @ApiPropertyOptional({ description: 'Contraseña para que el chofer pueda acceder a la app' })
+  @IsOptional()
+  @IsString()
+  @MinLength(6)
+  password?: string;
 }
 
 export class UpdateDriverDto {

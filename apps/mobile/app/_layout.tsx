@@ -49,7 +49,11 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 
         if (inAuth) {
           // Redirigir a la sección correcta según el rol
-          router.replace(user.role === 'DADOR' ? '/(dador)/' : '/(tabs)/');
+          router.replace(
+            user.role === 'DADOR' ? '/(dador)/' :
+            user.role === 'CHOFER' ? '/(chofer)/' :
+            '/(tabs)/'
+          );
         }
       }
       setChecked(true);
@@ -68,6 +72,7 @@ export default function RootLayout() {
           <Stack.Screen name="login" />
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="(dador)" />
+          <Stack.Screen name="(chofer)" />
           <Stack.Screen
             name="trip/[id]"
             options={{
