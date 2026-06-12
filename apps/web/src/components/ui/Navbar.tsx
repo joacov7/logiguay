@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef, useState, useEffect } from 'react';
-import { Bell, User } from 'lucide-react';
+import { Bell, User, Menu } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
 import { User as UserType, Alert } from '../../types';
@@ -11,9 +11,10 @@ import { api } from '@/lib/api';
 interface NavbarProps {
   user?: UserType | null;
   unreadAlerts?: number;
+  onMenuClick?: () => void;
 }
 
-export function Navbar({ user, unreadAlerts = 0 }: NavbarProps) {
+export function Navbar({ user, unreadAlerts = 0, onMenuClick }: NavbarProps) {
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
@@ -64,6 +65,12 @@ export function Navbar({ user, unreadAlerts = 0 }: NavbarProps) {
 
   return (
     <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 sticky top-0 z-30">
+      <button
+        onClick={onMenuClick}
+        className="lg:hidden p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg"
+      >
+        <Menu className="h-5 w-5" />
+      </button>
       <div className="flex-1" />
 
       <div className="flex items-center gap-4">

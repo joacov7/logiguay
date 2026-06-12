@@ -40,96 +40,115 @@ const navItems = [
 
 interface SidebarProps {
   onLogout?: () => void;
+  isOpen: boolean;
+  onClose: () => void;
 }
 
-export function Sidebar({ onLogout }: SidebarProps) {
+export function Sidebar({ onLogout, isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const t = useTranslations('nav');
   const { user } = useAuth();
 
   return (
-    <aside className="flex flex-col w-64 h-screen bg-gray-900 text-white fixed left-0 top-0 z-40">
-      <div className="flex items-center gap-2 p-6 border-b border-gray-700">
-        <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-          <Truck className="h-5 w-5 text-white" />
+    <>
+      {/* Backdrop — mobile only */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-30 lg:hidden"
+          onClick={onClose}
+        />
+      )}
+      <aside className={`
+        fixed left-0 top-0 h-screen w-64 bg-gray-900 text-white z-40
+        flex flex-col
+        transform transition-transform duration-300 ease-in-out
+        ${isOpen ? 'translate-x-0' : '-translate-x-full'}
+        lg:translate-x-0 lg:static lg:block
+      `}>
+        <div className="flex items-center gap-2 p-6 border-b border-gray-700">
+          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+            <Truck className="h-5 w-5 text-white" />
+          </div>
+          <span className="text-xl font-bold">LOGIGUAY</span>
         </div>
-        <span className="text-xl font-bold">LOGIGUAY</span>
-      </div>
 
-      <nav className="flex-1 p-4 overflow-y-auto">
-        <ul className="space-y-1">
-          {navItems.map(({ href, key, icon: Icon }) => {
-            const active = pathname === href || pathname.startsWith(href + '/');
-            return (
-              <li key={href}>
-                <Link
-                  href={href}
-                  className={`
-                    flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium
-                    transition-colors
-                    ${active
-                      ? 'bg-blue-600 text-white'
-                      : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                    }
-                  `}
-                >
-                  <Icon className="h-4 w-4 shrink-0" />
-                  {t(key)}
+        <nav className="flex-1 p-4 overflow-y-auto">
+          <ul className="space-y-1">
+            {navItems.map(({ href, key, icon: Icon }) => {
+              const active = pathname === href || pathname.startsWith(href + '/');
+              return (
+                <li key={href}>
+                  <Link
+                    href={href}
+                    onClick={onClose}
+                    className={`
+                      flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium
+                      transition-colors
+                      ${active
+                        ? 'bg-blue-600 text-white'
+                        : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                      }
+                    `}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" />
+                    {t(key)}
+                  </Link>
+                </li>
+              );
+            })}
+            {(user?.role === 'TRANSPORTISTA') && (
+              <li>
+                <Link href="/retorno" onClick={onClose} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${pathname === '/retorno' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
+                  <ArrowLeftRight className="h-4 w-4 shrink-0" />
+                  Retorno
                 </Link>
               </li>
-            );
-          })}
-          {(user?.role === 'TRANSPORTISTA') && (
+            )}
             <li>
-              <Link href="/retorno" className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${pathname === '/retorno' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
-                <ArrowLeftRight className="h-4 w-4 shrink-0" />
-                Retorno
+              <Link href="/turnos" onClick={onClose} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${pathname === '/turnos' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
+                <Calendar className="h-4 w-4 shrink-0" />
+                Turnos
               </Link>
             </li>
-          )}
-          <li>
-            <Link href="/turnos" className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${pathname === '/turnos' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
-              <Calendar className="h-4 w-4 shrink-0" />
-              Turnos
-            </Link>
-          </li>
-          <li>
-            <Link href="/camiones-disponibles" className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${pathname === '/camiones-disponibles' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
-              <TruckIcon className="h-4 w-4 shrink-0" />
-              Camiones
-            </Link>
-          </li>
-        </ul>
-      </nav>
+            <li>
+              <Link href="/camiones-disponibles" onClick={onClose} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${pathname === '/camiones-disponibles' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
+                <TruckIcon className="h-4 w-4 shrink-0" />
+                Camiones
+              </Link>
+            </li>
+          </ul>
+        </nav>
 
-      {user?.role === 'ADMIN' && (
-        <div className="px-4 pb-2">
-          <Link
-            href="/admin"
-            className={`
-              flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium
-              transition-colors
-              ${pathname === '/admin' || pathname.startsWith('/admin/')
-                ? 'bg-blue-600 text-white'
-                : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-              }
-            `}
+        {user?.role === 'ADMIN' && (
+          <div className="px-4 pb-2">
+            <Link
+              href="/admin"
+              onClick={onClose}
+              className={`
+                flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium
+                transition-colors
+                ${pathname === '/admin' || pathname.startsWith('/admin/')
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                }
+              `}
+            >
+              <ShieldCheck className="h-4 w-4 shrink-0" />
+              Administración
+            </Link>
+          </div>
+        )}
+
+        <div className="p-4 border-t border-gray-700">
+          <button
+            onClick={onLogout}
+            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
           >
-            <ShieldCheck className="h-4 w-4 shrink-0" />
-            Administración
-          </Link>
+            <LogOut className="h-4 w-4" />
+            {t('logout')}
+          </button>
         </div>
-      )}
-
-      <div className="p-4 border-t border-gray-700">
-        <button
-          onClick={onLogout}
-          className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
-        >
-          <LogOut className="h-4 w-4" />
-          {t('logout')}
-        </button>
-      </div>
-    </aside>
+      </aside>
+    </>
   );
 }
