@@ -153,6 +153,8 @@ export default function ViajesPage() {
     queryFn: async () => (await api.get(`/drivers?companyId=${companyId}&limit=100`)).data,
   });
 
+  const trip = tripQuery.data;
+
   const hasRatedQuery = useQuery({
     queryKey: ['trip-has-rated', selectedTripId],
     enabled: !!selectedTripId && trip?.status === 'FINALIZADO',
@@ -193,7 +195,6 @@ export default function ViajesPage() {
     onSuccess: () => { invalidate(); setShowCancel(false); setCancelReason(''); },
   });
 
-  const trip = tripQuery.data;
   const currentStageIdx = trip ? STATUS_ORDER.indexOf(trip.status) : -1;
   const nextStage = currentStageIdx >= 0 && currentStageIdx < STAGES.length - 1
     ? STAGES[currentStageIdx + 1] : null;
