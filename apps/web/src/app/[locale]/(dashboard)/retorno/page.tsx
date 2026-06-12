@@ -14,7 +14,7 @@ import { useAuth } from '@/hooks/useAuth';
 
 interface CargoWithDist extends Cargo {
   distKm: number;
-  company: { id: string; name: string };
+  company: { id: string; name: string; country: string };
 }
 
 const RADIUS_OPTIONS = [50, 100, 200, 300];
