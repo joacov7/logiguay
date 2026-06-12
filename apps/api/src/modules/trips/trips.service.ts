@@ -57,8 +57,8 @@ export class TripsService {
     return trip;
   }
 
-  async assign(id: string, dto: AssignTripDto) {
-    const trip = await this.findOne(id);
+  async assign(id: string, dto: AssignTripDto, requester?: { role: string; companyId?: string }) {
+    const trip = await this.findOne(id, requester);
 
     if (trip.status !== TripStatus.ASIGNADO && trip.status !== TripStatus.COTIZANDO) {
       throw new BadRequestException('Solo se puede asignar un viaje en estado COTIZANDO o ASIGNADO');
@@ -132,7 +132,7 @@ export class TripsService {
     return { data, total, page, limit, pages: Math.ceil(total / limit) };
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, requester?: { role: string; companyId?: string; driverId?: string }) {
     const trip = await this.prisma.trip.findUnique({
       where: { id },
       include: {
@@ -146,11 +146,21 @@ export class TripsService {
       },
     });
     if (!trip) throw new NotFoundException('Viaje no encontrado');
+
+    if (requester && requester.role !== 'ADMIN') {
+      const role = requester.role;
+      const allowed =
+        (role === 'TRANSPORTISTA' && trip.transportCompanyId === requester.companyId) ||
+        (role === 'DADOR' && (trip.cargo as any)?.companyId === requester.companyId) ||
+        (role === 'CHOFER' && trip.driverId === requester.driverId);
+      if (!allowed) throw new NotFoundException('Viaje no encontrado');
+    }
+
     return trip;
   }
 
-  async updateStatus(id: string, dto: UpdateTripStatusDto) {
-    const trip = await this.findOne(id);
+  async updateStatus(id: string, dto: UpdateTripStatusDto, requester?: { role: string; companyId?: string; driverId?: string }) {
+    const trip = await this.findOne(id, requester);
     const allowed = STATUS_TRANSITIONS[trip.status as TripStatus] ?? [];
 
     if (!allowed.includes(dto.status)) {
@@ -305,8 +315,8 @@ export class TripsService {
     };
   }
 
-  async cancel(id: string, reason: string, _requesterId?: string) {
-    const trip = await this.findOne(id);
+  async cancel(id: string, reason: string, _requesterId?: string, requester?: { role: string; companyId?: string; driverId?: string }) {
+    const trip = await this.findOne(id, requester);
 
     if (trip.status === TripStatus.FINALIZADO || trip.status === TripStatus.CANCELADO) {
       throw new BadRequestException('Este viaje no puede ser cancelado');

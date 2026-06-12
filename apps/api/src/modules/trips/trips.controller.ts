@@ -27,29 +27,37 @@ export class TripsController {
 
   @Get()
   @ApiOperation({ summary: 'Listar viajes con filtros' })
-  @ApiQuery({ name: 'companyId', required: false })
-  @ApiQuery({ name: 'cargoCompanyId', required: false })
   @ApiQuery({ name: 'status', required: false, enum: TripStatus })
-  @ApiQuery({ name: 'driverId', required: false })
   @ApiQuery({ name: 'vehicleId', required: false })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   findAll(
-    @Query('companyId') companyId?: string,
-    @Query('cargoCompanyId') cargoCompanyId?: string,
+    @CurrentUser() user: any,
     @Query('status') status?: string,
-    @Query('driverId') driverId?: string,
     @Query('vehicleId') vehicleId?: string,
     @Query('page') page?: number,
     @Query('limit') limit?: number,
   ) {
+    let companyId: string | undefined;
+    let cargoCompanyId: string | undefined;
+    let driverId: string | undefined;
+
+    if (user.role === 'TRANSPORTISTA') {
+      companyId = user.companyId;
+    } else if (user.role === 'DADOR') {
+      cargoCompanyId = user.companyId;
+    } else if (user.role === 'CHOFER') {
+      driverId = user.driverId;
+    }
+    // ADMIN can see everything without forced filters
+
     return this.tripsService.findAll({ companyId, cargoCompanyId, status, driverId, vehicleId, page, limit });
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Obtener detalle de un viaje' })
-  findOne(@Param('id') id: string) {
-    return this.tripsService.findOne(id);
+  findOne(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.tripsService.findOne(id, user);
   }
 
   @Get(':id/eta')
@@ -61,14 +69,14 @@ export class TripsController {
   @Patch(':id/assign')
   @Roles('TRANSPORTISTA', 'ADMIN')
   @ApiOperation({ summary: 'Asignar vehículo y chofer al viaje' })
-  assign(@Param('id') id: string, @Body() dto: AssignTripDto) {
-    return this.tripsService.assign(id, dto);
+  assign(@Param('id') id: string, @Body() dto: AssignTripDto, @CurrentUser() user: any) {
+    return this.tripsService.assign(id, dto, user);
   }
 
   @Patch(':id/status')
   @ApiOperation({ summary: 'Avanzar estado del viaje' })
-  updateStatus(@Param('id') id: string, @Body() dto: UpdateTripStatusDto) {
-    return this.tripsService.updateStatus(id, dto);
+  updateStatus(@Param('id') id: string, @Body() dto: UpdateTripStatusDto, @CurrentUser() user: any) {
+    return this.tripsService.updateStatus(id, dto, user);
   }
 
   @Patch(':id/cancel')
@@ -76,9 +84,9 @@ export class TripsController {
   cancel(
     @Param('id') id: string,
     @Body() dto: CancelTripDto,
-    @CurrentUser('id') userId: string,
+    @CurrentUser() user: any,
   ) {
-    return this.tripsService.cancel(id, dto.reason, userId);
+    return this.tripsService.cancel(id, dto.reason, user.id, user);
   }
 
   @Post(':id/events')
