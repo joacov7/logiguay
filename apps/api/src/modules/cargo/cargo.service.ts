@@ -42,7 +42,9 @@ export class CargoService {
     province?: string;
   }) {
     const { companyId, status, page = 1, limit = 20, lat, lng, radiusKm, province } = filters;
-    const skip = (page - 1) * limit;
+    const p = Number(page) || 1;
+    const l = Number(limit) || 20;
+    const skip = (p - 1) * l;
     const where: Prisma.CargoWhereInput = {};
     if (companyId) where.companyId = companyId;
     if (status) where.status = status as Prisma.EnumCargoStatusFilter;
@@ -54,7 +56,7 @@ export class CargoService {
       this.prisma.cargo.findMany({
         where,
         skip: geoActive ? 0 : skip,
-        take: geoActive ? undefined : limit,
+        take: geoActive ? undefined : l,
         orderBy: { createdAt: 'desc' },
         include: {
           company: { select: { id: true, name: true } },
@@ -84,11 +86,11 @@ export class CargoService {
       });
 
       const filteredTotal = annotated.length;
-      const data = annotated.slice(skip, skip + limit);
-      return { data, total: filteredTotal, page, limit, pages: Math.ceil(filteredTotal / limit) };
+      const data = annotated.slice(skip, skip + l);
+      return { data, total: filteredTotal, page: p, limit: l, pages: Math.ceil(filteredTotal / l) };
     }
 
-    return { data: rawData, total, page, limit, pages: Math.ceil(total / limit) };
+    return { data: rawData, total, page: p, limit: l, pages: Math.ceil(total / l) };
   }
 
   async findOne(id: string) {
@@ -174,7 +176,9 @@ export class CargoService {
       province,
     } = filters;
 
-    const skip = (page - 1) * limit;
+    const p = Number(page) || 1;
+    const l = Number(limit) || 20;
+    const skip = (p - 1) * l;
 
     const where: Prisma.CargoWhereInput = {
       status: { in: ['PUBLICADO', 'COTIZANDO'] },
@@ -225,7 +229,7 @@ export class CargoService {
         where,
         // When geo-filtering we fetch all matching records to sort/filter by distance
         skip: geoActive ? 0 : skip,
-        take: geoActive ? undefined : limit,
+        take: geoActive ? undefined : l,
         orderBy: orderByClause,
         include: {
           company: { select: { id: true, name: true, country: true } },
@@ -260,11 +264,11 @@ export class CargoService {
       });
 
       const filteredTotal = annotated.length;
-      const data = annotated.slice(skip, skip + limit);
-      return { data, total: filteredTotal, page, limit, pages: Math.ceil(filteredTotal / limit) };
+      const data = annotated.slice(skip, skip + l);
+      return { data, total: filteredTotal, page: p, limit: l, pages: Math.ceil(filteredTotal / l) };
     }
 
-    return { data: rawData, total, page, limit, pages: Math.ceil(total / limit) };
+    return { data: rawData, total, page: p, limit: l, pages: Math.ceil(total / l) };
   }
 
   async getRetorno(lat: number, lng: number, radiusKm = 150) {

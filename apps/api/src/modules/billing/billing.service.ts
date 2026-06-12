@@ -15,7 +15,9 @@ export class BillingService {
 
   async getInvoices(companyId: string, filters: InvoiceFilters = {}) {
     const { type, status, page = 1, limit = 20 } = filters;
-    const skip = (page - 1) * limit;
+    const p = Number(page) || 1;
+    const l = Number(limit) || 20;
+    const skip = (p - 1) * l;
 
     const where = {
       companyId,
@@ -27,14 +29,14 @@ export class BillingService {
       this.prisma.invoice.findMany({
         where,
         skip,
-        take: limit,
+        take: l,
         orderBy: { createdAt: 'desc' },
         include: { trip: { select: { id: true, status: true } } },
       }),
       this.prisma.invoice.count({ where }),
     ]);
 
-    return { data, total, page, limit, pages: Math.ceil(total / limit) };
+    return { data, total, page: p, limit: l, pages: Math.ceil(total / l) };
   }
 
   async getInvoice(id: string, companyId?: string) {

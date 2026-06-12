@@ -69,12 +69,14 @@ export class QuotesService {
     if (role !== 'ADMIN' && cargo.companyId !== companyId) {
       throw new ForbiddenException('No tiene permisos sobre esta carga');
     }
-    const skip = (page - 1) * limit;
+    const p = Number(page) || 1;
+    const l = Number(limit) || 20;
+    const skip = (p - 1) * l;
     const [data, total] = await Promise.all([
       this.prisma.quote.findMany({
         where: { cargoId },
         skip,
-        take: limit,
+        take: l,
         include: {
           transportCompany: { select: { id: true, name: true, country: true } },
         },
@@ -82,16 +84,18 @@ export class QuotesService {
       }),
       this.prisma.quote.count({ where: { cargoId } }),
     ]);
-    return { data, total, page, limit, pages: Math.ceil(total / limit) };
+    return { data, total, page: p, limit: l, pages: Math.ceil(total / l) };
   }
 
   async findByCompany(companyId: string, page = 1, limit = 20) {
-    const skip = (page - 1) * limit;
+    const p = Number(page) || 1;
+    const l = Number(limit) || 20;
+    const skip = (p - 1) * l;
     const [data, total] = await Promise.all([
       this.prisma.quote.findMany({
         where: { transportCompanyId: companyId },
         skip,
-        take: limit,
+        take: l,
         include: {
           cargo: {
             select: {
@@ -107,7 +111,7 @@ export class QuotesService {
       }),
       this.prisma.quote.count({ where: { transportCompanyId: companyId } }),
     ]);
-    return { data, total, page, limit, pages: Math.ceil(total / limit) };
+    return { data, total, page: p, limit: l, pages: Math.ceil(total / l) };
   }
 
   async accept(id: string, companyId: string) {

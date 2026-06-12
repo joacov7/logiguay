@@ -20,17 +20,19 @@ export class CompaniesService {
   }
 
   async findAll(page = 1, limit = 20) {
-    const skip = (page - 1) * limit;
+    const p = Number(page) || 1;
+    const l = Number(limit) || 20;
+    const skip = (p - 1) * l;
     const [data, total] = await Promise.all([
       this.prisma.company.findMany({
         skip,
-        take: limit,
+        take: l,
         orderBy: { createdAt: 'desc' },
         include: { _count: { select: { vehicles: true, drivers: true } } },
       }),
       this.prisma.company.count(),
     ]);
-    return { data, total, page, limit, pages: Math.ceil(total / limit) };
+    return { data, total, page: p, limit: l, pages: Math.ceil(total / l) };
   }
 
   async findOne(id: string) {

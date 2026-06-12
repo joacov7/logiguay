@@ -66,7 +66,9 @@ export class DriversService {
 
   async findAll(filters: FindAllFilters) {
     const { companyId, status, search, page = 1, limit = 20 } = filters;
-    const skip = (page - 1) * limit;
+    const p = Number(page) || 1;
+    const l = Number(limit) || 20;
+    const skip = (p - 1) * l;
 
     const where: any = { companyId };
     if (status) where.status = status;
@@ -83,7 +85,7 @@ export class DriversService {
       this.prisma.driver.findMany({
         where,
         skip,
-        take: limit,
+        take: l,
         include: {
           user: {
             select: {
@@ -101,7 +103,7 @@ export class DriversService {
       this.prisma.driver.count({ where }),
     ]);
 
-    return { data, total, page, limit, pages: Math.ceil(total / limit) };
+    return { data, total, page: p, limit: l, pages: Math.ceil(total / l) };
   }
 
   async findOne(id: string, companyId?: string) {

@@ -9,8 +9,10 @@ export class AlertsService {
     return this.prisma.alert.create({ data });
   }
 
-  async findAll(companyId: string, onlyUnread = false, page = 1, limit = 20) {
-    const skip = (page - 1) * limit;
+  async findAll(companyId: string, onlyUnread = false, page: number | string = 1, limit: number | string = 20) {
+    const p = Number(page) || 1;
+    const l = Number(limit) || 20;
+    const skip = (p - 1) * l;
     const where: any = { companyId };
     if (onlyUnread) where.isRead = false;
 
@@ -18,14 +20,14 @@ export class AlertsService {
       this.prisma.alert.findMany({
         where,
         skip,
-        take: limit,
+        take: l,
         orderBy: { createdAt: 'desc' },
         include: { trip: { select: { id: true, status: true } } },
       }),
       this.prisma.alert.count({ where }),
     ]);
 
-    return { data, total, page, limit, pages: Math.ceil(total / limit) };
+    return { data, total, page: p, limit: l, pages: Math.ceil(total / l) };
   }
 
   async markAsRead(id: string) {

@@ -23,17 +23,19 @@ export class UsersService {
   };
 
   async findAll(page = 1, limit = 20) {
-    const skip = (page - 1) * limit;
+    const p = Number(page) || 1;
+    const l = Number(limit) || 20;
+    const skip = (p - 1) * l;
     const [data, total] = await Promise.all([
       this.prisma.user.findMany({
         skip,
-        take: limit,
+        take: l,
         select: this.selectFields,
         orderBy: { createdAt: 'desc' },
       }),
       this.prisma.user.count(),
     ]);
-    return { data, total, page, limit, pages: Math.ceil(total / limit) };
+    return { data, total, page: p, limit: l, pages: Math.ceil(total / l) };
   }
 
   async findOne(id: string) {
