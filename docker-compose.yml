@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
   postgres:
     image: postgres:16-alpine
@@ -12,7 +10,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-logiguay_pass}
       POSTGRES_DB: ${POSTGRES_DB:-logiguay_db}
     ports:
-      - '${POSTGRES_PORT:-5432}:5432'
+      - '127.0.0.1:${POSTGRES_PORT:-5432}:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -29,7 +27,7 @@ services:
       - logiguay
     command: redis-server --requirepass ${REDIS_PASSWORD:-redis_pass}
     ports:
-      - '${REDIS_PORT:-6379}:6379'
+      - '127.0.0.1:${REDIS_PORT:-6379}:6379'
     volumes:
       - redis_data:/data
     healthcheck:
@@ -38,6 +36,37 @@ services:
       timeout: 5s
       retries: 5
 
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: logiguay_api
+    restart: unless-stopped
+    networks:
+      - logiguay
+    env_file: .env
+    ports:
+      - '3001:3001'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  web:
+    build:
+      context: apps/web
+      dockerfile: Dockerfile
+    container_name: logiguay_web
+    restart: unless-stopped
+    networks:
+      - logiguay
+    env_file: .env
+    ports:
+      - '3000:3000'
+    depends_on:
+      - api
+
   traccar:
     image: traccar/traccar:6-alpine
     container_name: logiguay_traccar
@@ -45,33 +74,19 @@ services:
     networks:
       - logiguay
     environment:
-      # Reenvía cada posición al API de LOGIGUAY (host.docker.internal = tu PC)
       FORWARD_ENABLE: 'true'
-      FORWARD_URL: 'http://host.docker.internal:3001/api/v1/tracking/traccar?token=${TRACCAR_WEBHOOK_TOKEN:-traccar_secret_token}'
+      FORWARD_URL: 'http://api:3001/api/v1/tracking/traccar?token=${TRACCAR_WEBHOOK_TOKEN:-traccar_secret_token}'
       FORWARD_JSON: 'true'
     ports:
-      - '8083:8082' # interfaz web de Traccar (http://localhost:8083)
-      - '5023:5023' # protocolo GT06 (West A10 y similares)
+      - '8083:8082'
+      - '5023:5023'
     volumes:
       - ./traccar/traccar.xml:/opt/traccar/conf/traccar.xml:ro
       - traccar_data:/opt/traccar/data
     extra_hosts:
       - 'host.docker.internal:host-gateway'
-
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: logiguay_pgadmin
-    restart: unless-stopped
-    networks:
-      - logiguay
-    environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@logiguay.com}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin123}
-    ports:
-      - '${PGADMIN_PORT:-5050}:80'
     depends_on:
-      postgres:
-        condition: service_healthy
+      - api
 
 volumes:
   postgres_data:
