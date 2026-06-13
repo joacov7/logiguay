@@ -8,6 +8,7 @@ import {
 import { TripStatus, TripEventType, CommissionType } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AlertsService } from '../alerts/alerts.service';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { CreateTripDto, UpdateTripStatusDto, AddTripEventDto, AssignTripDto } from './dto/trip.dto';
 
 const STATUS_TRANSITIONS: Record<TripStatus, TripStatus[]> = {
@@ -37,6 +38,7 @@ export class TripsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly alerts: AlertsService,
+    private readonly subscriptions: SubscriptionsService,
   ) {}
 
   async create(dto: CreateTripDto) {
@@ -216,6 +218,7 @@ export class TripsService {
   private async handleTripFinalized(trip: any) {
     if (!trip.agreedRate || !trip.transportCompanyId) return;
 
+    // Commission agreed between dador and transportista
     const commissionAmount = this.calculateCommission(
       trip.agreedRate,
       trip.commission,
@@ -232,8 +235,27 @@ export class TripsService {
           status: 'PENDIENTE',
         },
       });
-
       this.logger.log(`Invoice created for trip ${trip.id}: commission $${commissionAmount}`);
+    }
+
+    // Platform fee based on subscription plan of the transport company
+    try {
+      const limits = await this.subscriptions.getPlanLimits(trip.transportCompanyId);
+      const platformFee = Math.round(trip.agreedRate * (limits.commissionRate / 100));
+      if (platformFee > 0) {
+        await this.prisma.invoice.create({
+          data: {
+            companyId: trip.transportCompanyId,
+            tripId: trip.id,
+            type: 'COMISION',
+            amount: platformFee,
+            status: 'PENDIENTE',
+          },
+        });
+        this.logger.log(`Platform fee for trip ${trip.id}: $${platformFee} (${limits.commissionRate}%)`);
+      }
+    } catch (e) {
+      this.logger.warn(`Could not calculate platform fee for trip ${trip.id}: ${(e as Error).message}`);
     }
 
     await this.prisma.invoice.create({

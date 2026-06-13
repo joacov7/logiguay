@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreateDriverDto, UpdateDriverDto } from './dto/driver.dto';
 import * as bcrypt from 'bcrypt';
@@ -18,9 +19,15 @@ interface FindAllFilters {
 
 @Injectable()
 export class DriversService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly subscriptions: SubscriptionsService,
+  ) {}
 
   async create(companyId: string, dto: CreateDriverDto) {
+    const count = await this.prisma.driver.count({ where: { companyId } });
+    await this.subscriptions.checkLimit(companyId, 'maxDrivers', count);
+
     const { firstName, lastName, email, phone, licenseNumber, licenseExpiry, password } = dto;
 
     const plainPassword = password || randomBytes(8).toString('hex');

@@ -1,8 +1,9 @@
-import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, UseGuards, Query } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { SubscriptionsService } from './subscriptions.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { Public } from '../../common/decorators/roles.decorator';
 import { IsEnum, IsInt, Min, Max } from 'class-validator';
 import { PlanType } from '@prisma/client';
 
@@ -51,5 +52,23 @@ export class SubscriptionsController {
   @ApiOperation({ summary: 'Cancelar suscripción' })
   cancel(@CurrentUser('companyId') companyId: string) {
     return this.subscriptionsService.cancel(companyId);
+  }
+
+  @Post('create-preference')
+  @ApiOperation({ summary: 'Crear preferencia de pago MercadoPago' })
+  createPreference(
+    @CurrentUser('companyId') companyId: string,
+    @Body() dto: ActivateSubscriptionDto,
+  ) {
+    return this.subscriptionsService.createPreference(companyId, dto.plan, dto.months);
+  }
+
+  @Post('webhook/mp')
+  @Public()
+  @ApiOperation({ summary: 'Webhook MercadoPago (sin auth)' })
+  mpWebhook(@Query('id') paymentId: string, @Body() body: any) {
+    const id = paymentId ?? body?.data?.id;
+    if (!id) return { ignored: true };
+    return this.subscriptionsService.handleMpWebhook(String(id));
   }
 }

@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Crown, Check, X } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import { Crown, Check, X, CheckCircle, AlertTriangle } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -132,6 +133,15 @@ export default function SuscripcionPage() {
   const [selectedPlan, setSelectedPlan] = useState<PlanType | null>(null);
   const [months, setMonths] = useState(1);
   const queryClient = useQueryClient();
+  const searchParams = useSearchParams();
+  const paymentStatus = searchParams.get('status');
+
+  useEffect(() => {
+    if (paymentStatus === 'success') {
+      queryClient.invalidateQueries({ queryKey: ['subscription-current'] });
+      queryClient.invalidateQueries({ queryKey: ['subscription-limits'] });
+    }
+  }, [paymentStatus, queryClient]);
 
   const currentQuery = useQuery<Subscription | null>({
     queryKey: ['subscription-current', companyId],
@@ -152,12 +162,20 @@ export default function SuscripcionPage() {
   });
 
   const activateMutation = useMutation({
-    mutationFn: ({ plan, months: m }: { plan: PlanType; months: number }) =>
-      api.post('/subscriptions/activate', { companyId, plan, months: m }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['subscription-current'] });
-      queryClient.invalidateQueries({ queryKey: ['subscription-limits'] });
-      setSelectedPlan(null);
+    mutationFn: async ({ plan, months: m }: { plan: PlanType; months: number }) => {
+      const res = await api.post('/subscriptions/create-preference', { plan, months: m });
+      return res.data as { init_point?: string; sandbox_init_point?: string; free?: boolean; subscription?: any };
+    },
+    onSuccess: (data) => {
+      if (data.free) {
+        // Plan FREE activado directamente
+        queryClient.invalidateQueries({ queryKey: ['subscription-current'] });
+        queryClient.invalidateQueries({ queryKey: ['subscription-limits'] });
+        setSelectedPlan(null);
+      } else if (data.init_point) {
+        // Redirigir a MercadoPago
+        window.location.href = data.init_point;
+      }
     },
   });
 
@@ -183,6 +201,19 @@ export default function SuscripcionPage() {
         <h1 className="text-2xl font-bold text-gray-900">Suscripción</h1>
         <p className="text-sm text-gray-500 mt-1">Gestiona tu plan y límites de uso</p>
       </div>
+
+      {paymentStatus === 'success' && (
+        <div className="flex items-center gap-3 p-4 bg-blue-50 border border-blue-200 rounded-xl text-blue-800">
+          <CheckCircle className="h-5 w-5 text-blue-600 flex-shrink-0" />
+          <span className="text-sm font-medium">¡Pago aprobado! Tu plan fue activado correctamente.</span>
+        </div>
+      )}
+      {paymentStatus === 'failure' && (
+        <div className="flex items-center gap-3 p-4 bg-orange-50 border border-orange-200 rounded-xl text-orange-800">
+          <AlertTriangle className="h-5 w-5 text-orange-500 flex-shrink-0" />
+          <span className="text-sm font-medium">El pago no pudo procesarse. Podés intentarlo nuevamente.</span>
+        </div>
+      )}
 
       {/* Current plan card */}
       {current && (
@@ -329,7 +360,10 @@ export default function SuscripcionPage() {
                 disabled={activateMutation.isPending}
                 className="flex-1"
               >
-                {activateMutation.isPending ? 'Activando...' : 'Confirmar'}
+                {activateMutation.isPending
+                  ? 'Procesando...'
+                  : selectedPlanDef?.price === 0 ? 'Activar gratis' : 'Ir a pagar con MercadoPago'
+                }
               </Button>
             </div>
 

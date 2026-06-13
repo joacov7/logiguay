@@ -1,7 +1,8 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { PlanType } from '@prisma/client';
 import { PLAN_LIMITS, PlanLimits } from '../../common/config/plan-limits.config';
+import { MercadoPagoConfig, Preference, Payment } from 'mercadopago';
 
 const PLAN_PRICES: Record<PlanType, number> = {
   FREE: 0,
@@ -10,8 +11,17 @@ const PLAN_PRICES: Record<PlanType, number> = {
   FLOTA: 199900,
 };
 
+const PLAN_LABELS: Record<PlanType, string> = {
+  FREE: 'Plan Free', PRO: 'Plan Pro', EMPRESA: 'Plan Empresa', FLOTA: 'Plan Flota',
+};
+
 @Injectable()
 export class SubscriptionsService {
+  private readonly logger = new Logger(SubscriptionsService.name);
+  private readonly mp = new MercadoPagoConfig({
+    accessToken: process.env.MP_ACCESS_TOKEN ?? '',
+  });
+
   constructor(private readonly prisma: PrismaService) {}
 
   async getCompanyPlan(companyId: string): Promise<PlanType> {
@@ -142,6 +152,65 @@ export class SubscriptionsService {
     });
 
     return expired.length;
+  }
+
+  async createPreference(companyId: string, plan: PlanType, months: number) {
+    const price = PLAN_PRICES[plan];
+    if (price === 0) {
+      // FREE plan activates immediately
+      return { free: true, subscription: await this.activate(companyId, plan, months) };
+    }
+
+    const total = price * months;
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://logiguay.com.ar';
+    const apiUrl = process.env.API_URL ?? 'https://api.logiguay.com.ar';
+
+    const preference = new Preference(this.mp);
+    const response = await preference.create({
+      body: {
+        items: [{
+          id: `${plan}-${months}m`,
+          title: `${PLAN_LABELS[plan]} · ${months} ${months === 1 ? 'mes' : 'meses'}`,
+          quantity: 1,
+          unit_price: total,
+          currency_id: 'ARS',
+        }],
+        back_urls: {
+          success: `${appUrl}/es/suscripcion?status=success`,
+          failure: `${appUrl}/es/suscripcion?status=failure`,
+          pending: `${appUrl}/es/suscripcion?status=pending`,
+        },
+        auto_return: 'approved',
+        notification_url: `${apiUrl}/subscriptions/webhook/mp`,
+        metadata: { companyId, plan, months },
+      },
+    });
+
+    return { init_point: response.init_point, sandbox_init_point: response.sandbox_init_point };
+  }
+
+  async handleMpWebhook(paymentId: string) {
+    try {
+      const paymentClient = new Payment(this.mp);
+      const payment = await paymentClient.get({ id: paymentId });
+
+      if (payment.status !== 'approved') return { ignored: true };
+
+      const meta = payment.metadata as { company_id?: string; plan?: string; months?: number };
+      const { company_id: companyId, plan, months = 1 } = meta ?? {};
+
+      if (!companyId || !plan) {
+        this.logger.warn(`MP webhook missing metadata: ${JSON.stringify(meta)}`);
+        return { error: 'missing metadata' };
+      }
+
+      const subscription = await this.activate(companyId, plan as PlanType, months);
+      this.logger.log(`Plan ${plan} activated for company ${companyId} via MP payment ${paymentId}`);
+      return { ok: true, subscription };
+    } catch (err) {
+      this.logger.error(`MP webhook error: ${(err as Error).message}`);
+      return { error: (err as Error).message };
+    }
   }
 
   getPlanPrices() {

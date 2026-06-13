@@ -5,6 +5,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { CreateVehicleDto, UpdateVehicleDto, UpdateVehicleStatusDto } from './dto/vehicle.dto';
 import { VehicleType, VehicleStatus } from '@prisma/client';
 
@@ -19,11 +20,16 @@ interface FindAllFilters {
 
 @Injectable()
 export class VehiclesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly subscriptions: SubscriptionsService,
+  ) {}
 
   async create(companyId: string, dto: CreateVehicleDto) {
     const existing = await this.prisma.vehicle.findUnique({ where: { plate: dto.plate.toUpperCase() } });
     if (existing) throw new ConflictException('Patente ya registrada');
+    const count = await this.prisma.vehicle.count({ where: { companyId } });
+    await this.subscriptions.checkLimit(companyId, 'maxVehicles', count);
     return this.prisma.vehicle.create({
       data: {
         ...dto,

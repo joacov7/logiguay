@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { CreateCargoDto, UpdateCargoDto, MarketplaceFilterDto } from './dto/cargo.dto';
 import { Prisma } from '@prisma/client';
 
@@ -18,9 +19,19 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
 
 @Injectable()
 export class CargoService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly subscriptions: SubscriptionsService,
+  ) {}
 
   async create(dto: CreateCargoDto & { companyId: string }) {
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+    const monthlyCount = await this.prisma.cargo.count({
+      where: { companyId: dto.companyId, createdAt: { gte: startOfMonth } },
+    });
+    await this.subscriptions.checkLimit(dto.companyId, 'maxMonthlyPublications', monthlyCount);
     return this.prisma.cargo.create({
       data: {
         ...dto,
