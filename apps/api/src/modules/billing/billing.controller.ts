@@ -52,6 +52,12 @@ export class BillingController {
     return this.billingService.cancel(id, companyId);
   }
 
+  @Get('finanzas/resumen')
+  @ApiOperation({ summary: 'Resumen financiero orientativo para transportistas' })
+  getFinanzasResumen(@CurrentUser('companyId') companyId: string) {
+    return this.billingService.getFinanzasResumen(companyId);
+  }
+
   // ── Admin endpoints ───────────────────────────────────────────────────────────
 
   @Get('admin/resumen')

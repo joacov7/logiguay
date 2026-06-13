@@ -21,6 +21,7 @@ import {
   ArrowLeftRight,
   Calendar,
   TruckIcon,
+  LineChart,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -97,12 +98,20 @@ export function Sidebar({ onLogout, isOpen, onClose }: SidebarProps) {
               );
             })}
             {(user?.role === 'TRANSPORTISTA') && (
-              <li>
-                <Link href="/retorno" onClick={onClose} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${pathname === '/retorno' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
-                  <ArrowLeftRight className="h-4 w-4 shrink-0" />
-                  Retorno
-                </Link>
-              </li>
+              <>
+                <li>
+                  <Link href="/retorno" onClick={onClose} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${pathname === '/retorno' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
+                    <ArrowLeftRight className="h-4 w-4 shrink-0" />
+                    Retorno
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/finanzas" onClick={onClose} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${pathname === '/finanzas' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
+                    <LineChart className="h-4 w-4 shrink-0" />
+                    Mis Finanzas
+                  </Link>
+                </li>
+              </>
             )}
             <li>
               <Link href="/turnos" onClick={onClose} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${pathname === '/turnos' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>

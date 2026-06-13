@@ -123,6 +123,96 @@ export class BillingService {
     });
   }
 
+  // ── Transportista: financial overview ────────────────────────────────────────
+
+  async getFinanzasResumen(companyId: string) {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+    const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+
+    const [thisMon, lastMon, acumulado, pendiente, topViajes, mensualRaw, porVehiculo] = await Promise.all([
+      this.prisma.invoice.aggregate({
+        where: { companyId, type: 'VIAJE', createdAt: { gte: startOfMonth } },
+        _sum: { amount: true }, _count: true,
+      }),
+      this.prisma.invoice.aggregate({
+        where: { companyId, type: 'VIAJE', createdAt: { gte: startOfLastMonth, lte: endOfLastMonth } },
+        _sum: { amount: true }, _count: true,
+      }),
+      this.prisma.invoice.aggregate({
+        where: { companyId, type: 'VIAJE' },
+        _sum: { amount: true }, _count: true,
+      }),
+      this.prisma.invoice.aggregate({
+        where: { companyId, type: 'VIAJE', status: 'PENDIENTE' },
+        _sum: { amount: true }, _count: true,
+      }),
+      this.prisma.trip.findMany({
+        where: { transportCompanyId: companyId, status: 'FINALIZADO', agreedRate: { not: null } },
+        orderBy: { agreedRate: 'desc' },
+        take: 5,
+        include: {
+          cargo: { select: { originAddress: true, destinationAddress: true, type: true } },
+          vehicle: { select: { plate: true } },
+        },
+      }),
+      this.prisma.invoice.findMany({
+        where: { companyId, type: 'VIAJE', createdAt: { gte: sixMonthsAgo } },
+        select: { amount: true, createdAt: true },
+      }),
+      this.prisma.trip.findMany({
+        where: { transportCompanyId: companyId, status: 'FINALIZADO', vehicleId: { not: null } },
+        select: { agreedRate: true, vehicle: { select: { id: true, plate: true } } },
+      }),
+    ]);
+
+    // Monthly series (last 6 months)
+    const mensual: Record<string, number> = {};
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      mensual[`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`] = 0;
+    }
+    mensualRaw.forEach((inv) => {
+      const key = `${inv.createdAt.getFullYear()}-${String(inv.createdAt.getMonth() + 1).padStart(2, '0')}`;
+      if (key in mensual) mensual[key] += inv.amount;
+    });
+
+    // Revenue by vehicle
+    const vehicleMap: Record<string, { plate: string; total: number; viajes: number }> = {};
+    porVehiculo.forEach((t) => {
+      if (!t.vehicle) return;
+      const id = t.vehicle.id;
+      if (!vehicleMap[id]) vehicleMap[id] = { plate: t.vehicle.plate, total: 0, viajes: 0 };
+      vehicleMap[id].total += t.agreedRate ?? 0;
+      vehicleMap[id].viajes++;
+    });
+
+    const ingresosEsteMes = thisMon._sum.amount ?? 0;
+
+    return {
+      ingresosEsteMes,
+      ingresosMesAnterior: lastMon._sum.amount ?? 0,
+      viajesEsteMes: thisMon._count,
+      ingresosAcumulados: acumulado._sum.amount ?? 0,
+      totalViajes: acumulado._count,
+      pendienteAmount: pendiente._sum.amount ?? 0,
+      pendienteCount: pendiente._count,
+      ivaDebitoEstimado: Math.round(ingresosEsteMes * 0.105),
+      mensual: Object.entries(mensual).map(([month, total]) => ({ month, total })),
+      topViajes: topViajes.map((t) => ({
+        id: t.id,
+        agreedRate: t.agreedRate,
+        plate: t.vehicle?.plate,
+        origin: t.cargo?.originAddress,
+        destination: t.cargo?.destinationAddress,
+        cargoType: t.cargo?.type,
+      })),
+      porVehiculo: Object.values(vehicleMap).sort((a, b) => b.total - a.total).slice(0, 5),
+    };
+  }
+
   // ── Admin: platform-wide revenue ─────────────────────────────────────────────
 
   async getAdminRevenueSummary() {
