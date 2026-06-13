@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import '../ops.css';
 
 /* ── types ──────────────────────────────────────────────── */
 type KpiData = { label: string; num: string; u?: string; icon: keyof typeof ICONS; trend: string; up: boolean; sub: string; spark: number[] };

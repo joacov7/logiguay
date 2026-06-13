@@ -3,7 +3,6 @@
 import React, { useEffect } from 'react';
 import { useRouter } from '@/i18n/routing';
 import { useAuth } from '@/hooks/useAuth';
-import './ops.css';
 
 export default function OpsLayout({ children }: { children: React.ReactNode }) {
   const { loading, isAuthenticated } = useAuth();
