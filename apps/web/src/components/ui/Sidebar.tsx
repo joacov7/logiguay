@@ -25,6 +25,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 
 const navItems = [
+  { href: '/operaciones', key: 'operaciones', icon: LayoutDashboard },
   { href: '/dashboard', key: 'dashboard', icon: LayoutDashboard },
   { href: '/cargas', key: 'cargas', icon: Package },
   { href: '/bolsa', key: 'bolsa', icon: ShoppingBag },

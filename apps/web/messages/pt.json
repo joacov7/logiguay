@@ -37,6 +37,7 @@
     "updatedAt": "Atualizado"
   },
   "nav": {
+    "operaciones": "Operaciones",
     "dashboard": "Dashboard",
     "cargas": "Cargas",
     "viajes": "Viagens",
