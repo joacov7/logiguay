@@ -9,10 +9,12 @@ export interface GrainEntry {
 }
 
 const CACHE_KEY = 'market:granos';
-// La pizarra se publica una vez por día hábil — cachear 6 h es suficiente
 const CACHE_TTL_SECONDS = 6 * 60 * 60;
 
-// Pizarra de la Cámara Arbitral de Cereales de Rosario (BCR)
+// API JSON de argentinadatos.com (llamada server-side, sin restricciones CORS)
+const ARGENTINADATOS_URL = 'https://www.argentinadatos.com/v1/cotizaciones/granos';
+
+// Fallback: pizarra BCR vía HTML scraping
 const PIZARRA_URL = 'https://www.cac.bcr.com.ar/es/precios-de-pizarra';
 
 const GRAINS = [
@@ -23,12 +25,10 @@ const GRAINS = [
   { key: 'sorgo', nombre: 'Sorgo' },
 ];
 
-/** Quita tildes y pasa a minúsculas para comparar nombres */
 function normalize(s: string): string {
-  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 }
 
-/** Convierte "350.500,00" o "350500" a número */
 function parsePrice(raw: string): number | null {
   const cleaned = raw.replace(/\./g, '').replace(',', '.');
   const n = parseFloat(cleaned);
@@ -45,39 +45,86 @@ export class MarketService {
     const cached = await this.redis.getJson<GrainEntry[]>(CACHE_KEY);
     if (cached) return cached;
 
+    // 1. Try argentinadatos JSON API
     try {
-      const res = await fetch(PIZARRA_URL, {
-        headers: {
-          Accept: 'text/html',
-          'User-Agent': 'Mozilla/5.0 (compatible; LogiguayBot/1.0)',
-        },
-        signal: AbortSignal.timeout(10000),
-      });
-      if (!res.ok) throw new Error(`upstream status ${res.status}`);
-
-      const html = await res.text();
-      const entries = this.parsePizarra(html);
-      if (entries.length === 0) throw new Error('no se pudo extraer ningún precio del HTML');
-
-      await this.redis.setJson(CACHE_KEY, entries, CACHE_TTL_SECONDS);
-      // Copia sin TTL para servir como fallback si la página cae o cambia
-      await this.redis.setJson(`${CACHE_KEY}:stale`, entries);
-      return entries;
+      const entries = await this.fetchArgentinadatos();
+      if (entries.length > 0) {
+        await this.redis.setJson(CACHE_KEY, entries, CACHE_TTL_SECONDS);
+        await this.redis.setJson(`${CACHE_KEY}:stale`, entries);
+        return entries;
+      }
     } catch (err) {
-      this.logger.warn(`No se pudo obtener cotización de granos: ${(err as Error).message}`);
-      const stale = await this.redis.getJson<GrainEntry[]>(`${CACHE_KEY}:stale`);
-      if (stale) return stale;
-      throw new ServiceUnavailableException('Cotización de granos no disponible');
+      this.logger.warn(`argentinadatos falló: ${(err as Error).message}`);
     }
+
+    // 2. Fallback: BCR HTML scraper
+    try {
+      const entries = await this.fetchBCR();
+      if (entries.length > 0) {
+        await this.redis.setJson(CACHE_KEY, entries, CACHE_TTL_SECONDS);
+        await this.redis.setJson(`${CACHE_KEY}:stale`, entries);
+        return entries;
+      }
+    } catch (err) {
+      this.logger.warn(`BCR scraper falló: ${(err as Error).message}`);
+    }
+
+    // 3. Serve stale data if any source worked before
+    const stale = await this.redis.getJson<GrainEntry[]>(`${CACHE_KEY}:stale`);
+    if (stale) return stale;
+
+    throw new ServiceUnavailableException('Cotización de granos no disponible');
   }
 
-  /**
-   * Extrae precios del HTML de la pizarra. La página lista cada grano con su
-   * precio en $/tonelada. El parseo es tolerante al markup: busca el nombre del
-   * grano y toma el primer número con formato de precio que aparezca después.
-   */
+  private async fetchArgentinadatos(): Promise<GrainEntry[]> {
+    const res = await fetch(ARGENTINADATOS_URL, {
+      headers: {
+        Accept: 'application/json',
+        'User-Agent': 'Mozilla/5.0 (compatible; LogiguayBot/1.0)',
+      },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) throw new Error(`status ${res.status}`);
+
+    // Response is an array of objects like:
+    // [{ "cereal": "Soja", "precioActual": 350000, "variacion": 0.5 }, ...]
+    // or [{ "nombre": "Soja", "precio": 350000, "variacion": 0.5 }, ...]
+    const raw: any[] = await res.json();
+    if (!Array.isArray(raw)) throw new Error('respuesta no es un array');
+
+    const nameMap: Record<string, string> = {
+      soja: 'Soja', maiz: 'Maíz', maíz: 'Maíz', trigo: 'Trigo',
+      girasol: 'Girasol', sorgo: 'Sorgo',
+    };
+
+    return raw
+      .map((item): GrainEntry | null => {
+        const rawName: string = (item.cereal ?? item.nombre ?? item.name ?? '').toString();
+        const normName = normalize(rawName);
+        const nombre = nameMap[normName] ?? rawName;
+        const precio = Number(item.precioActual ?? item.precio ?? item.price ?? 0);
+        const variacion = Number(item.variacion ?? item.var ?? 0);
+        if (!nombre || precio <= 0) return null;
+        return { nombre, unidad: '$/t', precio, variacion };
+      })
+      .filter((e): e is GrainEntry => e !== null);
+  }
+
+  private async fetchBCR(): Promise<GrainEntry[]> {
+    const res = await fetch(PIZARRA_URL, {
+      headers: {
+        Accept: 'text/html',
+        'User-Agent': 'Mozilla/5.0 (compatible; LogiguayBot/1.0)',
+      },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) throw new Error(`upstream status ${res.status}`);
+
+    const html = await res.text();
+    return this.parsePizarra(html);
+  }
+
   private parsePizarra(html: string): GrainEntry[] {
-    // Sacar scripts/estilos y tags, conservando separadores
     const text = html
       .replace(/<script[\s\S]*?<\/script>/gi, ' ')
       .replace(/<style[\s\S]*?<\/style>/gi, ' ')
@@ -92,8 +139,6 @@ export class MarketService {
       const idx = normText.indexOf(grain.key);
       if (idx === -1) continue;
 
-      // Buscar el primer precio (formato 123.456,00 / 123456,00 / 123456) en los
-      // 200 caracteres posteriores al nombre del grano
       const window = text.slice(idx, idx + 200);
       const match = window.match(/(\d{1,3}(?:\.\d{3})+(?:,\d+)?|\d{4,}(?:,\d+)?)/);
       if (!match) continue;
@@ -101,12 +146,7 @@ export class MarketService {
       const precio = parsePrice(match[1]);
       if (precio === null) continue;
 
-      entries.push({
-        nombre: grain.nombre,
-        unidad: '$/t',
-        precio,
-        variacion: 0,
-      });
+      entries.push({ nombre: grain.nombre, unidad: '$/t', precio, variacion: 0 });
     }
 
     return entries;

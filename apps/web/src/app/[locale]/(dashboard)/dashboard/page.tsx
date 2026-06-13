@@ -251,8 +251,8 @@ export default function DashboardPage() {
         {/* ── 5 KPI Cards ── */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
           <KpiCard
-            icon={<Truck className="h-5 w-5" style={{ color: '#2456E6' }} />}
-            iconBg="bg-blue-50"
+            icon={<Truck className="h-5 w-5" style={{ color: '#15A66A' }} />}
+            iconBg="bg-emerald-50"
             title="Camiones en ruta" value={stats?.fleet.onTrip ?? 0} subtitle="Activos ahora" loading={statsLoading} />
           <KpiCard
             icon={<Navigation className="h-5 w-5" style={{ color: '#15A66A' }} />}
@@ -260,13 +260,13 @@ export default function DashboardPage() {
             title="Viajes activos" value={stats?.trips.active ?? 0} subtitle="En progreso"
             loading={statsLoading} trend={{ value: tripTrend, label: 'vs mes ant.' }} />
           <KpiCard
-            icon={<Package className="h-5 w-5" style={{ color: '#3B6BFF' }} />}
-            iconBg="bg-blue-50"
+            icon={<Package className="h-5 w-5" style={{ color: '#15A66A' }} />}
+            iconBg="bg-emerald-50"
             title="Peso en tránsito" value={`${(stats?.logistics.totalWeightTons ?? 0).toLocaleString('es-AR')} t`}
             subtitle="Carga en movimiento" loading={statsLoading} />
           <KpiCard
-            icon={<Clock className="h-5 w-5" style={{ color: '#F2870D' }} />}
-            iconBg="bg-orange-50"
+            icon={<Clock className="h-5 w-5" style={{ color: '#15A66A' }} />}
+            iconBg="bg-emerald-50"
             title="Turnos hoy" value={turnos.length || (stats?.trips.active ?? 0)} subtitle="Programados hoy" />
           <KpiCard
             icon={<DollarSign className="h-5 w-5" style={{ color: '#15A66A' }} />}
@@ -503,8 +503,8 @@ export default function DashboardPage() {
           <div className="px-6 py-5 flex flex-col md:flex-row md:items-center gap-5">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6 flex-1">
               <div className="flex items-center gap-3">
-                <div className="rounded-lg p-2.5" style={{ background: 'rgba(36,86,230,0.2)' }}>
-                  <Navigation className="h-5 w-5" style={{ color: '#3B6BFF' }} />
+                <div className="rounded-lg p-2.5" style={{ background: 'rgba(21,166,106,0.2)' }}>
+                  <Navigation className="h-5 w-5" style={{ color: '#15A66A' }} />
                 </div>
                 <div>
                   <p className="text-xs text-gray-400 font-medium">Viajes activos</p>
@@ -521,8 +521,8 @@ export default function DashboardPage() {
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <div className="rounded-lg p-2.5" style={{ background: 'rgba(59,107,255,0.2)' }}>
-                  <Timer className="h-5 w-5" style={{ color: '#3B6BFF' }} />
+                <div className="rounded-lg p-2.5" style={{ background: 'rgba(21,166,106,0.2)' }}>
+                  <Timer className="h-5 w-5" style={{ color: '#15A66A' }} />
                 </div>
                 <div>
                   <p className="text-xs text-gray-400 font-medium">Entrega promedio</p>
@@ -530,8 +530,8 @@ export default function DashboardPage() {
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <div className="rounded-lg p-2.5" style={{ background: 'rgba(242,135,13,0.2)' }}>
-                  <Flag className="h-5 w-5" style={{ color: '#F2870D' }} />
+                <div className="rounded-lg p-2.5" style={{ background: 'rgba(21,166,106,0.2)' }}>
+                  <Flag className="h-5 w-5" style={{ color: '#15A66A' }} />
                 </div>
                 <div>
                   <p className="text-xs text-gray-400 font-medium">Viajes finalizados</p>
@@ -541,9 +541,9 @@ export default function DashboardPage() {
             </div>
             <button
               className="flex-shrink-0 inline-flex items-center gap-2 px-5 py-2.5 text-white text-sm font-semibold rounded-lg transition-colors shadow-lg"
-              style={{ background: '#2456E6' }}
-              onMouseEnter={e => (e.currentTarget.style.background = '#3B6BFF')}
-              onMouseLeave={e => (e.currentTarget.style.background = '#2456E6')}
+              style={{ background: '#15A66A' }}
+              onMouseEnter={e => (e.currentTarget.style.background = '#12905d')}
+              onMouseLeave={e => (e.currentTarget.style.background = '#15A66A')}
             >
               <Loader2 className="h-4 w-4" /> Generar reporte diario
             </button>

@@ -51,13 +51,12 @@ export function useGrainPrices() {
   return useQuery<GrainEntry[]>({
     queryKey: ['market-grain-prices'],
     queryFn: async () => {
-      // Proxy vía nuestro backend: argentinadatos.com rechaza hosts fuera de su
-      // allowlist, así que el fetch se hace server-side y se cachea en Redis
       const res = await api.get<GrainEntry[]>('/market/granos');
-      return res.data;
+      return Array.isArray(res.data) ? res.data : [];
     },
     staleTime: 10 * 60 * 1000,
-    retry: 1,
+    retry: 2,
+    throwOnError: false,
   });
 }
 
