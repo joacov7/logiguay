@@ -1,9 +1,13 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { AlertsService } from '../alerts/alerts.service';
 
 @Injectable()
 export class CamionesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly alerts: AlertsService,
+  ) {}
 
   async publish(companyId: string, dto: {
     vehicleId?: string;
@@ -75,6 +79,34 @@ export class CamionesService {
       where: { companyId },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  async solicitar(
+    listingId: string,
+    dadorCompanyId: string,
+    dto: { mensaje: string; origen?: string; destino?: string; toneladas?: number; tarifaOfrecida?: number },
+  ) {
+    const listing = await this.prisma.truckAvailability.findUnique({
+      where: { id: listingId },
+      include: { company: { select: { id: true, name: true } } },
+    });
+    if (!listing || !listing.isActive) throw new NotFoundException('Disponibilidad no encontrada o inactiva');
+    if (listing.companyId === dadorCompanyId) throw new BadRequestException('No podés solicitar tu propio camión');
+
+    const dador = await this.prisma.company.findUnique({ where: { id: dadorCompanyId }, select: { name: true } });
+
+    const partes: string[] = [`Solicitud de ${dador?.name ?? 'un dador'}: ${dto.mensaje}`];
+    if (dto.origen && dto.destino) partes.push(`Ruta: ${dto.origen} → ${dto.destino}`);
+    if (dto.toneladas) partes.push(`Carga: ${dto.toneladas} t`);
+    if (dto.tarifaOfrecida) partes.push(`Tarifa ofrecida: $${dto.tarifaOfrecida.toLocaleString('es-AR')}`);
+
+    await this.alerts.create({
+      companyId: listing.companyId,
+      type: 'SOLICITUD_CAMION',
+      message: partes.join(' | '),
+    });
+
+    return { ok: true };
   }
 
   async deactivate(id: string, companyId: string) {

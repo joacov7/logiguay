@@ -40,7 +40,16 @@ export default function TurnosPage() {
 
   const [showCreate, setShowCreate] = useState(false);
   const [bookingSlot, setBookingSlot] = useState<TurnSlot | null>(null);
-  const [filterDate, setFilterDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [filterDate, setFilterDate] = useState<string>(''); // '' = todos los próximos
+
+  const today = format(new Date(), 'yyyy-MM-dd');
+  const tomorrow = format(new Date(Date.now() + 86400_000), 'yyyy-MM-dd');
+
+  const QUICK_DATES = [
+    { label: 'Próximos', value: '' },
+    { label: 'Hoy', value: today },
+    { label: 'Mañana', value: tomorrow },
+  ];
 
   // Create slot form
   const [form, setForm] = useState({
@@ -59,7 +68,8 @@ export default function TurnosPage() {
   const { data: slots, isLoading: slotsLoading } = useQuery<TurnSlot[]>({
     queryKey: ['turnos-slots', isDador ? (user as any)?.companyId : null, filterDate],
     queryFn: async () => {
-      const params: any = { date: filterDate };
+      const params: any = {};
+      if (filterDate) params.date = filterDate;
       if (isDador) params.companyId = (user as any)?.companyId;
       const res = await api.get('/turnos/slots', { params });
       return res.data;
@@ -129,8 +139,17 @@ export default function TurnosPage() {
       </div>
 
       {/* Date filter */}
-      <div className="flex items-center gap-3">
-        <span className="text-sm text-gray-600">Fecha:</span>
+      <div className="flex items-center gap-2 flex-wrap">
+        {QUICK_DATES.map((q) => (
+          <button
+            key={q.value}
+            onClick={() => setFilterDate(q.value)}
+            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${filterDate === q.value ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+          >
+            {q.label}
+          </button>
+        ))}
+        <span className="text-gray-300">|</span>
         <input
           type="date"
           value={filterDate}
@@ -253,7 +272,8 @@ export default function TurnosPage() {
                       {slot.availableSpots > 0 ? `${slot.availableSpots} lugar${slot.availableSpots > 1 ? 'es' : ''}` : 'Completo'}
                     </span>
                   </div>
-                  <div className="flex items-center gap-4 text-sm text-gray-500">
+                  <div className="flex items-center gap-4 text-sm text-gray-500 flex-wrap">
+                    <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{format(new Date(slot.date), 'dd MMM yyyy', { locale: es })}</span>
                     <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{slot.startTime} - {slot.endTime}</span>
                     <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{slot.address}</span>
                   </div>

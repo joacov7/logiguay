@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Truck, Plus, MapPin, Navigation, X } from 'lucide-react';
+import { Truck, Plus, MapPin, Navigation, X, Send, CheckCircle } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import api from '@/lib/api';
@@ -44,6 +44,17 @@ export default function CamionesDisponiblesPage() {
   const [typeFilter, setTypeFilter] = useState('');
   const [geoLoading, setGeoLoading] = useState(false);
   const [locLabel, setLocLabel] = useState('');
+
+  // Solicitar modal state
+  const [solicitar, setSolicitar] = useState<TruckListing | null>(null);
+  const [solicitudForm, setSolicitudForm] = useState({
+    mensaje: '',
+    origen: '',
+    destino: '',
+    toneladas: '',
+    tarifaOfrecida: '',
+  });
+  const [solicitudOk, setSolicitudOk] = useState(false);
 
   // Publish form (TRANSPORTISTA)
   const [showPublish, setShowPublish] = useState(false);
@@ -131,6 +142,33 @@ export default function CamionesDisponiblesPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['camiones-my'] }),
   });
 
+  const solicitarMutation = useMutation({
+    mutationFn: async ({ id, body }: { id: string; body: typeof solicitudForm }) => {
+      const res = await api.post(`/camiones/${id}/solicitar`, {
+        mensaje: body.mensaje,
+        origen: body.origen || undefined,
+        destino: body.destino || undefined,
+        toneladas: body.toneladas ? parseFloat(body.toneladas) : undefined,
+        tarifaOfrecida: body.tarifaOfrecida ? parseFloat(body.tarifaOfrecida) : undefined,
+      });
+      return res.data;
+    },
+    onSuccess: () => {
+      setSolicitudOk(true);
+    },
+  });
+
+  function openSolicitar(truck: TruckListing) {
+    setSolicitar(truck);
+    setSolicitudOk(false);
+    setSolicitudForm({ mensaje: '', origen: '', destino: '', toneladas: '', tarifaOfrecida: '' });
+  }
+
+  function closeSolicitar() {
+    setSolicitar(null);
+    setSolicitudOk(false);
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -148,7 +186,97 @@ export default function CamionesDisponiblesPage() {
         )}
       </div>
 
-      {/* Publish modal */}
+      {/* ── Solicitar modal ── */}
+      {solicitar && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
+            <div className="flex items-center justify-between p-6 border-b">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Solicitar camión</h2>
+                <p className="text-sm text-gray-500 mt-0.5">{solicitar.vehicleType} · {solicitar.company.name}</p>
+              </div>
+              <button onClick={closeSolicitar} className="text-gray-400 hover:text-gray-600">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {solicitudOk ? (
+              <div className="p-8 flex flex-col items-center gap-3 text-center">
+                <CheckCircle className="h-12 w-12 text-blue-600" />
+                <p className="text-lg font-semibold text-gray-900">¡Solicitud enviada!</p>
+                <p className="text-sm text-gray-500">El transportista recibirá una notificación con tu propuesta y podrá contactarte.</p>
+                <Button className="mt-2" onClick={closeSolicitar}>Cerrar</Button>
+              </div>
+            ) : (
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Mensaje *</label>
+                  <textarea
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    rows={3}
+                    placeholder="Describí brevemente la carga que necesitás transportar..."
+                    value={solicitudForm.mensaje}
+                    onChange={(e) => setSolicitudForm((f) => ({ ...f, mensaje: e.target.value }))}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Origen</label>
+                    <input
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Ciudad origen"
+                      value={solicitudForm.origen}
+                      onChange={(e) => setSolicitudForm((f) => ({ ...f, origen: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Destino</label>
+                    <input
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Ciudad destino"
+                      value={solicitudForm.destino}
+                      onChange={(e) => setSolicitudForm((f) => ({ ...f, destino: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Toneladas</label>
+                    <input
+                      type="number"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Ej: 28"
+                      value={solicitudForm.toneladas}
+                      onChange={(e) => setSolicitudForm((f) => ({ ...f, toneladas: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Tarifa ofrecida ($)</label>
+                    <input
+                      type="number"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Ej: 150000"
+                      value={solicitudForm.tarifaOfrecida}
+                      onChange={(e) => setSolicitudForm((f) => ({ ...f, tarifaOfrecida: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button variant="outline" onClick={closeSolicitar}>Cancelar</Button>
+                  <Button
+                    loading={solicitarMutation.isPending}
+                    disabled={!solicitudForm.mensaje.trim()}
+                    onClick={() => solicitarMutation.mutate({ id: solicitar.id, body: solicitudForm })}
+                  >
+                    <Send className="h-4 w-4 mr-1" />
+                    Enviar solicitud
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Publish modal ── */}
       {showPublish && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
@@ -225,7 +353,7 @@ export default function CamionesDisponiblesPage() {
                   const la = parseFloat(latInput), lo = parseFloat(lngInput);
                   if (!isNaN(la) && !isNaN(lo)) { setLat(la); setLng(lo); setLocLabel('Manual'); }
                 }}>Buscar</Button>
-                {locLabel && <span className="text-sm text-green-600 flex items-center gap-1"><MapPin className="h-3 w-3" />{locLabel}</span>}
+                {locLabel && <span className="text-sm text-blue-600 flex items-center gap-1"><MapPin className="h-3 w-3" />{locLabel}</span>}
               </div>
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-sm text-gray-600">Radio:</span>
@@ -249,6 +377,7 @@ export default function CamionesDisponiblesPage() {
             <div className="flex flex-col items-center justify-center py-16 text-gray-400">
               <Truck className="h-12 w-12 mb-3 opacity-50" />
               <p className="font-medium">No hay camiones disponibles en esa zona</p>
+              <p className="text-sm mt-1">Probá con un radio mayor o sin filtro de tipo</p>
             </div>
           ) : (
             <div className="grid gap-4">
@@ -259,18 +388,23 @@ export default function CamionesDisponiblesPage() {
                       <div className="flex items-center gap-2 mb-1">
                         <span className="font-semibold text-gray-900">{t.vehicleType}</span>
                         {t.distKm != null && (
-                          <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full font-medium">{t.distKm.toFixed(0)} km</span>
+                          <span className="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded-full font-medium">{t.distKm.toFixed(0)} km</span>
                         )}
+                        <span className="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded-full font-medium">Disponible</span>
                       </div>
-                      <p className="text-sm text-gray-500 flex items-center gap-1"><MapPin className="h-3 w-3" />{t.originAddress}</p>
+                      <p className="text-sm text-gray-600 font-medium">{t.company?.name}</p>
+                      <p className="text-sm text-gray-500 flex items-center gap-1 mt-0.5"><MapPin className="h-3 w-3" />{t.originAddress}</p>
                       <div className="flex items-center gap-4 mt-1 text-xs text-gray-400">
-                        {t.capacityTons && <span>{t.capacityTons}t</span>}
-                        {t.capacityM3 && <span>{t.capacityM3}m³</span>}
-                        <span>Desde {format(new Date(t.availableFrom), 'dd MMM', { locale: es })} hasta {format(new Date(t.availableTo), 'dd MMM yyyy', { locale: es })}</span>
+                        {t.capacityTons && <span>{t.capacityTons} t</span>}
+                        {t.capacityM3 && <span>{t.capacityM3} m³</span>}
+                        <span>Disponible: {format(new Date(t.availableFrom), 'dd MMM', { locale: es })} → {format(new Date(t.availableTo), 'dd MMM yyyy', { locale: es })}</span>
                       </div>
-                      {t.notes && <p className="text-xs text-gray-400 mt-1">{t.notes}</p>}
-                      <p className="text-xs text-gray-400 mt-1">{t.company?.name}</p>
+                      {t.notes && <p className="text-xs text-gray-400 mt-1 italic">{t.notes}</p>}
                     </div>
+                    <Button size="sm" onClick={() => openSolicitar(t)}>
+                      <Send className="h-3.5 w-3.5 mr-1" />
+                      Solicitar
+                    </Button>
                   </div>
                 </Card>
               ))}
@@ -297,7 +431,7 @@ export default function CamionesDisponiblesPage() {
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <span className="font-semibold text-gray-900">{t.vehicleType}</span>
-                        <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${t.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                        <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${t.isActive ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>
                           {t.isActive ? 'Activo' : 'Inactivo'}
                         </span>
                       </div>

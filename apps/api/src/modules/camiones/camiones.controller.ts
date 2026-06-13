@@ -45,6 +45,17 @@ export class CamionesController {
     return this.camionesService.getMyListings(companyId);
   }
 
+  @Post(':id/solicitar')
+  @Roles(Role.DADOR, Role.ADMIN)
+  @ApiOperation({ summary: 'Enviar solicitud de contratación al transportista' })
+  solicitar(
+    @Param('id') id: string,
+    @CurrentUser('companyId') companyId: string,
+    @Body() body: { mensaje: string; origen?: string; destino?: string; toneladas?: number; tarifaOfrecida?: number },
+  ) {
+    return this.camionesService.solicitar(id, companyId, body);
+  }
+
   @Patch(':id/deactivate')
   @Roles(Role.TRANSPORTISTA, Role.ADMIN)
   @ApiOperation({ summary: 'Desactivar publicación' })
