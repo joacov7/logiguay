@@ -16,13 +16,6 @@ interface KpiCardProps {
   loading?: boolean;
 }
 
-const variantClasses: Record<string, string> = {
-  default: 'bg-white border border-gray-200',
-  warning: 'bg-amber-50 border border-amber-200',
-  danger: 'bg-red-50 border border-red-200',
-  success: 'bg-green-50 border border-green-200',
-};
-
 export default function KpiCard({
   title,
   value,
@@ -35,45 +28,93 @@ export default function KpiCard({
 }: KpiCardProps) {
   if (loading) {
     return (
-      <div className="rounded-xl p-5 bg-white border border-gray-200 animate-pulse">
-        <div className="h-4 bg-gray-200 rounded w-1/2 mb-3" />
-        <div className="h-8 bg-gray-200 rounded w-3/4 mb-2" />
-        <div className="h-3 bg-gray-200 rounded w-1/3" />
-      </div>
+      <div className="lg-skel" style={{ height: 120, borderRadius: 'var(--r)' }} />
     );
   }
 
+  const accentColor = variant === 'danger' ? 'var(--red)' : variant === 'warning' ? 'var(--orange)' : variant === 'success' ? 'var(--green)' : 'var(--accent)';
+  const accentSoft = variant === 'danger' ? 'var(--red-soft)' : variant === 'warning' ? 'var(--orange-soft)' : variant === 'success' ? 'var(--green-soft)' : 'var(--accent-soft)';
+  const grad = variant === 'danger'
+    ? 'linear-gradient(135deg, #E5484D, #cc3338)'
+    : variant === 'warning'
+    ? 'linear-gradient(135deg, #F2870D, #d9720a)'
+    : variant === 'success'
+    ? 'linear-gradient(135deg, #1FB877, #15A66A)'
+    : 'var(--grad)';
+
   return (
-    <div className={`rounded-xl p-5 shadow-sm ${variantClasses[variant]}`}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-gray-500 truncate">{title}</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1 truncate">{value}</p>
-          {subtitle && <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>}
-        </div>
+    <div
+      style={{
+        background: 'var(--surface)',
+        borderRadius: 'var(--r)',
+        boxShadow: 'var(--sh-sm)',
+        padding: '18px 18px 14px',
+        position: 'relative',
+        overflow: 'hidden',
+        transition: 'transform .2s, box-shadow .2s',
+        cursor: 'default',
+      }}
+      className="kpi-card-hover"
+    >
+      {/* top accent bar */}
+      <div style={{
+        position: 'absolute', top: 0, left: 0, right: 0,
+        height: 3, background: grad,
+      }} />
+
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 }}>
+        <p style={{
+          fontFamily: 'var(--font-b)', fontSize: 12.5, fontWeight: 600,
+          color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.04em',
+          margin: 0,
+        }}>
+          {title}
+        </p>
         {icon && (
-          <div className="flex-shrink-0 p-2 rounded-lg bg-gray-100">
+          <span style={{
+            width: 32, height: 32, borderRadius: 9, background: accentSoft,
+            color: accentColor,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+          }}>
             {icon}
-          </div>
+          </span>
         )}
       </div>
 
+      <p style={{
+        fontFamily: 'var(--font-d)', fontSize: 30, fontWeight: 700, letterSpacing: '-.02em',
+        color: 'var(--ink)', lineHeight: 1, margin: '0 0 8px',
+      }}>
+        {value}
+      </p>
+
+      {subtitle && (
+        <p style={{ fontSize: 12.5, color: 'var(--faint)', margin: '0 0 6px' }}>{subtitle}</p>
+      )}
+
       {trend !== undefined && (
-        <div className="mt-3 flex items-center gap-1">
-          <span className={`text-xs font-semibold ${trend.value >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 3,
+            fontSize: 12.5, fontWeight: 600,
+            padding: '2px 7px', borderRadius: 6,
+            color: trend.value >= 0 ? 'var(--green)' : 'var(--red)',
+            background: trend.value >= 0 ? 'var(--green-soft)' : 'var(--red-soft)',
+          }}>
             {trend.value >= 0 ? '↑' : '↓'} {Math.abs(trend.value).toFixed(1)}%
           </span>
-          <span className="text-xs text-gray-400">{trend.label}</span>
+          <span style={{ fontSize: 12.5, color: 'var(--faint)' }}>{trend.label}</span>
         </div>
       )}
 
       {progress !== undefined && (
-        <div className="mt-3">
-          <div className="w-full bg-gray-200 rounded-full h-1.5">
-            <div
-              className="bg-blue-600 h-1.5 rounded-full transition-all duration-500"
-              style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
-            />
+        <div style={{ marginTop: 10 }}>
+          <div style={{ height: 5, background: 'var(--bg)', borderRadius: 3, overflow: 'hidden' }}>
+            <div style={{
+              width: `${Math.min(100, Math.max(0, progress))}%`,
+              height: '100%', background: accentColor, borderRadius: 3,
+              transition: 'width .5s ease',
+            }} />
           </div>
         </div>
       )}
