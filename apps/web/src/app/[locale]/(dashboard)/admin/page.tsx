@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Building2, Users, ClipboardList, DollarSign, Settings, ShieldAlert } from 'lucide-react';
+import { Building2, Users, ClipboardList, DollarSign, Settings, ShieldAlert, TrendingUp } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -27,6 +27,13 @@ const sections = [
     title: 'Suscripciones',
     description: 'Planes y suscripciones activas',
     color: 'bg-green-50 text-green-700',
+  },
+  {
+    href: '/admin/ingresos',
+    icon: TrendingUp,
+    title: 'Ingresos',
+    description: 'Comisiones y revenue de la plataforma',
+    color: 'bg-emerald-50 text-emerald-700',
   },
   {
     href: '/admin/comisiones',

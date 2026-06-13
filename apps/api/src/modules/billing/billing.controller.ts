@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Patch, Param, Query, UseGuards, ForbiddenException } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { BillingService } from './billing.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -50,5 +50,36 @@ export class BillingController {
   @ApiOperation({ summary: 'Cancelar factura' })
   cancelInvoice(@Param('id') id: string, @CurrentUser('companyId') companyId: string) {
     return this.billingService.cancel(id, companyId);
+  }
+
+  // ── Admin endpoints ───────────────────────────────────────────────────────────
+
+  @Get('admin/resumen')
+  @ApiOperation({ summary: '[ADMIN] Resumen de ingresos de la plataforma' })
+  getAdminRevenueSummary(@CurrentUser('role') role: string) {
+    if (role !== 'ADMIN') throw new ForbiddenException();
+    return this.billingService.getAdminRevenueSummary();
+  }
+
+  @Get('admin/comisiones')
+  @ApiOperation({ summary: '[ADMIN] Listado de comisiones' })
+  @ApiQuery({ name: 'page', required: false })
+  @ApiQuery({ name: 'limit', required: false })
+  @ApiQuery({ name: 'status', enum: InvoiceStatus, required: false })
+  getAdminComisiones(
+    @CurrentUser('role') role: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+    @Query('status') status?: InvoiceStatus,
+  ) {
+    if (role !== 'ADMIN') throw new ForbiddenException();
+    return this.billingService.getAdminComisiones(page, limit, status);
+  }
+
+  @Patch('admin/invoice/:id/pay')
+  @ApiOperation({ summary: '[ADMIN] Marcar comisión como pagada' })
+  adminMarkPaid(@Param('id') id: string, @CurrentUser('role') role: string) {
+    if (role !== 'ADMIN') throw new ForbiddenException();
+    return this.billingService.adminMarkPaid(id);
   }
 }

@@ -123,6 +123,106 @@ export class BillingService {
     });
   }
 
+  // ── Admin: platform-wide revenue ─────────────────────────────────────────────
+
+  async getAdminRevenueSummary() {
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1); startOfMonth.setHours(0, 0, 0, 0);
+
+    const startOfYear = new Date();
+    startOfYear.setMonth(0, 1); startOfYear.setHours(0, 0, 0, 0);
+
+    const [totalAll, totalMonth, totalYear, byStatus, byType, byPlan, recent] = await Promise.all([
+      this.prisma.invoice.aggregate({
+        where: { type: 'COMISION' },
+        _sum: { amount: true }, _count: true,
+      }),
+      this.prisma.invoice.aggregate({
+        where: { type: 'COMISION', createdAt: { gte: startOfMonth } },
+        _sum: { amount: true }, _count: true,
+      }),
+      this.prisma.invoice.aggregate({
+        where: { type: 'COMISION', createdAt: { gte: startOfYear } },
+        _sum: { amount: true }, _count: true,
+      }),
+      this.prisma.invoice.groupBy({
+        by: ['status'],
+        where: { type: 'COMISION' },
+        _sum: { amount: true }, _count: true,
+      }),
+      this.prisma.invoice.groupBy({
+        by: ['type'],
+        _sum: { amount: true }, _count: true,
+      }),
+      this.prisma.company.groupBy({
+        by: ['planType'],
+        _count: true,
+      }),
+      this.prisma.invoice.findMany({
+        where: { type: 'COMISION' },
+        orderBy: { createdAt: 'desc' },
+        take: 20,
+        include: {
+          company: { select: { id: true, name: true, planType: true } },
+          trip: { select: { id: true, agreedRate: true, status: true } },
+        },
+      }),
+    ]);
+
+    // Monthly breakdown for current year
+    const monthly = await this.prisma.$queryRaw<{ month: number; total: number; count: bigint }[]>`
+      SELECT EXTRACT(MONTH FROM "created_at")::int AS month,
+             SUM(amount) AS total,
+             COUNT(*)    AS count
+      FROM invoices
+      WHERE type = 'COMISION'
+        AND "created_at" >= ${startOfYear}
+      GROUP BY month
+      ORDER BY month
+    `;
+
+    return {
+      total: totalAll._sum.amount ?? 0,
+      totalCount: totalAll._count,
+      month: totalMonth._sum.amount ?? 0,
+      monthCount: totalMonth._count,
+      year: totalYear._sum.amount ?? 0,
+      yearCount: totalYear._count,
+      byStatus,
+      byType,
+      byPlan,
+      monthly: monthly.map(r => ({ month: r.month, total: Number(r.total), count: Number(r.count) })),
+      recent,
+    };
+  }
+
+  async getAdminComisiones(page = 1, limit = 30, status?: InvoiceStatus) {
+    const p = Number(page) || 1;
+    const l = Number(limit) || 30;
+    const where: any = { type: 'COMISION' };
+    if (status) where.status = status;
+
+    const [data, total] = await Promise.all([
+      this.prisma.invoice.findMany({
+        where,
+        skip: (p - 1) * l,
+        take: l,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          company: { select: { id: true, name: true, planType: true } },
+          trip: { select: { id: true, agreedRate: true, status: true } },
+        },
+      }),
+      this.prisma.invoice.count({ where }),
+    ]);
+
+    return { data, total, page: p, limit: l, pages: Math.ceil(total / l) };
+  }
+
+  async adminMarkPaid(id: string) {
+    return this.prisma.invoice.update({ where: { id }, data: { status: 'PAGADA' } });
+  }
+
   // Legacy methods kept for backwards compatibility
   async findAll(companyId: string, page = 1, limit = 20) {
     return this.getInvoices(companyId, { page, limit });
