@@ -8,18 +8,33 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        // Remap blue → verde agrícola #15A66A para aplicar el color primario
+        // a todo el sistema sin cambiar clases existentes (bg-blue-600, text-blue-*, etc.)
+        blue: {
+          50:  '#f0faf5',
+          100: '#dcf5e8',
+          200: '#b8ebd1',
+          300: '#7dd4aa',
+          400: '#42bc82',
+          500: '#20b375',
+          600: '#15A66A',
+          700: '#108a57',
+          800: '#0d6e46',
+          900: '#0a5236',
+          950: '#062e21',
+        },
         brand: {
-          50: '#eff6ff',
-          100: '#dbeafe',
-          500: '#3b82f6',
-          600: '#2563eb',
-          700: '#1d4ed8',
-          900: '#1e3a8a',
+          50:  '#f0faf5',
+          100: '#dcf5e8',
+          500: '#20b375',
+          600: '#15A66A',
+          700: '#108a57',
+          900: '#0a5236',
         },
         logiguay: {
-          blue: '#1d4ed8',
-          teal: '#0d9488',
-          orange: '#ea580c',
+          green:  '#15A66A',
+          orange: '#F2870D',
+          dark:   '#0A1633',
         },
       },
       fontFamily: {

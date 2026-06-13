@@ -14,7 +14,7 @@ L.Icon.Default.mergeOptions({
 });
 
 const truckIcon = new L.DivIcon({
-  html: `<div style="width:34px;height:34px;background:#2563eb;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:16px;">🚛</div>`,
+  html: `<div style="width:34px;height:34px;background:#15A66A;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:16px;">🚛</div>`,
   className: '',
   iconSize: [34, 34],
   iconAnchor: [17, 17],
@@ -119,7 +119,7 @@ export default function MapView({ positions, selectedVehicleId, activeTrips = []
             {hasRoute && (
               <Polyline
                 positions={[[trip.originLat!, trip.originLng!], [trip.destinationLat!, trip.destinationLng!]]}
-                pathOptions={{ color: '#2563eb', weight: 3, dashArray: '8 6', opacity: 0.7 }}
+                pathOptions={{ color: '#15A66A', weight: 3, dashArray: '8 6', opacity: 0.7 }}
               />
             )}
             {hasOrigin && (

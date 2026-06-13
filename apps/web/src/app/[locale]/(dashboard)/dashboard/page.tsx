@@ -20,7 +20,7 @@ import type { ActiveTrip } from '../tracking/MapView';
 const MapView = dynamic(() => import('../tracking/MapView'), { ssr: false });
 
 // ── Brand colors ──────────────────────────────────────────────────────────────
-// Primary:  #2456E6 / #3B6BFF
+// Primary:  #15A66A
 // Success:  #15A66A
 // Alert:    #F2870D
 // Neutral:  gray/white
@@ -77,14 +77,14 @@ const STATUS_LABELS: Record<string, string> = {
   EN_DESCARGA: 'Descargando', ASIGNADO: 'Asignado',
 };
 const STATUS_COLORS: Record<string, string> = {
-  EN_TRANSITO: 'text-[#3B6BFF]', EN_CARGA: 'text-[#F2870D]',
+  EN_TRANSITO: 'text-blue-600', EN_CARGA: 'text-[#F2870D]',
   EN_CAMINO_ORIGEN: 'text-cyan-600', EN_DESCARGA: 'text-[#F2870D]',
-  ASIGNADO: 'text-[#2456E6]',
+  ASIGNADO: 'text-blue-600',
 };
 const STATUS_BG: Record<string, string> = {
-  EN_TRANSITO: 'bg-blue-50 text-[#2456E6]', EN_CARGA: 'bg-orange-50 text-[#F2870D]',
+  EN_TRANSITO: 'bg-blue-50 text-blue-600', EN_CARGA: 'bg-orange-50 text-[#F2870D]',
   EN_CAMINO_ORIGEN: 'bg-cyan-50 text-cyan-700', EN_DESCARGA: 'bg-orange-50 text-[#F2870D]',
-  ASIGNADO: 'bg-blue-50 text-[#2456E6]',
+  ASIGNADO: 'bg-blue-50 text-blue-600',
 };
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -180,8 +180,8 @@ export default function DashboardPage() {
   const fleetLoading = Math.max(0, stats?.trips.byStatus?.EN_CARGA ?? 0);
 
   const donutData = [
-    { name: 'En ruta', value: fleetOnTrip, color: '#2456E6' },
-    { name: 'Disponibles', value: Math.max(0, fleetActive - fleetLoading), color: '#15A66A' },
+    { name: 'En ruta', value: fleetOnTrip, color: '#15A66A' },
+    { name: 'Disponibles', value: Math.max(0, fleetActive - fleetLoading), color: '#7dd4aa' },
     { name: 'En carga', value: fleetLoading, color: '#F2870D' },
     { name: 'En mantenimiento', value: fleetMaint, color: '#9ca3af' },
   ].filter((d) => d.value > 0);
@@ -194,7 +194,7 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-gray-50">
       {/* ── Market ticker bar ── */}
       <div className="bg-white border-b border-gray-100 px-6 py-2 flex items-center gap-6 overflow-x-auto text-xs">
-        <span className="flex items-center gap-1.5 font-semibold flex-shrink-0" style={{ color: '#2456E6' }}>
+        <span className="flex items-center gap-1.5 font-semibold flex-shrink-0" style={{ color: '#15A66A' }}>
           <BarChart3 className="h-3.5 w-3.5" /> Mercado
         </span>
 
@@ -208,7 +208,7 @@ export default function DashboardPage() {
         {dollarRates?.blue && (
           <span className="flex items-center gap-1.5 flex-shrink-0">
             <span className="text-gray-400">Blue</span>
-            <span className="font-bold" style={{ color: '#3B6BFF' }}>${dollarRates.blue.venta.toLocaleString('es-AR')}</span>
+            <span className="font-bold" style={{ color: '#15A66A' }}>${dollarRates.blue.venta.toLocaleString('es-AR')}</span>
           </span>
         )}
         {dollarRates?.mep && (
@@ -481,8 +481,8 @@ export default function DashboardPage() {
             )}
             <div className="mt-2 space-y-2">
               {[
-                { name: 'En ruta', value: fleetOnTrip, color: '#2456E6' },
-                { name: 'Disponibles', value: Math.max(0, (stats?.fleet.active ?? 0) - fleetOnTrip - fleetLoading), color: '#15A66A' },
+                { name: 'En ruta', value: fleetOnTrip, color: '#15A66A' },
+                { name: 'Disponibles', value: Math.max(0, (stats?.fleet.active ?? 0) - fleetOnTrip - fleetLoading), color: '#7dd4aa' },
                 { name: 'En carga', value: fleetLoading, color: '#F2870D' },
                 { name: 'En mantenimiento', value: fleetMaint, color: '#9ca3af' },
               ].map((item) => (
