@@ -38,6 +38,7 @@ export function useAuth() {
       firstName: string;
       lastName: string;
       phone?: string;
+      role?: 'DADOR' | 'TRANSPORTISTA';
     }) => {
       setLoading(true);
       try {
