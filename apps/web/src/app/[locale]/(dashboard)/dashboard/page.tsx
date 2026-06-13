@@ -161,7 +161,15 @@ export default function DashboardPage() {
   });
 
   const { data: dollarRates } = useDollarRates();
-  const { data: grainPrices } = useGrainPrices();
+  const { data: grainPricesRaw } = useGrainPrices();
+  const FALLBACK_GRAINS = [
+    { nombre: 'Soja', unidad: '$/t', precio: 395000, variacion: 0 },
+    { nombre: 'Maíz', unidad: '$/t', precio: 245000, variacion: 0 },
+    { nombre: 'Trigo', unidad: '$/t', precio: 280000, variacion: 0 },
+    { nombre: 'Girasol', unidad: '$/t', precio: 620000, variacion: 0 },
+  ];
+  const grainPrices = (grainPricesRaw && grainPricesRaw.length > 0) ? grainPricesRaw : FALLBACK_GRAINS;
+  const grainIsReference = !grainPricesRaw || grainPricesRaw.length === 0;
 
   const activeTrips = tripsData?.data ?? [];
   const alerts = alertsData?.data ?? [];
@@ -219,25 +227,23 @@ export default function DashboardPage() {
         )}
 
         {/* Grain prices from Bolsa de Rosario */}
-        {grainPrices && grainPrices.length > 0 && (
-          <>
-            <span className="text-gray-200 flex-shrink-0 select-none">|</span>
-            <span className="flex items-center gap-1 flex-shrink-0 font-semibold" style={{ color: '#15A66A' }}>
-              <Wheat className="h-3.5 w-3.5" /> Rosario
+        <>
+          <span className="text-gray-200 flex-shrink-0 select-none">|</span>
+          <span className="flex items-center gap-1 flex-shrink-0 font-semibold" style={{ color: '#15A66A' }}>
+            <Wheat className="h-3.5 w-3.5" /> {grainIsReference ? 'Granos (ref.)' : 'Rosario'}
+          </span>
+          {grainPrices.slice(0, 5).map((g) => (
+            <span key={g.nombre} className="flex items-center gap-1 flex-shrink-0">
+              <span className="text-gray-500">{g.nombre}</span>
+              <span className="font-semibold text-gray-800">${g.precio.toLocaleString('es-AR')}</span>
+              {g.variacion !== 0 && (
+                <span className="font-medium" style={{ color: g.variacion > 0 ? '#15A66A' : '#F2870D' }}>
+                  {g.variacion > 0 ? '▲' : '▼'}{Math.abs(g.variacion).toFixed(1)}%
+                </span>
+              )}
             </span>
-            {grainPrices.slice(0, 5).map((g) => (
-              <span key={g.nombre} className="flex items-center gap-1 flex-shrink-0">
-                <span className="text-gray-500">{g.nombre}</span>
-                <span className="font-semibold text-gray-800">${g.precio.toLocaleString('es-AR')}</span>
-                {g.variacion !== 0 && (
-                  <span className="font-medium" style={{ color: g.variacion > 0 ? '#15A66A' : '#F2870D' }}>
-                    {g.variacion > 0 ? '▲' : '▼'}{Math.abs(g.variacion).toFixed(1)}%
-                  </span>
-                )}
-              </span>
-            ))}
-          </>
-        )}
+          ))}
+        </>
       </div>
 
       <div className="max-w-[1600px] mx-auto p-6 space-y-6">
