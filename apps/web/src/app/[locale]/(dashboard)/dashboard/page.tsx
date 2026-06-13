@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import dynamic from 'next/dynamic';
 import { useQuery } from '@tanstack/react-query';
 import {
   Truck, Navigation, Package, Clock, DollarSign, AlertTriangle,
-  CheckCircle, MapPin, Settings, TrendingUp, TrendingDown,
+  CheckCircle, MapPin, TrendingUp, TrendingDown,
   Timer, Flag, Loader2, Wheat, BarChart3,
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
@@ -18,6 +18,12 @@ import { useDollarRates, useGrainPrices } from '@/hooks/useMarketData';
 import type { ActiveTrip } from '../tracking/MapView';
 
 const MapView = dynamic(() => import('../tracking/MapView'), { ssr: false });
+
+// ── Brand colors ──────────────────────────────────────────────────────────────
+// Primary:  #2456E6 / #3B6BFF
+// Success:  #15A66A
+// Alert:    #F2870D
+// Neutral:  gray/white
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -71,9 +77,14 @@ const STATUS_LABELS: Record<string, string> = {
   EN_DESCARGA: 'Descargando', ASIGNADO: 'Asignado',
 };
 const STATUS_COLORS: Record<string, string> = {
-  EN_TRANSITO: 'bg-blue-100 text-blue-700', EN_CARGA: 'bg-yellow-100 text-yellow-700',
-  EN_CAMINO_ORIGEN: 'bg-cyan-100 text-cyan-700', EN_DESCARGA: 'bg-orange-100 text-orange-700',
-  ASIGNADO: 'bg-indigo-100 text-indigo-700',
+  EN_TRANSITO: 'text-[#3B6BFF]', EN_CARGA: 'text-[#F2870D]',
+  EN_CAMINO_ORIGEN: 'text-cyan-600', EN_DESCARGA: 'text-[#F2870D]',
+  ASIGNADO: 'text-[#2456E6]',
+};
+const STATUS_BG: Record<string, string> = {
+  EN_TRANSITO: 'bg-blue-50 text-[#2456E6]', EN_CARGA: 'bg-orange-50 text-[#F2870D]',
+  EN_CAMINO_ORIGEN: 'bg-cyan-50 text-cyan-700', EN_DESCARGA: 'bg-orange-50 text-[#F2870D]',
+  ASIGNADO: 'bg-blue-50 text-[#2456E6]',
 };
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -94,7 +105,7 @@ function KpiCard({ icon, iconBg, title, value, subtitle, trend, loading }: {
         }
         <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>
         {trend && (
-          <div className={`flex items-center gap-1 mt-1 text-xs font-medium ${trend.value >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+          <div className={`flex items-center gap-1 mt-1 text-xs font-medium ${trend.value >= 0 ? 'text-[#15A66A]' : 'text-[#F2870D]'}`}>
             {trend.value >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
             {Math.abs(trend.value).toFixed(1)}% {trend.label}
           </div>
@@ -169,10 +180,10 @@ export default function DashboardPage() {
   const fleetLoading = Math.max(0, stats?.trips.byStatus?.EN_CARGA ?? 0);
 
   const donutData = [
-    { name: 'En ruta', value: fleetOnTrip, color: '#2563eb' },
-    { name: 'Disponibles', value: Math.max(0, fleetActive - fleetLoading), color: '#16a34a' },
-    { name: 'En carga', value: fleetLoading, color: '#ca8a04' },
-    { name: 'En mantenimiento', value: fleetMaint, color: '#f97316' },
+    { name: 'En ruta', value: fleetOnTrip, color: '#2456E6' },
+    { name: 'Disponibles', value: Math.max(0, fleetActive - fleetLoading), color: '#15A66A' },
+    { name: 'En carga', value: fleetLoading, color: '#F2870D' },
+    { name: 'En mantenimiento', value: fleetMaint, color: '#9ca3af' },
   ].filter((d) => d.value > 0);
 
   const tripsThisMonth = stats?.trips.thisMonth ?? 0;
@@ -182,42 +193,44 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* ── Market ticker bar ── */}
-      <div className="bg-white border-b border-gray-100 px-6 py-2 flex items-center gap-6 overflow-x-auto text-xs flex-wrap">
-        <span className="flex items-center gap-1.5 text-gray-500 font-medium flex-shrink-0">
+      <div className="bg-white border-b border-gray-100 px-6 py-2 flex items-center gap-6 overflow-x-auto text-xs">
+        <span className="flex items-center gap-1.5 font-semibold flex-shrink-0" style={{ color: '#2456E6' }}>
           <BarChart3 className="h-3.5 w-3.5" /> Mercado
         </span>
-        {dollarRates && (
-          <>
-            {dollarRates.oficial && (
-              <span className="flex items-center gap-1 flex-shrink-0">
-                <span className="text-gray-400">USD Oficial</span>
-                <span className="font-semibold text-gray-800">${dollarRates.oficial.venta.toLocaleString('es-AR')}</span>
-              </span>
-            )}
-            {dollarRates.blue && (
-              <span className="flex items-center gap-1 flex-shrink-0">
-                <span className="text-gray-400">USD Blue</span>
-                <span className="font-semibold text-blue-700">${dollarRates.blue.venta.toLocaleString('es-AR')}</span>
-              </span>
-            )}
-            {dollarRates.mep && (
-              <span className="flex items-center gap-1 flex-shrink-0">
-                <span className="text-gray-400">MEP</span>
-                <span className="font-semibold text-gray-800">${dollarRates.mep.venta.toLocaleString('es-AR')}</span>
-              </span>
-            )}
-          </>
+
+        {/* Dollar rates */}
+        {dollarRates?.oficial && (
+          <span className="flex items-center gap-1.5 flex-shrink-0">
+            <span className="text-gray-400">Oficial</span>
+            <span className="font-semibold text-gray-800">${dollarRates.oficial.venta.toLocaleString('es-AR')}</span>
+          </span>
         )}
+        {dollarRates?.blue && (
+          <span className="flex items-center gap-1.5 flex-shrink-0">
+            <span className="text-gray-400">Blue</span>
+            <span className="font-bold" style={{ color: '#3B6BFF' }}>${dollarRates.blue.venta.toLocaleString('es-AR')}</span>
+          </span>
+        )}
+        {dollarRates?.mep && (
+          <span className="flex items-center gap-1.5 flex-shrink-0">
+            <span className="text-gray-400">MEP</span>
+            <span className="font-semibold text-gray-800">${dollarRates.mep.venta.toLocaleString('es-AR')}</span>
+          </span>
+        )}
+
+        {/* Grain prices from Bolsa de Rosario */}
         {grainPrices && grainPrices.length > 0 && (
           <>
-            <span className="text-gray-200 flex-shrink-0">|</span>
-            <span className="flex items-center gap-1 text-gray-400 flex-shrink-0"><Wheat className="h-3 w-3" /> Granos</span>
-            {grainPrices.slice(0, 4).map((g) => (
-              <span key={g.nombre} className="flex items-center gap-1.5 flex-shrink-0">
-                <span className="text-gray-400">{g.nombre.length > 6 ? g.nombre.slice(0, 6) : g.nombre}</span>
-                <span className="font-semibold text-gray-800">${g.precio.toLocaleString('es-AR')}/t</span>
+            <span className="text-gray-200 flex-shrink-0 select-none">|</span>
+            <span className="flex items-center gap-1 flex-shrink-0 font-semibold" style={{ color: '#15A66A' }}>
+              <Wheat className="h-3.5 w-3.5" /> Rosario
+            </span>
+            {grainPrices.slice(0, 5).map((g) => (
+              <span key={g.nombre} className="flex items-center gap-1 flex-shrink-0">
+                <span className="text-gray-500">{g.nombre}</span>
+                <span className="font-semibold text-gray-800">${g.precio.toLocaleString('es-AR')}</span>
                 {g.variacion !== 0 && (
-                  <span className={g.variacion > 0 ? 'text-green-600' : 'text-red-500'}>
+                  <span className="font-medium" style={{ color: g.variacion > 0 ? '#15A66A' : '#F2870D' }}>
                     {g.variacion > 0 ? '▲' : '▼'}{Math.abs(g.variacion).toFixed(1)}%
                   </span>
                 )}
@@ -230,29 +243,34 @@ export default function DashboardPage() {
       <div className="max-w-[1600px] mx-auto p-6 space-y-6">
 
         {/* ── Header ── */}
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Centro de Operaciones</h1>
-            <p className="text-gray-500 text-sm mt-1 capitalize">{todayLabel} · {timeLabel} hs</p>
-          </div>
-          <button className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 shadow-sm transition-colors">
-            <Settings className="h-4 w-4" /> Personalizar
-          </button>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Centro de Operaciones</h1>
+          <p className="text-gray-500 text-sm mt-1 capitalize">{todayLabel} · {timeLabel} hs</p>
         </div>
 
         {/* ── 5 KPI Cards ── */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
-          <KpiCard icon={<Truck className="h-5 w-5 text-blue-600" />} iconBg="bg-blue-50"
+          <KpiCard
+            icon={<Truck className="h-5 w-5" style={{ color: '#2456E6' }} />}
+            iconBg="bg-blue-50"
             title="Camiones en ruta" value={stats?.fleet.onTrip ?? 0} subtitle="Activos ahora" loading={statsLoading} />
-          <KpiCard icon={<Navigation className="h-5 w-5 text-green-600" />} iconBg="bg-green-50"
+          <KpiCard
+            icon={<Navigation className="h-5 w-5" style={{ color: '#15A66A' }} />}
+            iconBg="bg-emerald-50"
             title="Viajes activos" value={stats?.trips.active ?? 0} subtitle="En progreso"
             loading={statsLoading} trend={{ value: tripTrend, label: 'vs mes ant.' }} />
-          <KpiCard icon={<Package className="h-5 w-5 text-purple-600" />} iconBg="bg-purple-50"
+          <KpiCard
+            icon={<Package className="h-5 w-5" style={{ color: '#3B6BFF' }} />}
+            iconBg="bg-blue-50"
             title="Peso en tránsito" value={`${(stats?.logistics.totalWeightTons ?? 0).toLocaleString('es-AR')} t`}
             subtitle="Carga en movimiento" loading={statsLoading} />
-          <KpiCard icon={<Clock className="h-5 w-5 text-orange-600" />} iconBg="bg-orange-50"
+          <KpiCard
+            icon={<Clock className="h-5 w-5" style={{ color: '#F2870D' }} />}
+            iconBg="bg-orange-50"
             title="Turnos hoy" value={turnos.length || (stats?.trips.active ?? 0)} subtitle="Programados hoy" />
-          <KpiCard icon={<DollarSign className="h-5 w-5 text-teal-600" />} iconBg="bg-teal-50"
+          <KpiCard
+            icon={<DollarSign className="h-5 w-5" style={{ color: '#15A66A' }} />}
+            iconBg="bg-emerald-50"
             title="Facturación mes" value={formatCurrency(stats?.billing.thisMonth ?? 0)}
             subtitle="Este mes" loading={statsLoading} />
         </div>
@@ -262,11 +280,11 @@ export default function DashboardPage() {
           <div className="xl:col-span-3 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
             <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
               <div className="flex items-center gap-2">
-                <MapPin className="h-4 w-4 text-gray-500" />
+                <MapPin className="h-4 w-4 text-gray-400" />
                 <span className="text-sm font-semibold text-gray-800">Seguimiento en tiempo real</span>
                 <span className="text-gray-300">·</span>
-                <span className={`inline-flex items-center gap-1.5 text-xs font-mono font-medium ${connected ? 'text-green-600' : 'text-gray-400'}`}>
-                  <span className={`w-2 h-2 rounded-full ${connected ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`} />
+                <span className="inline-flex items-center gap-1.5 text-xs font-medium" style={{ color: connected ? '#15A66A' : '#9ca3af' }}>
+                  <span className="w-2 h-2 rounded-full" style={{ background: connected ? '#15A66A' : '#9ca3af', animation: connected ? 'pulse 2s infinite' : 'none' }} />
                   {connected ? 'En vivo' : 'Desconectado'}
                 </span>
               </div>
@@ -303,12 +321,12 @@ export default function DashboardPage() {
                             {trip.driver?.user ? `${trip.driver.user.firstName ?? ''} ${trip.driver.user.lastName ?? ''}`.trim() : 'Sin chofer'}
                           </p>
                         </div>
-                        <span className={`flex-shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[trip.status] ?? 'bg-gray-100 text-gray-600'}`}>
+                        <span className={`flex-shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_BG[trip.status] ?? 'bg-gray-100 text-gray-600'}`}>
                           {STATUS_LABELS[trip.status] ?? trip.status}
                         </span>
                       </div>
                       {trip.estimatedArrival && (
-                        <p className="text-xs text-green-600 font-medium mt-1">
+                        <p className="text-xs font-medium mt-1" style={{ color: '#15A66A' }}>
                           ETA: {format(new Date(trip.estimatedArrival), 'HH:mm', { locale: es })}
                         </p>
                       )}
@@ -341,7 +359,7 @@ export default function DashboardPage() {
                       <div className="flex items-center gap-2">
                         <Package className="h-3.5 w-3.5 text-gray-400" />
                         <span className="text-sm font-semibold text-gray-800">{carga.type ?? 'General'}</span>
-                        <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-medium">Disponible</span>
+                        <span className="text-xs px-1.5 py-0.5 rounded-full font-medium" style={{ background: '#dcfce7', color: '#15A66A' }}>Disponible</span>
                       </div>
                       <p className="text-xs text-gray-400 mt-0.5 ml-5 truncate max-w-[160px]">
                         {carga.originAddress?.split(',')[0] ?? '—'} → {carga.destinationAddress?.split(',')[0] ?? '—'}
@@ -349,9 +367,7 @@ export default function DashboardPage() {
                       {carga.weightTons && <p className="text-xs text-gray-500 mt-0.5 ml-5">{carga.weightTons} tn</p>}
                     </div>
                     {carga.estimatedValue && (
-                      <div className="text-right flex-shrink-0">
-                        <p className="text-sm font-bold text-gray-900">{formatCurrency(carga.estimatedValue)}</p>
-                      </div>
+                      <p className="text-sm font-bold text-gray-900 flex-shrink-0">{formatCurrency(carga.estimatedValue)}</p>
                     )}
                   </div>
                 ))}
@@ -381,7 +397,12 @@ export default function DashboardPage() {
                     <div className="flex-1 min-w-0 border-l border-gray-200 pl-3">
                       <div className="flex items-center justify-between gap-2">
                         <p className="text-xs font-semibold text-gray-800 truncate">{turno.description ?? turno.company?.name ?? 'Turno'}</p>
-                        <span className={`flex-shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${turno.status === 'CONFIRMADO' || turno.status === 'BOOKED' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                        <span
+                          className="flex-shrink-0 text-xs px-2 py-0.5 rounded-full font-medium"
+                          style={turno.status === 'CONFIRMADO' || turno.status === 'BOOKED'
+                            ? { background: '#dcfce7', color: '#15A66A' }
+                            : { background: '#fff7ed', color: '#F2870D' }}
+                        >
                           {turno.status === 'CONFIRMADO' || turno.status === 'BOOKED' ? 'Confirmado' : 'Pendiente'}
                         </span>
                       </div>
@@ -398,21 +419,24 @@ export default function DashboardPage() {
 
             <div className="mt-5 pt-4 border-t border-gray-100">
               <h3 className="text-sm font-semibold text-gray-800 mb-3">
-                Alertas {alerts.filter(a => !a.isRead).length > 0 && (
-                  <span className="ml-2 text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full">{alerts.filter(a => !a.isRead).length}</span>
+                Alertas
+                {alerts.filter(a => !a.isRead).length > 0 && (
+                  <span className="ml-2 text-xs px-1.5 py-0.5 rounded-full font-medium" style={{ background: '#fff7ed', color: '#F2870D' }}>
+                    {alerts.filter(a => !a.isRead).length}
+                  </span>
                 )}
               </h3>
               {alertsLoading ? (
                 <div className="space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="h-10 animate-pulse bg-gray-100 rounded" />)}</div>
               ) : alerts.length === 0 ? (
-                <div className="flex items-center gap-2 text-xs text-green-600">
+                <div className="flex items-center gap-2 text-xs" style={{ color: '#15A66A' }}>
                   <CheckCircle className="h-4 w-4" /> Sin alertas pendientes
                 </div>
               ) : (
                 <div className="space-y-2">
                   {alerts.map((alert) => (
-                    <div key={alert.id} className={`flex items-start gap-2 p-2 rounded-lg ${alert.isRead ? 'bg-gray-50' : 'bg-amber-50'}`}>
-                      <AlertTriangle className={`h-4 w-4 flex-shrink-0 mt-0.5 ${alert.severity === 'error' ? 'text-red-500' : 'text-amber-500'}`} />
+                    <div key={alert.id} className={`flex items-start gap-2 p-2 rounded-lg ${alert.isRead ? 'bg-gray-50' : 'bg-orange-50'}`}>
+                      <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" style={{ color: alert.severity === 'error' ? '#ef4444' : '#F2870D' }} />
                       <div className="min-w-0 flex-1">
                         <p className="text-xs font-medium text-gray-800 truncate">{alert.title ?? alert.type ?? 'Alerta'}</p>
                         <p className="text-xs text-gray-400 truncate">{alert.message}</p>
@@ -457,10 +481,10 @@ export default function DashboardPage() {
             )}
             <div className="mt-2 space-y-2">
               {[
-                { name: 'En ruta', value: fleetOnTrip, color: '#2563eb' },
-                { name: 'Disponibles', value: Math.max(0, (stats?.fleet.active ?? 0) - fleetOnTrip - fleetLoading), color: '#16a34a' },
-                { name: 'En carga', value: fleetLoading, color: '#ca8a04' },
-                { name: 'En mantenimiento', value: fleetMaint, color: '#f97316' },
+                { name: 'En ruta', value: fleetOnTrip, color: '#2456E6' },
+                { name: 'Disponibles', value: Math.max(0, (stats?.fleet.active ?? 0) - fleetOnTrip - fleetLoading), color: '#15A66A' },
+                { name: 'En carga', value: fleetLoading, color: '#F2870D' },
+                { name: 'En mantenimiento', value: fleetMaint, color: '#9ca3af' },
               ].map((item) => (
                 <div key={item.name} className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -479,35 +503,48 @@ export default function DashboardPage() {
           <div className="px-6 py-5 flex flex-col md:flex-row md:items-center gap-5">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6 flex-1">
               <div className="flex items-center gap-3">
-                <div className="bg-white/10 rounded-lg p-2.5"><Navigation className="h-5 w-5 text-blue-300" /></div>
+                <div className="rounded-lg p-2.5" style={{ background: 'rgba(36,86,230,0.2)' }}>
+                  <Navigation className="h-5 w-5" style={{ color: '#3B6BFF' }} />
+                </div>
                 <div>
                   <p className="text-xs text-gray-400 font-medium">Viajes activos</p>
                   <p className="text-lg font-bold text-white">{stats?.trips.active ?? 0}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <div className="bg-white/10 rounded-lg p-2.5"><Truck className="h-5 w-5 text-green-300" /></div>
+                <div className="rounded-lg p-2.5" style={{ background: 'rgba(21,166,106,0.2)' }}>
+                  <Truck className="h-5 w-5" style={{ color: '#15A66A' }} />
+                </div>
                 <div>
                   <p className="text-xs text-gray-400 font-medium">Flota utilizada</p>
                   <p className="text-lg font-bold text-white">{stats?.fleet.utilization ?? 0}%</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <div className="bg-white/10 rounded-lg p-2.5"><Timer className="h-5 w-5 text-purple-300" /></div>
+                <div className="rounded-lg p-2.5" style={{ background: 'rgba(59,107,255,0.2)' }}>
+                  <Timer className="h-5 w-5" style={{ color: '#3B6BFF' }} />
+                </div>
                 <div>
                   <p className="text-xs text-gray-400 font-medium">Entrega promedio</p>
                   <p className="text-lg font-bold text-white">{stats?.logistics.avgDeliveryHours ?? 0} h</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <div className="bg-white/10 rounded-lg p-2.5"><Flag className="h-5 w-5 text-orange-300" /></div>
+                <div className="rounded-lg p-2.5" style={{ background: 'rgba(242,135,13,0.2)' }}>
+                  <Flag className="h-5 w-5" style={{ color: '#F2870D' }} />
+                </div>
                 <div>
                   <p className="text-xs text-gray-400 font-medium">Viajes finalizados</p>
                   <p className="text-lg font-bold text-white">{stats?.trips.finalized ?? 0}</p>
                 </div>
               </div>
             </div>
-            <button className="flex-shrink-0 inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors shadow-lg">
+            <button
+              className="flex-shrink-0 inline-flex items-center gap-2 px-5 py-2.5 text-white text-sm font-semibold rounded-lg transition-colors shadow-lg"
+              style={{ background: '#2456E6' }}
+              onMouseEnter={e => (e.currentTarget.style.background = '#3B6BFF')}
+              onMouseLeave={e => (e.currentTarget.style.background = '#2456E6')}
+            >
               <Loader2 className="h-4 w-4" /> Generar reporte diario
             </button>
           </div>
