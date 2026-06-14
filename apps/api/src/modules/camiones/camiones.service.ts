@@ -1,12 +1,14 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AlertsService } from '../alerts/alerts.service';
+import { EmailService } from '../../common/email/email.service';
 
 @Injectable()
 export class CamionesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly alerts: AlertsService,
+    private readonly email: EmailService,
   ) {}
 
   async publish(companyId: string, dto: {
@@ -105,6 +107,28 @@ export class CamionesService {
       type: 'SOLICITUD_CAMION',
       message: partes.join(' | '),
     });
+
+    // Email al transportista
+    try {
+      const transportCompany = await this.prisma.company.findUnique({
+        where: { id: listing.companyId },
+        include: { companyUsers: { include: { user: { select: { email: true, firstName: true } } } } },
+      });
+      const transportEmail = transportCompany?.companyUsers?.[0]?.user?.email;
+      const transportName = transportCompany?.companyUsers?.[0]?.user?.firstName ?? transportCompany?.name ?? 'Usuario';
+      if (transportEmail) {
+        await this.email.sendContactRequest({
+          to: transportEmail,
+          transportistaName: transportName,
+          dadoName: dador?.name ?? 'Dador de carga',
+          mensaje: dto.mensaje,
+          origen: dto.origen,
+          destino: dto.destino,
+          toneladas: dto.toneladas,
+          tarifaOfrecida: dto.tarifaOfrecida,
+        });
+      }
+    } catch (_) {}
 
     return { ok: true };
   }

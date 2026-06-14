@@ -9,6 +9,7 @@ import { TripStatus, TripEventType, CommissionType } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AlertsService } from '../alerts/alerts.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import { EmailService } from '../../common/email/email.service';
 import { CreateTripDto, UpdateTripStatusDto, AddTripEventDto, AssignTripDto } from './dto/trip.dto';
 
 const STATUS_TRANSITIONS: Record<TripStatus, TripStatus[]> = {
@@ -39,6 +40,7 @@ export class TripsService {
     private readonly prisma: PrismaService,
     private readonly alerts: AlertsService,
     private readonly subscriptions: SubscriptionsService,
+    private readonly email: EmailService,
   ) {}
 
   async create(dto: CreateTripDto) {
@@ -211,6 +213,9 @@ export class TripsService {
       });
     }
 
+    // Email notifications for status changes
+    this.sendTripStatusEmails(trip, dto.status).catch(() => {});
+
     this.logger.log(`Trip ${id}: ${trip.status} → ${dto.status}`);
     return updated;
   }
@@ -285,6 +290,54 @@ export class TripsService {
         return rate * (commission / 100) + commission;
       default:
         return 0;
+    }
+  }
+
+  private async sendTripStatusEmails(trip: any, newStatus: TripStatus) {
+    const NOTIFY_STATUSES = [
+      TripStatus.EN_CAMINO_ORIGEN, TripStatus.EN_TRANSITO,
+      TripStatus.FINALIZADO, TripStatus.CANCELADO,
+    ];
+    if (!NOTIFY_STATUSES.includes(newStatus)) return;
+
+    try {
+      const full = await this.prisma.trip.findUnique({
+        where: { id: trip.id },
+        include: {
+          cargo: {
+            include: {
+              company: {
+                include: { companyUsers: { include: { user: { select: { email: true, firstName: true } } } } },
+              },
+            },
+          },
+          transportCompany: {
+            include: { companyUsers: { include: { user: { select: { email: true, firstName: true } } } } },
+          },
+        },
+      });
+      if (!full) return;
+
+      const cargoType = full.cargo?.type ?? 'Carga';
+      const origin = full.cargo?.originAddress ?? '';
+      const destination = full.cargo?.destinationAddress ?? '';
+
+      const dadoEmail = (full.cargo as any)?.company?.companyUsers?.[0]?.user?.email;
+      const dadoName = (full.cargo as any)?.company?.companyUsers?.[0]?.user?.firstName ?? 'Usuario';
+      const transportEmail = (full.transportCompany as any)?.companyUsers?.[0]?.user?.email;
+      const transportName = (full.transportCompany as any)?.companyUsers?.[0]?.user?.firstName ?? 'Usuario';
+
+      const params = { cargoType, origin, destination, tripId: trip.id, newStatus };
+
+      if (newStatus === TripStatus.FINALIZADO) {
+        if (dadoEmail) await this.email.sendTripFinalized({ to: dadoEmail, recipientName: dadoName, cargoType, origin, destination, amount: full.agreedRate ?? 0, tripId: trip.id });
+        if (transportEmail) await this.email.sendTripFinalized({ to: transportEmail, recipientName: transportName, cargoType, origin, destination, amount: full.agreedRate ?? 0, tripId: trip.id });
+      } else {
+        if (dadoEmail) await this.email.sendTripStatusUpdate({ to: dadoEmail, recipientName: dadoName, ...params });
+        if (transportEmail) await this.email.sendTripStatusUpdate({ to: transportEmail, recipientName: transportName, ...params });
+      }
+    } catch (e) {
+      this.logger.warn(`Email de estado no enviado: ${(e as Error).message}`);
     }
   }
 

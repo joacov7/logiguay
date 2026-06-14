@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import { EmailService } from '../../common/email/email.service';
 import { CreateCargoDto, UpdateCargoDto, MarketplaceFilterDto } from './dto/cargo.dto';
 import { Prisma } from '@prisma/client';
 
@@ -22,6 +23,7 @@ export class CargoService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly subscriptions: SubscriptionsService,
+    private readonly email: EmailService,
   ) {}
 
   async create(dto: CreateCargoDto & { companyId: string }) {
@@ -360,6 +362,29 @@ export class CargoService {
         },
       }),
     ]);
+
+    // Notify transportista by email
+    try {
+      const transportCompany = await this.prisma.company.findUnique({
+        where: { id: quote.transportCompanyId },
+        include: { companyUsers: { include: { user: { select: { email: true, firstName: true } } } } },
+      });
+      const dadoCompany = cargo.company as any;
+      const transportEmail = transportCompany?.companyUsers?.[0]?.user?.email;
+      const transportName = transportCompany?.companyUsers?.[0]?.user?.firstName ?? transportCompany?.name ?? 'Transportista';
+      if (transportEmail) {
+        await this.email.sendQuoteAccepted({
+          to: transportEmail,
+          transportistaName: transportName,
+          dadoName: dadoCompany?.name ?? 'Dador de carga',
+          cargoType: cargo.type ?? 'Carga',
+          origin: cargo.originAddress ?? '',
+          destination: cargo.destinationAddress ?? '',
+          amount: quote.amount,
+          tripId: '',
+        });
+      }
+    } catch (_) {}
 
     return this.getCargoWithQuotes(cargoId);
   }
