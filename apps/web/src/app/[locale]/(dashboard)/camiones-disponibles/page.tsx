@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Truck, Plus, MapPin, Navigation, X, Send, CheckCircle } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { AddressAutocomplete } from '@/components/ui/AddressAutocomplete';
 import api from '@/lib/api';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -301,19 +302,18 @@ export default function CamionesDisponiblesPage() {
                   <input type="number" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={form.capacityM3} onChange={(e) => setForm((f) => ({ ...f, capacityM3: e.target.value }))} placeholder="Ej: 90" />
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Ubicación de origen</label>
-                  <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={form.originAddress} onChange={(e) => setForm((f) => ({ ...f, originAddress: e.target.value }))} placeholder="Ciudad o dirección" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Latitud</label>
-                  <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={form.originLat} onChange={(e) => setForm((f) => ({ ...f, originLat: e.target.value }))} placeholder="-34.6037" />
-                </div>
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-sm font-medium text-gray-700">Longitud</label>
-                    <button onClick={useMyLocationForPublish} className="text-xs text-blue-600 hover:underline">Usar GPS</button>
-                  </div>
-                  <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={form.originLng} onChange={(e) => setForm((f) => ({ ...f, originLng: e.target.value }))} placeholder="-58.3816" />
+                  <AddressAutocomplete
+                    label="Ubicación de origen"
+                    value={form.originAddress}
+                    onChange={(addr) => setForm((f) => ({ ...f, originAddress: addr }))}
+                    onCoords={(lat, lng) => setForm((f) => ({ ...f, originLat: lat.toFixed(6), originLng: lng.toFixed(6) }))}
+                    placeholder="Ciudad o dirección"
+                  />
+                  {form.originLat && form.originLng && (
+                    <p className="text-xs text-gray-400 mt-1">
+                      Coords: {form.originLat}, {form.originLng}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Disponible desde</label>
