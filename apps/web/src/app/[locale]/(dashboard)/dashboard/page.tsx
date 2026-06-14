@@ -16,6 +16,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useTracking } from '@/hooks/useTracking';
 import { useDollarRates, useGrainPrices } from '@/hooks/useMarketData';
 import type { ActiveTrip } from '../tracking/MapView';
+import { DocumentAlertBanner } from '@/components/ui/DocumentAlertBanner';
 
 const MapView = dynamic(() => import('../tracking/MapView'), { ssr: false });
 
@@ -309,6 +310,8 @@ export default function DashboardPage() {
       </div>
 
       <div className="max-w-[1600px] mx-auto p-6 space-y-6">
+
+        <DocumentAlertBanner />
 
         {/* ── Header ── */}
         <div>
