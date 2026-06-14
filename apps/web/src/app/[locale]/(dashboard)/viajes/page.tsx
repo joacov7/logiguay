@@ -9,6 +9,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import { StatusBadge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { RatingStars } from '@/components/ui/RatingStars';
+import { RatingModal } from '@/components/ui/RatingModal';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
 import { Trip, TripEvent, PaginatedResponse } from '@/types';
@@ -537,78 +538,15 @@ export default function ViajesPage() {
                       </div>
 
                       {/* Rating section */}
-                      {ratingSuccess ? (
-                        <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 rounded-xl p-3 text-sm text-center">
-                          ¡Calificación enviada! Gracias por tu opinión.
-                        </div>
-                      ) : !hasRatedQuery.data?.rated ? (
-                        !showRating ? (
-                          <button
-                            className="w-full text-sm font-medium text-blue-600 hover:text-blue-700 py-2 border border-blue-200 rounded-xl hover:bg-blue-50 transition-colors"
-                            onClick={() => setShowRating(true)}
-                          >
-                            ⭐ Calificá este viaje
-                          </button>
-                        ) : (
-                          <div className="border border-gray-200 rounded-xl p-4 space-y-3">
-                            <p className="text-sm font-semibold text-gray-800">Calificá este viaje</p>
-                            {/* Star selector */}
-                            <div className="flex gap-1 justify-center">
-                              {[1, 2, 3, 4, 5].map((star) => (
-                                <button
-                                  key={star}
-                                  type="button"
-                                  className={`text-3xl transition-colors ${
-                                    star <= (ratingHover || ratingScore) ? 'text-yellow-400' : 'text-gray-300'
-                                  }`}
-                                  onMouseEnter={() => setRatingHover(star)}
-                                  onMouseLeave={() => setRatingHover(0)}
-                                  onClick={() => setRatingScore(star)}
-                                >
-                                  ★
-                                </button>
-                              ))}
-                            </div>
-                            <textarea
-                              className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                              rows={2}
-                              placeholder="¿Cómo fue la experiencia?"
-                              value={ratingComment}
-                              onChange={(e) => setRatingComment(e.target.value)}
-                            />
-                            {ratingMutation.isError && (
-                              <p className="text-xs text-red-600">Error al enviar la calificación.</p>
-                            )}
-                            <div className="flex gap-2">
-                              <button
-                                className="flex-1 text-sm text-gray-500 hover:text-gray-700 py-1"
-                                onClick={() => { setShowRating(false); setRatingScore(0); setRatingComment(''); }}
-                              >
-                                Cancelar
-                              </button>
-                              <Button
-                                size="sm"
-                                className="flex-1"
-                                loading={ratingMutation.isPending}
-                                disabled={ratingScore === 0}
-                                onClick={() => {
-                                  const toUserId = (trip.driver as any)?.userId ?? (trip.driver as any)?.user?.id;
-                                  if (!toUserId) return;
-                                  ratingMutation.mutate({
-                                    tripId: trip.id,
-                                    toUserId,
-                                    score: ratingScore,
-                                    comment: ratingComment || undefined,
-                                  });
-                                }}
-                              >
-                                Enviar calificación
-                              </Button>
-                            </div>
-                          </div>
-                        )
+                      {!hasRatedQuery.data?.rated ? (
+                        <button
+                          className="w-full text-sm font-semibold py-2.5 border-2 border-yellow-300 rounded-xl hover:bg-yellow-50 transition-colors flex items-center justify-center gap-2 text-yellow-700"
+                          onClick={() => setShowRating(true)}
+                        >
+                          ⭐ Calificá este viaje
+                        </button>
                       ) : (
-                        <p className="text-xs text-center text-gray-400">Ya calificaste este viaje</p>
+                        <p className="text-xs text-center text-gray-400">Ya calificaste este viaje ✓</p>
                       )}
                     </>
                   )}
@@ -625,6 +563,33 @@ export default function ViajesPage() {
           </div>
         </div>
       )}
+
+      {/* Rating modal */}
+      {showRating && trip && (() => {
+        const isDador = user?.role === 'DADOR';
+        const toUserId = isDador
+          ? ((trip.driver as any)?.userId ?? (trip.driver as any)?.user?.id ?? '')
+          : (trip as any).cargo?.company?.userId ?? '';
+        const toCompanyId = isDador
+          ? (trip as any).transportCompanyId
+          : (trip as any).cargo?.companyId;
+        const toName = isDador
+          ? ((trip as any).transportCompany?.name ?? 'Transportista')
+          : ((trip as any).cargo?.company?.name ?? 'Dador de carga');
+        return (
+          <RatingModal
+            tripId={trip.id}
+            toUserId={toUserId}
+            toCompanyId={toCompanyId}
+            toName={toName}
+            raterRole={isDador ? 'DADOR' : 'TRANSPORTISTA'}
+            onClose={() => {
+              setShowRating(false);
+              queryClient.invalidateQueries({ queryKey: ['trip-has-rated', selectedTripId] });
+            }}
+          />
+        );
+      })()}
     </div>
   );
 }

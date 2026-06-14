@@ -161,6 +161,7 @@ model Company {
   turnSlots          TurnSlot[]
   turnBookings       TurnBooking[]
   truckAvailability  TruckAvailability[]
+  ratingsReceived    Rating[] @relation("RatingsReceivedByCompany")
 
   @@map("companies")
 }
@@ -423,14 +424,30 @@ model Rating {
   tripId      String
   fromUserId  String
   toUserId    String
-  score       Int
+  toCompanyId String?
+  score       Int                  // Overall 1-5 (calculado como promedio de categorías)
   comment     String?
-  role        String
+  role        String               // Quién califica: DADOR o TRANSPORTISTA
+
+  // Categorías para TRANSPORTISTA (calificado por el DADOR)
+  puntualidad      Int?            // llegó a tiempo
+  cuidadoCarga     Int?            // trató bien la mercadería
+  comunicacion     Int?            // respondió, avisó novedades
+  estadoVehiculo   Int?            // camión en buenas condiciones
+  documentacion    Int?            // papeles en regla
+
+  // Categorías para DADOR (calificado por el TRANSPORTISTA)
+  puntualidadCarga Int?            // el lugar estuvo listo a tiempo
+  condicionesLugar Int?            // acceso, playa, comodidades
+  pagoTiempo       Int?            // pagó según lo acordado
+  tratoPersonal    Int?            // buen trato al chofer
+
   createdAt   DateTime @default(now())
 
   trip        Trip     @relation(fields: [tripId], references: [id])
   fromUser    User     @relation("RatingsGiven", fields: [fromUserId], references: [id])
   toUser      User     @relation("RatingsReceived", fields: [toUserId], references: [id])
+  toCompany   Company? @relation("RatingsReceivedByCompany", fields: [toCompanyId], references: [id])
 
   @@unique([tripId, fromUserId])
   @@map("ratings")

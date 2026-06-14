@@ -23,6 +23,7 @@ import {
   Calendar,
   TruckIcon,
   LineChart,
+  Star,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -107,6 +108,12 @@ export function Sidebar({ onLogout, isOpen, onClose }: SidebarProps) {
                   <Link href="/finanzas" onClick={onClose} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${pathname === '/finanzas' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
                     <LineChart className="h-4 w-4 shrink-0" />
                     Mis Finanzas
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/reputacion" onClick={onClose} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${pathname === '/reputacion' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
+                    <Star className="h-4 w-4 shrink-0" />
+                    Mi Reputación
                   </Link>
                 </li>
               </>
