@@ -34,6 +34,7 @@ export interface User {
   createdAt: string;
   updatedAt: string;
   companyId?: string;
+  driverId?: string;
 }
 
 export interface Company {

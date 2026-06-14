@@ -2,7 +2,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import {
   Package, MapPin, BarChart3,
-  CheckCircle, ArrowRight,
+  CheckCircle, ArrowRight, Truck,
 } from 'lucide-react';
 
 // ─── How it works ───────────────────────────────────────────────────────────
