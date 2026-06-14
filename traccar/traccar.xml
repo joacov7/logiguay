@@ -12,4 +12,7 @@
 
     <!-- Registrar dispositivos automáticamente cuando reportan por primera vez -->
     <entry key="database.registerUnknown">true</entry>
+
+    <!-- Protocolo Concox/GT06 (West A10 y similares) en puerto 5023 -->
+    <entry key="concox.port">5023</entry>
 </properties>
