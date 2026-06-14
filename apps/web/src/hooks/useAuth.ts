@@ -5,15 +5,15 @@ import { useRouter } from '@/i18n/routing';
 import { User } from '../types';
 import { getCurrentUser, login, logout, register, isAuthenticated } from '../lib/auth';
 
-function getInitialUser(): User | null {
-  if (typeof window === 'undefined') return null;
-  return getCurrentUser();
-}
-
 export function useAuth() {
-  const [user, setUser] = useState<User | null>(getInitialUser);
-  const [loading, setLoading] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
+
+  useEffect(() => {
+    setUser(getCurrentUser());
+    setLoading(false);
+  }, []);
 
   const handleLogin = useCallback(
     async (email: string, password: string) => {
@@ -63,10 +63,12 @@ export function useAuth() {
     }
   }, [router]);
 
+  const authed = typeof window !== 'undefined' ? isAuthenticated() : false;
+
   return {
     user,
     loading,
-    isAuthenticated: isAuthenticated(),
+    isAuthenticated: authed,
     login: handleLogin,
     register: handleRegister,
     logout: handleLogout,
