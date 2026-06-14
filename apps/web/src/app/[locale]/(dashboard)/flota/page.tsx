@@ -148,18 +148,18 @@ export default function FlotaPage() {
   });
 
   const onSubmit = (formData: VehicleFormData) => {
-    const payload: any = {
+    const base: any = {
       ...formData,
-      companyId,
       plate: formData.plate.toUpperCase(),
       year: formData.year === '' ? undefined : formData.year,
       capacityTons: formData.capacityTons === '' ? undefined : formData.capacityTons,
       capacityM3: formData.capacityM3 === '' ? undefined : formData.capacityM3,
+      trackerDeviceId: formData.trackerDeviceId || undefined,
     };
     if (editingVehicle) {
-      updateMutation.mutate({ id: editingVehicle.id, data: payload });
+      updateMutation.mutate({ id: editingVehicle.id, data: base });
     } else {
-      createMutation.mutate(payload);
+      createMutation.mutate({ ...base, companyId });
     }
   };
 
