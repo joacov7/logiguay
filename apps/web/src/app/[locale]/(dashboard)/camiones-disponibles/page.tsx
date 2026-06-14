@@ -86,16 +86,6 @@ export default function CamionesDisponiblesPage() {
     );
   }
 
-  function useMyLocationForPublish() {
-    navigator.geolocation.getCurrentPosition((pos) => {
-      setForm((f) => ({
-        ...f,
-        originLat: pos.coords.latitude.toFixed(5),
-        originLng: pos.coords.longitude.toFixed(5),
-      }));
-    });
-  }
-
   const { data: searchResults, isLoading: searchLoading } = useQuery<TruckListing[]>({
     queryKey: ['camiones-search', lat, lng, radiusKm, typeFilter],
     queryFn: async () => {
