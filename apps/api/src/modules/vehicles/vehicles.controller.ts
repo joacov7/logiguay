@@ -15,6 +15,8 @@ import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { VehiclesService } from './vehicles.service';
 import { CreateVehicleDto, UpdateVehicleDto, UpdateVehicleStatusDto } from './dto/vehicle.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { VehicleType, VehicleStatus } from '@prisma/client';
 
@@ -72,5 +74,21 @@ export class VehiclesController {
   @ApiOperation({ summary: 'Eliminar vehículo' })
   delete(@Param('id') id: string, @CurrentUser('companyId') companyId: string) {
     return this.vehiclesService.delete(id, companyId);
+  }
+
+  @Get('admin/all')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN' as any)
+  @ApiOperation({ summary: '[Admin] Listar todos los vehículos' })
+  adminFindAll() {
+    return this.vehiclesService.adminFindAll();
+  }
+
+  @Patch('admin/:id/imei')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN' as any)
+  @ApiOperation({ summary: '[Admin] Asignar IMEI GPS a vehículo' })
+  adminUpdateImei(@Param('id') id: string, @Body('trackerDeviceId') trackerDeviceId: string | null) {
+    return this.vehiclesService.adminUpdateImei(id, trackerDeviceId);
   }
 }

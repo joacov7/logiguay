@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Building2, Users, ClipboardList, DollarSign, Settings, ShieldAlert, TrendingUp } from 'lucide-react';
+import { Building2, Users, ClipboardList, DollarSign, Settings, ShieldAlert, TrendingUp, Truck } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -41,6 +41,13 @@ const sections = [
     title: 'Comisiones',
     description: 'Configurar comisiones por viaje',
     color: 'bg-amber-50 text-amber-700',
+  },
+  {
+    href: '/admin/vehiculos',
+    icon: Truck,
+    title: 'Vehículos & GPS',
+    description: 'Asignar IMEI de GPS a camiones',
+    color: 'bg-teal-50 text-teal-700',
   },
   {
     href: '/admin/configuracion',

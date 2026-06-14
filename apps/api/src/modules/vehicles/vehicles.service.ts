@@ -176,4 +176,22 @@ export class VehiclesService {
       onTrip,
     };
   }
+
+  async adminFindAll() {
+    return this.prisma.vehicle.findMany({
+      include: {
+        company: { select: { id: true, name: true } },
+      },
+      orderBy: [{ company: { name: 'asc' } }, { plate: 'asc' }],
+    });
+  }
+
+  async adminUpdateImei(id: string, trackerDeviceId: string | null) {
+    const vehicle = await this.prisma.vehicle.findUnique({ where: { id } });
+    if (!vehicle) throw new NotFoundException('Vehículo no encontrado');
+    return this.prisma.vehicle.update({
+      where: { id },
+      data: { trackerDeviceId: trackerDeviceId || null },
+    });
+  }
 }
