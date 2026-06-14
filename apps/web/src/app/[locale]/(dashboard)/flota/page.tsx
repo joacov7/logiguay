@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Truck, Plus, Pencil, Trash2, ToggleLeft } from 'lucide-react';
+import { Truck, Plus, Pencil, Trash2, ToggleLeft, Wifi, WifiOff } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -24,6 +24,7 @@ const vehicleSchema = z.object({
   year: z.coerce.number().int().min(1950).max(new Date().getFullYear() + 1).optional().or(z.literal('')),
   capacityTons: z.coerce.number().min(0).optional().or(z.literal('')),
   capacityM3: z.coerce.number().min(0).optional().or(z.literal('')),
+  trackerDeviceId: z.string().optional(),
 });
 
 type VehicleFormData = z.infer<typeof vehicleSchema>;
@@ -177,13 +178,14 @@ export default function FlotaPage() {
       year: vehicle.year || '',
       capacityTons: vehicle.capacityTons || '',
       capacityM3: vehicle.capacityM3 || '',
+      trackerDeviceId: vehicle.trackerDeviceId || '',
     });
     setModalOpen(true);
   };
 
   const openCreate = () => {
     setEditingVehicle(null);
-    reset({ type: 'CAMION', plate: '', brand: '', model: '', year: '', capacityTons: '', capacityM3: '' });
+    reset({ type: 'CAMION', plate: '', brand: '', model: '', year: '', capacityTons: '', capacityM3: '', trackerDeviceId: '' });
     setModalOpen(true);
   };
 
@@ -268,6 +270,7 @@ export default function FlotaPage() {
                 <TableHead>Capacidad</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead>Viajes</TableHead>
+                <TableHead>GPS</TableHead>
                 <TableHead>Acciones</TableHead>
               </TableRow>
             </TableHeader>
@@ -290,6 +293,15 @@ export default function FlotaPage() {
                   </TableCell>
                   <TableCell><StatusBadge status={v.status} /></TableCell>
                   <TableCell>{v._count?.trips ?? 0}</TableCell>
+                  <TableCell>
+                    {v.trackerDeviceId ? (
+                      <span title={`IMEI: ${v.trackerDeviceId}`}>
+                        <Wifi className="h-4 w-4 text-green-500" />
+                      </span>
+                    ) : (
+                      <WifiOff className="h-4 w-4 text-gray-300" />
+                    )}
+                  </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <button onClick={() => openEdit(v)} className="text-gray-400 hover:text-blue-600 transition-colors" title="Editar">
@@ -351,6 +363,10 @@ export default function FlotaPage() {
             <Input label="Año" type="number" {...register('year')} error={(errors.year as any)?.message} />
             <Input label="Capacidad (t)" type="number" step="0.1" {...register('capacityTons')} error={(errors.capacityTons as any)?.message} />
             <Input label="Capacidad (m³)" type="number" step="0.1" {...register('capacityM3')} error={(errors.capacityM3 as any)?.message} />
+          </div>
+          <div>
+            <Input label="IMEI del GPS (opcional)" {...register('trackerDeviceId')} error={errors.trackerDeviceId?.message} placeholder="Ej: 123456789012345" />
+            <p className="text-xs text-gray-400 mt-1">Ingresá el IMEI del dispositivo GPS para rastrear este vehículo en tiempo real.</p>
           </div>
           <div className="flex justify-end gap-3 pt-2">
             <Button type="button" variant="outline" onClick={() => { setModalOpen(false); setEditingVehicle(null); reset(); }}>Cancelar</Button>
