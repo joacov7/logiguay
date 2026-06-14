@@ -1,7 +1,8 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import {
-  Truck, Package, MapPin, BarChart3, Zap,
-  ClipboardList, CheckCircle, ArrowRight, Menu,
+  Package, MapPin, BarChart3,
+  CheckCircle, ArrowRight,
 } from 'lucide-react';
 
 // ─── How it works ───────────────────────────────────────────────────────────
@@ -106,12 +107,9 @@ export default function HomePage() {
       {/* ── Navbar ── */}
       <header className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-[#15A66A] rounded-lg flex items-center justify-center">
-              <Truck className="h-5 w-5 text-white" />
-            </div>
-            <span className="text-lg font-bold text-gray-900 tracking-tight">LOGIGUAY</span>
-          </div>
+          <Link href="/">
+            <Image src="/logo-logiguay.png" alt="Logiguay" width={160} height={48} className="h-10 w-auto" priority />
+          </Link>
 
           {/* Desktop nav */}
           <nav className="hidden md:flex items-center gap-7 text-sm font-medium text-gray-600">
@@ -139,14 +137,19 @@ export default function HomePage() {
       </header>
 
       {/* ── Hero ── */}
-      <section className="relative bg-gray-900 text-white overflow-hidden">
-        {/* Background overlay with truck image feel */}
+      <section className="relative bg-gray-900 text-white overflow-hidden min-h-[560px]">
+        {/* Truck background image */}
+        <Image
+          src="/camion-hero.png"
+          alt="Camión Logiguay"
+          fill
+          className="object-cover object-center"
+          priority
+        />
+        {/* Dark + green gradient overlay so text is readable */}
         <div
           className="absolute inset-0"
-          style={{
-            background: 'linear-gradient(135deg, #0a2a1a 0%, #0d3d22 40%, #1a5c35 70%, #15A66A 100%)',
-            opacity: 0.97,
-          }}
+          style={{ background: 'linear-gradient(90deg, rgba(10,28,18,0.92) 0%, rgba(10,28,18,0.75) 55%, rgba(10,28,18,0.3) 100%)' }}
         />
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28">
           <div className="max-w-2xl">
@@ -382,12 +385,7 @@ export default function HomePage() {
       <footer className="bg-gray-900 text-gray-400 py-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#15A66A' }}>
-                <Truck className="h-4 w-4 text-white" />
-              </div>
-              <span className="text-white font-bold text-sm">LOGIGUAY</span>
-            </div>
+            <Image src="/logo-logiguay.png" alt="Logiguay" width={120} height={36} className="h-8 w-auto brightness-0 invert" />
             <nav className="flex items-center gap-6 text-xs">
               <a href="#como-funciona" className="hover:text-white transition-colors">Cómo funciona</a>
               <a href="#soluciones" className="hover:text-white transition-colors">Soluciones</a>

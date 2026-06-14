@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from '@/i18n/routing';
 import { useTranslations } from 'next-intl';
 import {
@@ -66,11 +67,8 @@ export function Sidebar({ onLogout, isOpen, onClose }: SidebarProps) {
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
         lg:translate-x-0 lg:static lg:block
       `}>
-        <div className="flex items-center gap-2 p-6 border-b border-gray-700">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-            <Truck className="h-5 w-5 text-white" />
-          </div>
-          <span className="text-xl font-bold">LOGIGUAY</span>
+        <div className="flex items-center p-5 border-b border-gray-700">
+          <Image src="/logo-logiguay.png" alt="Logiguay" width={140} height={42} className="h-9 w-auto brightness-0 invert" />
         </div>
 
         <nav className="flex-1 p-4 overflow-y-auto">
