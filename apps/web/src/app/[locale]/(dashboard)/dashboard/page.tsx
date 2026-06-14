@@ -115,6 +115,68 @@ function KpiCard({ icon, iconBg, title, value, subtitle, trend, loading }: {
   );
 }
 
+
+function WelcomeActions({ role, fleetTotal, activeTripsCount }: {
+  role?: string;
+  fleetTotal: number;
+  activeTripsCount: number;
+}) {
+  const isEmptyState = activeTripsCount === 0 && fleetTotal === 0;
+  if (!isEmptyState) return null;
+
+  interface ActionCard {
+    icon: string;
+    title: string;
+    description: string;
+    href: string;
+  }
+
+  let actions: ActionCard[];
+  let welcomeTitle: string;
+
+  if (role === 'TRANSPORTISTA') {
+    welcomeTitle = '¡Bienvenido a Logiguay! Completá estos pasos para empezar:';
+    actions = [
+      { icon: '🚛', title: 'Agregá tu primer vehículo', description: 'Registrá tu flota para empezar a operar.', href: '/flota' },
+      { icon: '📋', title: 'Buscá cargas disponibles', description: 'Explorá la bolsa y encontrá tu primer flete.', href: '/bolsa' },
+      { icon: '📄', title: 'Completá tu documentación', description: 'Cargá los papeles de tu empresa y vehículos.', href: '/documentos' },
+    ];
+  } else {
+    welcomeTitle = '¡Bienvenido a Logiguay! Completá estos pasos para empezar:';
+    actions = [
+      { icon: '📦', title: 'Publicá tu primera carga', description: 'Ingresá origen, destino y mercadería en 2 minutos.', href: '/cargas/nueva' },
+      { icon: '🔍', title: 'Explorá la bolsa', description: 'Mirá las cargas disponibles y cómo funciona el sistema.', href: '/bolsa' },
+      { icon: '🔔', title: 'Configurá alertas', description: 'Recibí notificaciones de nuevas cotizaciones y viajes.', href: '/alertas' },
+    ];
+  }
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+      <p className="text-sm font-semibold text-gray-800 mb-4">{welcomeTitle}</p>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {actions.map((action, i) => (
+          <a
+            key={i}
+            href={action.href}
+            className="group flex items-start gap-3 p-4 rounded-xl border border-gray-200 hover:border-[#15A66A] hover:shadow-sm transition-all"
+          >
+            <span className="text-2xl flex-shrink-0">{action.icon}</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-gray-800 group-hover:text-[#15A66A] transition-colors">
+                {action.title}
+              </p>
+              <p className="text-xs text-gray-400 mt-0.5">{action.description}</p>
+            </div>
+            <span className="flex-shrink-0 text-[#15A66A] font-bold text-lg opacity-0 group-hover:opacity-100 transition-opacity">
+              →
+            </span>
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
@@ -280,6 +342,13 @@ export default function DashboardPage() {
             title="Facturación mes" value={formatCurrency(stats?.billing.thisMonth ?? 0)}
             subtitle="Este mes" loading={statsLoading} />
         </div>
+
+        {/* ── Welcome actions (empty state) ── */}
+        <WelcomeActions
+          role={(user as { role?: string })?.role}
+          fleetTotal={stats?.fleet.total ?? 0}
+          activeTripsCount={stats?.trips.active ?? 0}
+        />
 
         {/* ── Map + Active Trips ── */}
         <div className="grid grid-cols-1 xl:grid-cols-4 gap-4">
