@@ -57,7 +57,7 @@ function h1(text: string): string {
   return `<h1 style="margin:0 0 8px;font-size:22px;font-weight:800;color:#111827;">${text}</h1>`;
 }
 
-function p(text: string): string {
+function para(text: string): string {
   return `<p style="margin:12px 0;color:#4b5563;font-size:15px;line-height:1.6;">${text}</p>`;
 }
 
@@ -165,7 +165,7 @@ export class EmailService {
     const url = `${this.appUrl}/cargas`;
     const html = base(`
       ${h1('Recibiste una nueva cotización')}
-      ${p(`Hola <strong>${p.dadoName}</strong>, <strong>${p.transportistaName}</strong> cotizó tu carga de ${p.cargoType}.`)}
+      ${para(`Hola <strong>${p.dadoName}</strong>, <strong>${p.transportistaName}</strong> cotizó tu carga de ${p.cargoType}.`)}
       ${infoBox([
         ['Tipo de carga', p.cargoType],
         ['Origen', p.origin],
@@ -173,7 +173,7 @@ export class EmailService {
         ['Monto ofrecido', fmt(p.amount)],
         ['Transportista', p.transportistaName],
       ])}
-      ${p('Entrá a Logiguay para comparar cotizaciones y elegir la que más te convenga.')}
+      ${para('Entrá a Logiguay para comparar cotizaciones y elegir la que más te convenga.')}
       ${btn('Ver cotizaciones', url)}
     `);
     await this.send(p.to, `Nueva cotización de ${p.transportistaName} — ${p.cargoType}`, html);
@@ -185,7 +185,7 @@ export class EmailService {
     const url = `${this.appUrl}/viajes`;
     const html = base(`
       ${h1('¡Tu cotización fue aceptada!')}
-      ${p(`Hola <strong>${p.transportistaName}</strong>, <strong>${p.dadoName}</strong> aceptó tu cotización.`)}
+      ${para(`Hola <strong>${p.transportistaName}</strong>, <strong>${p.dadoName}</strong> aceptó tu cotización.`)}
       ${infoBox([
         ['Tipo de carga', p.cargoType],
         ['Origen', p.origin],
@@ -193,7 +193,7 @@ export class EmailService {
         ['Tarifa acordada', fmt(p.amount)],
         ['Dador de carga', p.dadoName],
       ])}
-      ${p('El viaje ya aparece en tu sección de Viajes. Coordiná la asignación de vehículo y chofer.')}
+      ${para('El viaje ya aparece en tu sección de Viajes. Coordiná la asignación de vehículo y chofer.')}
       ${btn('Ver mis viajes', url)}
     `);
     await this.send(p.to, `¡Cotización aceptada! ${p.cargoType} — ${p.origin} → ${p.destination}`, html);
@@ -206,7 +206,7 @@ export class EmailService {
     const isCancel = p.newStatus === 'CANCELADO';
     const html = base(`
       ${h1(isCancel ? 'Viaje cancelado' : `Viaje actualizado: ${label}`)}
-      ${p(`Hola <strong>${p.recipientName}</strong>, el estado de tu viaje cambió.`)}
+      ${para(`Hola <strong>${p.recipientName}</strong>, el estado de tu viaje cambió.`)}
       ${infoBox([
         ['Carga', p.cargoType],
         ['Origen', p.origin],
@@ -214,8 +214,8 @@ export class EmailService {
         ['Nuevo estado', label],
       ])}
       ${isCancel
-        ? p('Si tenés dudas, comunicate con la otra parte a través de la plataforma.')
-        : p('Podés seguir el viaje en tiempo real desde Logiguay.')
+        ? para('Si tenés dudas, comunicate con la otra parte a través de la plataforma.')
+        : para('Podés seguir el viaje en tiempo real desde Logiguay.')
       }
       ${btn('Ver viaje', url)}
     `);
@@ -228,7 +228,7 @@ export class EmailService {
     const url = `${this.appUrl}/viajes`;
     const html = base(`
       ${h1('¡Viaje finalizado!')}
-      ${p(`Hola <strong>${p.recipientName}</strong>, el viaje se completó exitosamente.`)}
+      ${para(`Hola <strong>${p.recipientName}</strong>, el viaje se completó exitosamente.`)}
       ${infoBox([
         ['Carga', p.cargoType],
         ['Origen', p.origin],
@@ -255,13 +255,13 @@ export class EmailService {
     if (p.tarifaOfrecida) rows.push(['Tarifa ofrecida', fmt(p.tarifaOfrecida)]);
     const html = base(`
       ${h1('Recibiste una solicitud de carga')}
-      ${p(`Hola <strong>${p.transportistaName}</strong>, <strong>${p.dadoName}</strong> quiere contactarte.`)}
+      ${para(`Hola <strong>${p.transportistaName}</strong>, <strong>${p.dadoName}</strong> quiere contactarte.`)}
       <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:16px 20px;margin:20px 0;">
         <p style="margin:0;color:#92400e;font-size:14px;font-weight:600;">Mensaje:</p>
         <p style="margin:8px 0 0;color:#78350f;font-size:14px;line-height:1.6;">"${p.mensaje}"</p>
       </div>
       ${infoBox(rows)}
-      ${p('Respondé a través de Logiguay para coordinar los detalles.')}
+      ${para('Respondé a través de Logiguay para coordinar los detalles.')}
       ${btn('Ver en mis alertas', url)}
     `);
     await this.send(p.to, `${p.dadoName} quiere contratarte — Logiguay`, html);

@@ -298,7 +298,7 @@ export class TripsService {
       TripStatus.EN_CAMINO_ORIGEN, TripStatus.EN_TRANSITO,
       TripStatus.FINALIZADO, TripStatus.CANCELADO,
     ];
-    if (!NOTIFY_STATUSES.includes(newStatus)) return;
+    if (!NOTIFY_STATUSES.includes(newStatus as any)) return;
 
     try {
       const full = await this.prisma.trip.findUnique({

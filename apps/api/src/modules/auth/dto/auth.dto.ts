@@ -40,6 +40,16 @@ export class RegisterDto {
   @IsOptional()
   @IsEnum(['DADOR', 'TRANSPORTISTA'], { message: 'El rol debe ser DADOR o TRANSPORTISTA' })
   role?: 'DADOR' | 'TRANSPORTISTA';
+
+  @ApiPropertyOptional({ example: 'Transportes García S.R.L.' })
+  @IsOptional()
+  @IsString()
+  companyName?: string;
+
+  @ApiPropertyOptional({ example: '20123456789' })
+  @IsOptional()
+  @IsString()
+  cuit?: string;
 }
 
 export class RefreshTokenDto {

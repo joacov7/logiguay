@@ -10,11 +10,32 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/hooks/useAuth';
 
+function validateCuit(cuit: string): boolean {
+  const digits = cuit.replace(/\D/g, '');
+  if (digits.length !== 11) return false;
+  const coefs = [5, 4, 3, 2, 7, 6, 5, 4, 3, 2];
+  const sum = coefs.reduce((acc, c, i) => acc + c * Number(digits[i]), 0);
+  const rem = sum % 11;
+  const check = rem === 0 ? 0 : rem === 1 ? 9 : 11 - rem;
+  return check === Number(digits[10]);
+}
+
+function formatCuit(value: string): string {
+  const d = value.replace(/\D/g, '').slice(0, 11);
+  if (d.length <= 2) return d;
+  if (d.length <= 10) return `${d.slice(0, 2)}-${d.slice(2)}`;
+  return `${d.slice(0, 2)}-${d.slice(2, 10)}-${d.slice(10)}`;
+}
+
 const schema = z.object({
   firstName: z.string().min(2, 'Requerido'),
   lastName: z.string().min(2, 'Requerido'),
   email: z.string().email('Email inválido'),
   phone: z.string().optional(),
+  companyName: z.string().min(2, 'Razón social requerida'),
+  cuit: z.string()
+    .min(1, 'CUIT requerido')
+    .refine((v) => validateCuit(v), { message: 'CUIT inválido. Verificá el número.' }),
   password: z.string().min(8, 'Mínimo 8 caracteres'),
   confirmPassword: z.string(),
   role: z.enum(['DADOR', 'TRANSPORTISTA'], { required_error: 'Seleccioná un rol' }),
@@ -43,6 +64,7 @@ const ROLES = [
 export default function RegisterPage() {
   const { register: authRegister } = useAuth();
   const [error, setError] = useState<string | null>(null);
+  const [cuitValue, setCuitValue] = useState('');
 
   const {
     register,
@@ -54,6 +76,12 @@ export default function RegisterPage() {
 
   const selectedRole = watch('role');
 
+  const handleCuitChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatCuit(e.target.value);
+    setCuitValue(formatted);
+    setValue('cuit', formatted, { shouldValidate: true });
+  };
+
   const onSubmit = async (data: FormData) => {
     setError(null);
     try {
@@ -64,7 +92,9 @@ export default function RegisterPage() {
         lastName: data.lastName,
         phone: data.phone,
         role: data.role,
-      });
+        companyName: data.companyName,
+        cuit: data.cuit.replace(/\D/g, ''),
+      } as any);
     } catch (err: any) {
       setError(err?.response?.data?.message || 'Error al registrarse');
     }
@@ -137,6 +167,36 @@ export default function RegisterPage() {
               {...register('lastName')}
             />
           </div>
+
+          <Input
+            label="Razón social / Empresa"
+            required
+            placeholder="Ej: Transportes García S.R.L."
+            error={errors.companyName?.message}
+            {...register('companyName')}
+          />
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              CUIT <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              inputMode="numeric"
+              placeholder="20-12345678-9"
+              value={cuitValue}
+              onChange={handleCuitChange}
+              className={`block w-full rounded-lg border px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                errors.cuit ? 'border-red-400' : 'border-gray-300'
+              }`}
+            />
+            {errors.cuit ? (
+              <p className="text-xs text-red-500 mt-1">{errors.cuit.message}</p>
+            ) : (
+              <p className="text-xs text-gray-400 mt-1">Formato: XX-XXXXXXXX-X</p>
+            )}
+          </div>
+
           <Input
             label="Email"
             type="email"

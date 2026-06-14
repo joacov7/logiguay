@@ -49,9 +49,26 @@ export class AuthService {
       },
     });
 
+    // Create company if companyName provided
+    let companyId: string | null = null;
+    if (dto.companyName) {
+      const company = await this.prisma.company.create({
+        data: {
+          name: dto.companyName,
+          cuit: dto.cuit ?? '00-00000000-0',
+          country: 'AR',
+          planType: 'FREE',
+        },
+      });
+      await this.prisma.companyUser.create({
+        data: { userId: user.id, companyId: company.id },
+      });
+      companyId = company.id;
+    }
+
     const tokens = await this.generateTokens(user.id, user.email, user.role);
 
-    return { user, ...tokens };
+    return { user: { ...user, companyId, driverId: null }, ...tokens };
   }
 
   async login(dto: LoginDto) {
