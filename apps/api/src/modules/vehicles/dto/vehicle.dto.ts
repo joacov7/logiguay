@@ -58,15 +58,20 @@ export class CreateVehicleDto {
 }
 
 export class UpdateVehicleDto {
-  @ApiPropertyOptional({ description: 'IMEI del equipo GPS instalado (Traccar)' })
+  @ApiPropertyOptional({ enum: VehicleType })
   @IsOptional()
-  @IsString()
-  trackerDeviceId?: string;
+  @IsEnum(VehicleType)
+  type?: VehicleType;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
   plate?: string;
+
+  @ApiPropertyOptional({ description: 'IMEI del equipo GPS instalado (Traccar)' })
+  @IsOptional()
+  @IsString()
+  trackerDeviceId?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
