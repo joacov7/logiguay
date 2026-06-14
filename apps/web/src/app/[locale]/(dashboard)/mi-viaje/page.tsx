@@ -118,7 +118,7 @@ export default function MiViajePage() {
 
       {/* Route card */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Ruta</p>
+        <p className="text-xs font-bold text-gray-600 uppercase tracking-wider mb-4">Ruta</p>
         <div className="flex gap-4">
           <div className="flex flex-col items-center pt-1 gap-1">
             <div className="w-3 h-3 rounded-full bg-green-500" />
@@ -127,11 +127,11 @@ export default function MiViajePage() {
           </div>
           <div className="flex-1 space-y-4">
             <div>
-              <p className="text-xs text-gray-400 font-medium">ORIGEN</p>
+              <p className="text-xs text-gray-600 font-bold">ORIGEN</p>
               <p className="font-semibold text-gray-900 text-base leading-snug">{trip.cargo?.originAddress || '—'}</p>
             </div>
             <div>
-              <p className="text-xs text-gray-400 font-medium">DESTINO</p>
+              <p className="text-xs text-gray-600 font-bold">DESTINO</p>
               <p className="font-semibold text-gray-900 text-base leading-snug">{trip.cargo?.destinationAddress || '—'}</p>
             </div>
           </div>
@@ -153,14 +153,14 @@ export default function MiViajePage() {
 
       {/* Progress steps */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Progreso</p>
+        <p className="text-xs font-bold text-gray-600 uppercase tracking-wider mb-4">Progreso</p>
         <div className="space-y-3">
           {STAGES.map((stage, idx) => {
             const done = currentIdx > idx;
             const current = currentIdx === idx;
             const upcoming = currentIdx < idx;
             return (
-              <div key={stage.status} className={`flex items-center gap-3 py-1 ${upcoming ? 'opacity-35' : ''}`}>
+              <div key={stage.status} className={`flex items-center gap-3 py-1 ${upcoming ? 'opacity-50' : ''}`}>
                 <div className={`w-3 h-3 rounded-full shrink-0 transition-all ${done ? 'bg-green-500' : current ? stage.dot + ' ring-4 ring-offset-1 ring-opacity-30 ' + stage.dot.replace('bg-', 'ring-') : 'bg-gray-200'}`} />
                 <span className={`text-sm font-medium ${done ? 'text-gray-400 line-through' : current ? 'text-gray-900' : 'text-gray-400'}`}>
                   {stage.emoji} {stage.label}
@@ -175,7 +175,7 @@ export default function MiViajePage() {
       {/* BIG ACTION BUTTON */}
       {nextAction && trip.status !== 'FINALIZADO' && (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Próxima acción</p>
+          <p className="text-xs font-bold text-gray-600 uppercase tracking-wider mb-4">Próxima acción</p>
           <button
             onClick={() => setConfirmAction({ tripId: trip.id, nextStatus: nextAction.nextStatus, label: nextAction.label })}
             disabled={statusMutation.isPending}
@@ -209,14 +209,14 @@ export default function MiViajePage() {
       {/* Events log */}
       {trip.events?.length > 0 && (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Historial</p>
+          <p className="text-xs font-bold text-gray-600 uppercase tracking-wider mb-4">Historial</p>
           <div className="space-y-3">
             {trip.events.map((ev: any) => (
               <div key={ev.id} className="flex gap-3 items-start">
                 <Clock className="h-4 w-4 text-blue-400 mt-0.5 shrink-0" />
                 <div>
                   <p className="text-sm font-medium text-gray-800">{EVENT_LABELS[ev.type] ?? ev.type}</p>
-                  <p className="text-xs text-gray-400">{format(new Date(ev.timestamp), 'dd/MM HH:mm')}</p>
+                  <p className="text-xs text-gray-500">{format(new Date(ev.timestamp), 'dd/MM HH:mm')}</p>
                   {ev.notes && <p className="text-xs text-gray-500 mt-0.5">{ev.notes}</p>}
                 </div>
               </div>
@@ -228,7 +228,7 @@ export default function MiViajePage() {
       {/* Contact transport company */}
       {trip.transportCompany && (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Empresa</p>
+          <p className="text-xs font-bold text-gray-600 uppercase tracking-wider mb-2">Empresa</p>
           <p className="font-semibold text-gray-900">{trip.transportCompany.name}</p>
           {trip.transportCompany.phone && (
             <a href={`tel:${trip.transportCompany.phone}`}

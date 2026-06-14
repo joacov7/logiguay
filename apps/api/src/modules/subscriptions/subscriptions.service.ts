@@ -38,6 +38,27 @@ export class SubscriptionsService {
     return PLAN_LIMITS[plan] ?? PLAN_LIMITS['FREE'];
   }
 
+  async getUsage(companyId: string) {
+    const limits = await this.getPlanLimits(companyId);
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+
+    const [vehicles, drivers, activeTrips, monthlyPubs] = await Promise.all([
+      this.prisma.vehicle.count({ where: { companyId } }),
+      this.prisma.driver.count({ where: { companyId } }),
+      this.prisma.trip.count({ where: { transportCompanyId: companyId, status: { notIn: ['FINALIZADO', 'CANCELADO'] } } }),
+      this.prisma.cargo.count({ where: { companyId, createdAt: { gte: startOfMonth } } }),
+    ]);
+
+    return {
+      vehicles: { current: vehicles, max: limits.maxVehicles },
+      drivers: { current: drivers, max: limits.maxDrivers },
+      activeTrips: { current: activeTrips, max: limits.maxActiveTrips },
+      monthlyPublications: { current: monthlyPubs, max: limits.maxMonthlyPublications },
+    };
+  }
+
   async checkLimit(
     companyId: string,
     limitKey: keyof PlanLimits,

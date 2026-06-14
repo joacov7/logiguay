@@ -8,7 +8,8 @@ function cookieFlags() {
 }
 
 function setAuthCookie(token: string) {
-  const maxAge = 15 * 60; // 15 minutes — matches JWT_EXPIRES_IN
+  // 7 days — refresh token handles renewal; middleware just needs to know user is logged in
+  const maxAge = 7 * 24 * 60 * 60;
   document.cookie = `accessToken=${token}; max-age=${maxAge}; ${cookieFlags()}`;
 }
 

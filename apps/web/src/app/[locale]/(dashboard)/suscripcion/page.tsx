@@ -179,6 +179,12 @@ export default function SuscripcionPage() {
     },
   });
 
+  const usageQuery = useQuery({
+    queryKey: ['subscription-usage', companyId],
+    enabled: !!companyId,
+    queryFn: async () => (await api.get('/subscriptions/usage')).data,
+  });
+
   const current = currentQuery.data;
   const limits = limitsQuery.data;
 
@@ -255,6 +261,50 @@ export default function SuscripcionPage() {
           </div>
         </Card>
       )}
+
+      {/* Usage bars */}
+      {usageQuery.data && (() => {
+        const usage = usageQuery.data;
+        const UNLIMITED = 999999;
+        const bars = [
+          { label: 'Vehículos', current: usage.vehicles.current, max: usage.vehicles.max },
+          { label: 'Choferes', current: usage.drivers.current, max: usage.drivers.max },
+          { label: 'Viajes activos', current: usage.activeTrips.current, max: usage.activeTrips.max },
+          { label: 'Publicaciones este mes', current: usage.monthlyPublications.current, max: usage.monthlyPublications.max },
+        ].filter((b) => b.max < UNLIMITED);
+
+        if (!bars.length) return null;
+        return (
+          <Card>
+            <h3 className="text-sm font-semibold text-gray-700 mb-4">Uso de tu plan</h3>
+            <div className="space-y-4">
+              {bars.map((b) => {
+                const pct = Math.min(100, Math.round((b.current / b.max) * 100));
+                const isNear = pct >= 80;
+                const isFull = pct >= 100;
+                return (
+                  <div key={b.label}>
+                    <div className="flex justify-between text-sm mb-1.5">
+                      <span className="text-gray-600 font-medium">{b.label}</span>
+                      <span className={`font-semibold ${isFull ? 'text-red-600' : isNear ? 'text-orange-600' : 'text-gray-700'}`}>
+                        {b.current} / {b.max}
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-100 rounded-full h-2.5">
+                      <div
+                        className={`h-2.5 rounded-full transition-all ${isFull ? 'bg-red-500' : isNear ? 'bg-orange-400' : 'bg-green-500'}`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    {isFull && <p className="text-xs text-red-600 mt-1 font-medium">Límite alcanzado — actualizá tu plan para continuar</p>}
+                    {isNear && !isFull && <p className="text-xs text-orange-600 mt-1">Estás cerca del límite</p>}
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+        );
+      })()}
 
       {/* Plan cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">

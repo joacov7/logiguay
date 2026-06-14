@@ -36,6 +36,12 @@ export class SubscriptionsController {
     return this.subscriptionsService.getPlanLimits(companyId);
   }
 
+  @Get('usage')
+  @ApiOperation({ summary: 'Uso actual vs límites del plan' })
+  async getUsage(@CurrentUser('companyId') companyId: string) {
+    return this.subscriptionsService.getUsage(companyId);
+  }
+
   @Get('history')
   @ApiOperation({ summary: 'Historial de suscripciones' })
   getHistory(@CurrentUser('companyId') companyId: string) {
