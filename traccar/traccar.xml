@@ -15,4 +15,6 @@
 
     <!-- Protocolo Concox/GT06 (West A10 y similares) en puerto 5023 -->
     <entry key="concox.port">5023</entry>
+    <!-- GT06 es variante del mismo protocolo, algunos West A10 lo usan -->
+    <entry key="gt06.port">5024</entry>
 </properties>
