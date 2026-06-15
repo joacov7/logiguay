@@ -1,54 +1,49 @@
 import { Tabs } from 'expo-router';
-import { Home, Truck, Package, Car, User } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function TransportistaLayout() {
   return (
     <Tabs
       screenOptions={{
+        headerShown: false,
         tabBarActiveTintColor: '#15A66A',
         tabBarInactiveTintColor: '#9CA3AF',
-        tabBarStyle: {
-          backgroundColor: '#fff',
-          borderTopColor: '#e5e7eb',
-          elevation: 8,
-          shadowOpacity: 0.1,
-        },
-        headerShown: false,
+        tabBarStyle: { backgroundColor: '#fff' },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
           title: 'Inicio',
-          tabBarIcon: ({ color, size }) => <Home color={color} size={size} />,
+          tabBarIcon: ({ color, size }) => <Ionicons name="home-outline" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="viajes"
         options={{
           title: 'Viajes',
-          tabBarIcon: ({ color, size }) => <Truck color={color} size={size} />,
+          tabBarIcon: ({ color, size }) => <Ionicons name="car-outline" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="bolsa"
         options={{
           title: 'Bolsa',
-          tabBarIcon: ({ color, size }) => <Package color={color} size={size} />,
+          tabBarIcon: ({ color, size }) => <Ionicons name="cube-outline" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="flota"
         options={{
           title: 'Flota',
-          tabBarIcon: ({ color, size }) => <Car color={color} size={size} />,
+          tabBarIcon: ({ color, size }) => <Ionicons name="bus-outline" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="perfil"
         options={{
           title: 'Perfil',
-          tabBarIcon: ({ color, size }) => <User color={color} size={size} />,
+          tabBarIcon: ({ color, size }) => <Ionicons name="person-outline" size={size} color={color} />,
         }}
       />
     </Tabs>
