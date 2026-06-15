@@ -24,6 +24,7 @@ import {
   TruckIcon,
   LineChart,
   Star,
+  UserCircle,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -161,7 +162,17 @@ export function Sidebar({ onLogout, isOpen, onClose }: SidebarProps) {
           </div>
         )}
 
-        <div className="p-4 border-t border-gray-700">
+        <div className="p-4 border-t border-gray-700 space-y-1">
+          <Link
+            href="/perfil"
+            onClick={onClose}
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+              pathname === '/perfil' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+            }`}
+          >
+            <UserCircle className="h-4 w-4 shrink-0" />
+            Mi perfil
+          </Link>
           <button
             onClick={onLogout}
             className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"

@@ -23,9 +23,6 @@ const STATUS_OPTIONS = [
   { value: 'CANCELADO', label: 'Cancelado' },
 ];
 
-interface CargoWithQuotes extends Cargo {
-  quotes: Quote[];
-}
 
 const EXPORT_COLUMNS = ['Tipo', 'Descripción', 'Peso (t)', 'Volumen (m³)', 'Origen', 'Destino', 'Fecha requerida', 'Valor estimado', 'Estado'];
 
@@ -103,23 +100,23 @@ export default function CargasPage() {
     },
   });
 
-  const { data: cargoDetail, isLoading: detailLoading } = useQuery<CargoWithQuotes>({
-    queryKey: ['cargo-detail', selectedCargoId],
+  const { data: quotesData, isLoading: detailLoading } = useQuery<{ data: Quote[] }>({
+    queryKey: ['cargo-quotes', selectedCargoId],
     queryFn: async () => {
-      const res = await api.get(`/cargo/${selectedCargoId}`);
+      const res = await api.get(`/quotes/cargo/${selectedCargoId}`);
       return res.data;
     },
     enabled: !!selectedCargoId,
   });
 
   const selectQuoteMutation = useMutation({
-    mutationFn: async ({ cargoId, quoteId }: { cargoId: string; quoteId: string }) => {
-      const res = await api.patch(`/cargo/${cargoId}/select-quote/${quoteId}`);
+    mutationFn: async ({ quoteId }: { cargoId: string; quoteId: string }) => {
+      const res = await api.patch(`/quotes/${quoteId}/accept`);
       return res.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cargas'] });
-      queryClient.invalidateQueries({ queryKey: ['cargo-detail', selectedCargoId] });
+      queryClient.invalidateQueries({ queryKey: ['cargo-quotes', selectedCargoId] });
       setSelectedCargoId(null);
     },
   });
@@ -229,7 +226,7 @@ export default function CargasPage() {
                   </TableCell>
                   <TableCell>{cargo._count?.quotes ?? 0}</TableCell>
                   <TableCell>
-                    {cargo.status === 'COTIZANDO' && (
+                    {(cargo._count?.quotes ?? 0) > 0 && (
                       <Button
                         size="sm"
                         variant="outline"
@@ -237,7 +234,7 @@ export default function CargasPage() {
                         className="flex items-center gap-1"
                       >
                         <Eye className="h-3 w-3" />
-                        Ver ofertas
+                        Ver ofertas ({cargo._count?.quotes})
                       </Button>
                     )}
                   </TableCell>
@@ -279,11 +276,11 @@ export default function CargasPage() {
                 <div className="flex items-center justify-center py-8">
                   <div className="animate-spin h-6 w-6 border-2 border-blue-600 border-t-transparent rounded-full" />
                 </div>
-              ) : !cargoDetail?.quotes?.length ? (
+              ) : !quotesData?.data?.length ? (
                 <p className="text-center text-gray-400 py-8">No hay cotizaciones aún</p>
               ) : (
                 <div className="space-y-3">
-                  {cargoDetail.quotes.map((quote) => (
+                  {quotesData.data.map((quote) => (
                     <div
                       key={quote.id}
                       className="flex items-center justify-between p-4 border border-gray-200 rounded-lg"
