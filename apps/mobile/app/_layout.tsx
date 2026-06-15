@@ -52,7 +52,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
           router.replace(
             user.role === 'DADOR' ? '/(dador)/' :
             user.role === 'CHOFER' ? '/(chofer)/' :
-            '/(tabs)/'
+            '/(transportista)/'
           );
         }
       }
@@ -71,7 +71,7 @@ export default function RootLayout() {
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="login" />
           <Stack.Screen name="register" />
-          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="(transportista)" />
           <Stack.Screen name="(dador)" />
           <Stack.Screen name="(chofer)" />
           <Stack.Screen

@@ -8,6 +8,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  SafeAreaView,
+  StatusBar,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { login } from '../src/lib/auth';
@@ -18,6 +20,8 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [emailFocused, setEmailFocused] = useState(false);
+  const [passwordFocused, setPasswordFocused] = useState(false);
 
   async function handleLogin() {
     if (!email.trim() || !password.trim()) {
@@ -31,7 +35,7 @@ export default function LoginScreen() {
       router.replace(
         user.role === 'DADOR' ? '/(dador)/' :
         user.role === 'CHOFER' ? '/(chofer)/' :
-        '/(tabs)/'
+        '/(transportista)/'
       );
     } catch (e: any) {
       setError(
@@ -44,114 +48,214 @@ export default function LoginScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <View style={styles.card}>
-        <Text style={styles.logo}>LOGIGUAY</Text>
-        <Text style={styles.subtitle}>Plataforma logística</Text>
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-        <TextInput
-          style={styles.input}
-          placeholder="Correo electrónico"
-          placeholderTextColor="#9ca3af"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoCorrect={false}
-          editable={!loading}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Contraseña"
-          placeholderTextColor="#9ca3af"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          editable={!loading}
-        />
-        <TouchableOpacity
-          style={[styles.button, loading && styles.buttonDisabled]}
-          onPress={handleLogin}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Iniciar sesión</Text>
-          )}
-        </TouchableOpacity>
+    <SafeAreaView style={styles.safe}>
+      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+      <KeyboardAvoidingView
+        style={styles.kav}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        {/* Logo area */}
+        <View style={styles.logoArea}>
+          <View style={styles.logoCircle}>
+            <Text style={styles.logoLetter}>L</Text>
+          </View>
+          <Text style={styles.appName}>Logiguay</Text>
+          <Text style={styles.tagline}>La plataforma logística de Argentina</Text>
+        </View>
 
-        <TouchableOpacity onPress={() => router.push('/register')} style={{ alignItems: 'center', marginTop: 20 }}>
-          <Text style={{ color: '#93c5fd', fontSize: 14 }}>
-            ¿No tenés cuenta? <Text style={{ fontWeight: '700', color: '#fff' }}>Registrate</Text>
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
+        {/* Form */}
+        <View style={styles.form}>
+          {error ? (
+            <View style={styles.errorBanner}>
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          ) : null}
+
+          <Text style={styles.label}>Correo electrónico</Text>
+          <TextInput
+            style={[styles.input, emailFocused && styles.inputFocused]}
+            placeholder="juan@ejemplo.com"
+            placeholderTextColor="#9CA3AF"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            editable={!loading}
+            onFocus={() => setEmailFocused(true)}
+            onBlur={() => setEmailFocused(false)}
+          />
+
+          <Text style={styles.label}>Contraseña</Text>
+          <TextInput
+            style={[styles.input, passwordFocused && styles.inputFocused]}
+            placeholder="Tu contraseña"
+            placeholderTextColor="#9CA3AF"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            editable={!loading}
+            onFocus={() => setPasswordFocused(true)}
+            onBlur={() => setPasswordFocused(false)}
+          />
+
+          <TouchableOpacity style={styles.forgotWrap}>
+            <Text style={styles.forgotText}>¿Olvidaste tu contraseña?</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.loginBtn, loading && styles.loginBtnDisabled]}
+            onPress={handleLogin}
+            disabled={loading}
+            activeOpacity={0.85}
+          >
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.loginBtnText}>Iniciar sesión</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        {/* Bottom link */}
+        <View style={styles.bottom}>
+          <TouchableOpacity onPress={() => router.push('/register')}>
+            <Text style={styles.registerText}>
+              ¿No tenés cuenta?{' '}
+              <Text style={styles.registerLink}>Registrate</Text>
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safe: {
     flex: 1,
-    backgroundColor: '#1e3a8a',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  card: {
     backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 32,
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 12,
-    elevation: 6,
   },
-  logo: {
+  kav: {
+    flex: 1,
+    paddingHorizontal: 24,
+    justifyContent: 'center',
+  },
+  // Logo
+  logoArea: {
+    alignItems: 'center',
+    marginBottom: 40,
+  },
+  logoCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 20,
+    backgroundColor: '#15A66A',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    shadowColor: '#15A66A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  logoLetter: {
+    fontSize: 40,
+    fontWeight: '800',
+    color: '#fff',
+  },
+  appName: {
     fontSize: 32,
     fontWeight: '800',
-    color: '#1e3a8a',
-    textAlign: 'center',
-    letterSpacing: 2,
+    color: '#15A66A',
+    letterSpacing: -0.5,
   },
-  subtitle: {
+  tagline: {
     fontSize: 14,
-    color: '#6b7280',
+    color: '#6B7280',
+    marginTop: 6,
     textAlign: 'center',
-    marginBottom: 32,
-    marginTop: 4,
+  },
+  // Form
+  form: {
+    marginBottom: 24,
+  },
+  errorBanner: {
+    backgroundColor: '#FEF2F2',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  errorText: {
+    color: '#DC2626',
+    fontSize: 13,
+    textAlign: 'center',
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 6,
+    marginTop: 14,
   },
   input: {
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
+    paddingVertical: 13,
+    fontSize: 15,
     color: '#111827',
-    marginBottom: 16,
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#F9FAFB',
   },
-  button: {
-    backgroundColor: '#1e3a8a',
-    borderRadius: 10,
-    paddingVertical: 14,
+  inputFocused: {
+    borderColor: '#15A66A',
+    backgroundColor: '#fff',
+  },
+  forgotWrap: {
+    alignItems: 'flex-end',
+    marginTop: 10,
+    marginBottom: 20,
+  },
+  forgotText: {
+    fontSize: 13,
+    color: '#15A66A',
+    fontWeight: '500',
+  },
+  loginBtn: {
+    backgroundColor: '#15A66A',
+    borderRadius: 12,
+    minHeight: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#15A66A',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  loginBtnDisabled: {
+    opacity: 0.6,
+  },
+  loginBtnText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  // Bottom
+  bottom: {
     alignItems: 'center',
     marginTop: 8,
   },
-  buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  error: {
-    color: '#dc2626',
+  registerText: {
     fontSize: 14,
-    marginBottom: 16,
-    textAlign: 'center',
-    backgroundColor: '#fef2f2',
-    padding: 10,
-    borderRadius: 8,
+    color: '#6B7280',
+  },
+  registerLink: {
+    color: '#15A66A',
+    fontWeight: '700',
   },
 });
