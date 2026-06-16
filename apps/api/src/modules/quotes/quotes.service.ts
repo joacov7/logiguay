@@ -17,6 +17,12 @@ export class QuotesService {
   ) {}
 
   async create(dto: CreateQuoteDto & { transportCompanyId: string }) {
+    if (!dto.transportCompanyId) {
+      throw new BadRequestException(
+        'Necesitás registrar tu empresa antes de cotizar. Andá a Mi Perfil para crearla.',
+      );
+    }
+
     const cargo = await this.prisma.cargo.findUnique({ where: { id: dto.cargoId } });
     if (!cargo) throw new NotFoundException('Carga no encontrada');
     if (!['PUBLICADO', 'COTIZANDO'].includes(cargo.status)) {

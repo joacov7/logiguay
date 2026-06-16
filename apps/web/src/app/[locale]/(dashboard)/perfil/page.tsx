@@ -100,7 +100,7 @@ export default function PerfilPage() {
 
   const createCompanyMutation = useMutation({
     mutationFn: (data: CompanyForm) =>
-      api.post('/companies', { ...data, cuit: '00-00000000-0', country: 'AR', planType: 'FREE' }),
+      api.post('/companies', { ...data, country: 'AR', planType: 'FREE' }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['my-companies'] }),
   });
 

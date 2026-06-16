@@ -7,9 +7,10 @@ export class CreateCompanyDto {
   @IsString()
   name: string;
 
-  @ApiProperty({ example: '20-12345678-9' })
+  @ApiPropertyOptional({ example: '20-12345678-9', description: 'Si no se provee, se genera un placeholder único editable luego' })
+  @IsOptional()
   @IsString()
-  cuit: string;
+  cuit?: string;
 
   @ApiPropertyOptional()
   @IsOptional()

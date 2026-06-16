@@ -7,16 +7,32 @@ export class CompaniesService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(dto: CreateCompanyDto, userId: string) {
-    const existing = await this.prisma.company.findUnique({ where: { cuit: dto.cuit } });
-    if (existing) throw new ConflictException('CUIT ya registrado');
+    let cuit = dto.cuit?.trim();
+    if (cuit) {
+      const existing = await this.prisma.company.findUnique({ where: { cuit } });
+      if (existing) throw new ConflictException('CUIT ya registrado');
+    } else {
+      cuit = await this.generateUniqueCuit();
+    }
 
-    const company = await this.prisma.company.create({ data: dto });
+    const company = await this.prisma.company.create({ data: { ...dto, cuit } });
 
     await this.prisma.companyUser.create({
       data: { userId, companyId: company.id, role: 'ADMIN' },
     });
 
     return company;
+  }
+
+  /** Genera un CUIT placeholder único (el usuario lo edita luego con el real). */
+  async generateUniqueCuit(): Promise<string> {
+    for (let i = 0; i < 10; i++) {
+      const rand = Math.floor(10000000 + Math.random() * 90000000);
+      const cuit = `00-${rand}-0`;
+      const existing = await this.prisma.company.findUnique({ where: { cuit } });
+      if (!existing) return cuit;
+    }
+    return `00-${Date.now().toString().slice(-8)}-0`;
   }
 
   async findAll(page = 1, limit = 20) {

@@ -162,7 +162,7 @@ export default function BolsaPage() {
     enabled: !!companyId && isTransportista,
     refetchInterval: 30_000,
     queryFn: async () => {
-      const res = await api.get(`/quotes/company/${companyId}?limit=100`);
+      const res = await api.get(`/quotes/my?limit=100`);
       return res.data?.data ?? [];
     },
   });
@@ -785,7 +785,11 @@ export default function BolsaPage() {
                         className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
-                    {quoteMutation.isError && <p className="text-xs text-red-600">Error al enviar. Intentá de nuevo.</p>}
+                    {quoteMutation.isError && (
+                      <p className="text-xs text-red-600">
+                        {(quoteMutation.error as any)?.response?.data?.message || 'Error al enviar. Intentá de nuevo.'}
+                      </p>
+                    )}
                     <div className="flex gap-2">
                       <Button variant="outline" size="sm" className="flex-1" onClick={() => { setDetailCargoId(null); setQuotingCargoId(null); setQuoteAmount(''); setQuoteNotes(''); }}>Cancelar</Button>
                       <Button size="sm" className="flex-1" loading={quoteMutation.isPending}

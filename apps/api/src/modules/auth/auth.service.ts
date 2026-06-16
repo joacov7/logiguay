@@ -53,10 +53,11 @@ export class AuthService {
     let companyId: string | null = null;
     const needsCompany = dto.companyName || dto.role === 'TRANSPORTISTA';
     if (needsCompany) {
+      const cuit = dto.cuit ?? (await this.generateUniqueCuit());
       const company = await this.prisma.company.create({
         data: {
           name: dto.companyName || `${dto.firstName} ${dto.lastName}`,
-          cuit: dto.cuit ?? '00-00000000-0',
+          cuit,
           country: 'AR',
           planType: 'FREE',
         },
@@ -132,6 +133,17 @@ export class AuthService {
     const ttl = this.parseTtl(expiresIn);
     await this.redis.set(`blacklist:${accessToken}`, '1', ttl);
     return { message: 'Sesión cerrada correctamente' };
+  }
+
+  /** Genera un CUIT placeholder único (el usuario lo edita luego con el real). */
+  private async generateUniqueCuit(): Promise<string> {
+    for (let i = 0; i < 10; i++) {
+      const rand = Math.floor(10000000 + Math.random() * 90000000);
+      const cuit = `00-${rand}-0`;
+      const existing = await this.prisma.company.findUnique({ where: { cuit } });
+      if (!existing) return cuit;
+    }
+    return `00-${Date.now().toString().slice(-8)}-0`;
   }
 
   private async generateTokens(userId: string, email: string, role: string) {
