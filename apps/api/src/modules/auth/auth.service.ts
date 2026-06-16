@@ -49,9 +49,12 @@ export class AuthService {
       },
     });
 
-    // Create company if companyName provided, or auto-create for TRANSPORTISTA
+    // Siempre creamos empresa para DADOR y TRANSPORTISTA (los roles que operan cargas).
+    // Si no se provee nombre, usamos el del usuario. Esto evita usuarios sin empresa
+    // que después no pueden publicar ni ver sus cargas.
     let companyId: string | null = null;
-    const needsCompany = dto.companyName || dto.role === 'TRANSPORTISTA';
+    const role = (dto.role ?? 'DADOR');
+    const needsCompany = role === 'DADOR' || role === 'TRANSPORTISTA' || !!dto.companyName;
     if (needsCompany) {
       const cuit = dto.cuit ?? (await this.generateUniqueCuit());
       const company = await this.prisma.company.create({
