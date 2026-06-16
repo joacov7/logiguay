@@ -4,7 +4,6 @@ import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from '@/i18n/routing';
-import { useTranslations } from 'next-intl';
 import {
   LayoutDashboard,
   Package,
@@ -28,19 +27,34 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
-const navItems = [
-  { href: '/dashboard', key: 'dashboard', icon: LayoutDashboard },
-  { href: '/cargas', key: 'cargas', icon: Package },
-  { href: '/bolsa', key: 'bolsa', icon: ShoppingBag },
-  { href: '/viajes', key: 'viajes', icon: Navigation },
-  { href: '/flota', key: 'flota', icon: Truck },
-  { href: '/choferes', key: 'choferes', icon: Users },
-  { href: '/tracking', key: 'tracking', icon: MapPin },
-  { href: '/documentos', key: 'documentos', icon: FileText },
-  { href: '/alertas', key: 'alertas', icon: Bell },
-  { href: '/facturacion', key: 'facturacion', icon: CreditCard },
-  { href: '/suscripcion', key: 'suscripcion', icon: Crown },
-] as const;
+type Role = 'DADOR' | 'TRANSPORTISTA' | 'CHOFER' | 'ADMIN';
+
+interface NavItem {
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  roles?: Role[];
+}
+
+const NAV_ITEMS: NavItem[] = [
+  { href: '/dashboard',   label: 'Dashboard',         icon: LayoutDashboard },
+  { href: '/cargas',      label: 'Cargas',             icon: Package,      roles: ['DADOR', 'ADMIN'] },
+  { href: '/bolsa',       label: 'Bolsa de Cargas',    icon: ShoppingBag,  roles: ['TRANSPORTISTA', 'DADOR', 'ADMIN'] },
+  { href: '/viajes',      label: 'Viajes',             icon: Navigation,   roles: ['TRANSPORTISTA', 'ADMIN'] },
+  { href: '/flota',       label: 'Flota',              icon: Truck,        roles: ['TRANSPORTISTA', 'ADMIN'] },
+  { href: '/choferes',    label: 'Choferes',           icon: Users,        roles: ['TRANSPORTISTA', 'ADMIN'] },
+  { href: '/tracking',    label: 'Tracking',           icon: MapPin,       roles: ['TRANSPORTISTA', 'ADMIN'] },
+  { href: '/documentos',  label: 'Documentos',         icon: FileText,     roles: ['TRANSPORTISTA', 'ADMIN'] },
+  { href: '/reputacion',  label: 'Reputación',         icon: Star,         roles: ['DADOR', 'TRANSPORTISTA', 'ADMIN'] },
+  { href: '/alertas',     label: 'Alertas',            icon: Bell },
+  { href: '/facturacion', label: 'Facturación',        icon: CreditCard,   roles: ['TRANSPORTISTA', 'ADMIN'] },
+  { href: '/suscripcion', label: 'Suscripción',        icon: Crown },
+  { href: '/mi-viaje',    label: 'Mi Viaje',           icon: Navigation,   roles: ['CHOFER'] },
+  { href: '/retorno',     label: 'Retorno',            icon: ArrowLeftRight, roles: ['TRANSPORTISTA'] },
+  { href: '/finanzas',    label: 'Mis Finanzas',       icon: LineChart,    roles: ['TRANSPORTISTA'] },
+  { href: '/turnos',      label: 'Turnos',             icon: Calendar,     roles: ['TRANSPORTISTA', 'ADMIN'] },
+  { href: '/camiones-disponibles', label: 'Camiones',  icon: TruckIcon,    roles: ['DADOR', 'ADMIN'] },
+];
 
 interface SidebarProps {
   onLogout?: () => void;
@@ -50,7 +64,6 @@ interface SidebarProps {
 
 export function Sidebar({ onLogout, isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
-  const t = useTranslations('nav');
   const { user } = useAuth();
 
   return (
@@ -75,70 +88,23 @@ export function Sidebar({ onLogout, isOpen, onClose }: SidebarProps) {
 
         <nav className="flex-1 p-4 overflow-y-auto">
           <ul className="space-y-1">
-            {navItems.map(({ href, key, icon: Icon }) => {
+            {NAV_ITEMS.filter(({ roles }) => !roles || roles.includes((user?.role ?? '') as Role)).map(({ href, label, icon: Icon }) => {
               const active = pathname === href || pathname.startsWith(href + '/');
               return (
                 <li key={href}>
                   <Link
                     href={href}
                     onClick={onClose}
-                    className={`
-                      flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium
-                      transition-colors
-                      ${active
-                        ? 'bg-blue-600 text-white'
-                        : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                      }
-                    `}
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                      active ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                    }`}
                   >
                     <Icon className="h-4 w-4 shrink-0" />
-                    {t(key)}
+                    {label}
                   </Link>
                 </li>
               );
             })}
-            {(user?.role === 'CHOFER') && (
-              <li>
-                <Link href="/mi-viaje" onClick={onClose} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${pathname === '/mi-viaje' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
-                  <Navigation className="h-4 w-4 shrink-0" />
-                  Mi Viaje
-                </Link>
-              </li>
-            )}
-            {(user?.role === 'TRANSPORTISTA') && (
-              <>
-                <li>
-                  <Link href="/retorno" onClick={onClose} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${pathname === '/retorno' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
-                    <ArrowLeftRight className="h-4 w-4 shrink-0" />
-                    Retorno
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/finanzas" onClick={onClose} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${pathname === '/finanzas' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
-                    <LineChart className="h-4 w-4 shrink-0" />
-                    Mis Finanzas
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/reputacion" onClick={onClose} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${pathname === '/reputacion' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
-                    <Star className="h-4 w-4 shrink-0" />
-                    Mi Reputación
-                  </Link>
-                </li>
-              </>
-            )}
-            <li>
-              <Link href="/turnos" onClick={onClose} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${pathname === '/turnos' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
-                <Calendar className="h-4 w-4 shrink-0" />
-                Turnos
-              </Link>
-            </li>
-            <li>
-              <Link href="/camiones-disponibles" onClick={onClose} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${pathname === '/camiones-disponibles' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
-                <TruckIcon className="h-4 w-4 shrink-0" />
-                Camiones
-              </Link>
-            </li>
           </ul>
         </nav>
 
