@@ -80,28 +80,24 @@ export default function NuevaCargaPage() {
   const destinationLng = watch('destinationLng');
 
   const createMutation = useMutation({
-    mutationFn: async (data: FormData & { publish?: boolean }) => {
-      const { publish, ...cargoData } = data;
+    mutationFn: async (data: FormData) => {
       const res = await api.post('/cargo', {
-        ...cargoData,
+        ...data,
         companyId: user?.companyId,
       });
-      return { cargo: res.data, publish };
+      return res.data;
     },
-    onSuccess: async ({ cargo, publish }) => {
-      if (publish) {
-        await api.patch(`/cargo/${cargo.id}/publish`);
-      }
+    onSuccess: () => {
       router.push('/cargas');
     },
   });
 
   const onSaveDraft = handleSubmit((data) => {
-    createMutation.mutate({ ...data, publish: false });
+    createMutation.mutate(data);
   });
 
   const onPublish = handleSubmit((data) => {
-    createMutation.mutate({ ...data, publish: true });
+    createMutation.mutate(data);
   });
 
   return (
@@ -122,7 +118,7 @@ export default function NuevaCargaPage() {
       <Card>
         {createMutation.isError && (
           <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 text-sm mb-6">
-            Error al crear la carga. Intentá de nuevo.
+            {(createMutation.error as any)?.response?.data?.message || 'Error al crear la carga. Intentá de nuevo.'}
           </div>
         )}
 
