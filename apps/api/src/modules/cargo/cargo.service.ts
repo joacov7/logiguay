@@ -188,6 +188,12 @@ export class CargoService {
       take: 50,
     });
 
+    // Ejecutar el findAll real con el mismo userId para ver qué devuelve
+    const findAllResult = await this.findAll({
+      userId,
+      status: 'PENDIENTE,PUBLICADO,COTIZANDO',
+    });
+
     return {
       userId,
       userCompanies: memberships.map((m) => ({
@@ -197,6 +203,10 @@ export class CargoService {
       })),
       userCompanyIds,
       totalCargoInDb: allCargo.length,
+      findAllReturns: {
+        total: findAllResult.total,
+        ids: findAllResult.data.map((c: any) => c.id),
+      },
       cargo: allCargo.map((c) => ({
         id: c.id,
         type: c.type,
