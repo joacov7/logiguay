@@ -33,6 +33,26 @@ enum VehicleStatus {
   MANTENIMIENTO
 }
 
+enum CondicionFiscal {
+  RESPONSABLE_INSCRIPTO
+  MONOTRIBUTO
+  EXENTO
+  CONSUMIDOR_FINAL
+  NO_DECLARADA
+}
+
+// Fuente de seguimiento de un vehículo
+enum TrackingMode {
+  APP        // El chofer comparte ubicación desde la app durante el viaje
+  GPS_FISICO // Equipo GPS instalado que reporta vía Traccar
+}
+
+// Protocolo del equipo GPS físico (cada uno escucha en un puerto de Traccar)
+enum TrackerProtocol {
+  CONCOX
+  GT06
+}
+
 enum DocumentStatus {
   VIGENTE
   VENCIDO
@@ -137,15 +157,18 @@ model User {
 }
 
 model Company {
-  id        String   @id @default(cuid())
-  name      String
-  cuit      String   @unique
-  address   String?
-  country   String   @default("AR")
-  planType  PlanType @default(FREE)
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String          @id @default(cuid())
+  name            String
+  cuit            String          @unique
+  // Razón social y condición fiscal: requeridos para poder facturar
+  razonSocial     String?
+  condicionFiscal CondicionFiscal @default(NO_DECLARADA)
+  address         String?
+  country         String          @default("AR")
+  planType        PlanType        @default(FREE)
+  isActive        Boolean         @default(true)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
 
   companyUsers       CompanyUser[]
   branches           Branch[]
@@ -202,8 +225,12 @@ model Vehicle {
   capacityTons  Float?
   capacityM3    Float?
   status        VehicleStatus @default(ACTIVO)
+  // Fuente de seguimiento: app del chofer (default) o equipo GPS físico
+  trackingMode    TrackingMode    @default(APP)
   // IMEI del equipo GPS instalado (ej: West A10), usado por el webhook de Traccar
   trackerDeviceId String?     @unique
+  // Protocolo del equipo GPS físico (define el puerto de Traccar al que reporta)
+  trackerProtocol TrackerProtocol?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 

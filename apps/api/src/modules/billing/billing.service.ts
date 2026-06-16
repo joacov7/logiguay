@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { InvoiceType, InvoiceStatus } from '@prisma/client';
 
@@ -112,6 +112,7 @@ export class BillingService {
     amount: number,
     tripId?: string,
   ) {
+    await this.assertFiscalDataComplete(companyId);
     return this.prisma.invoice.create({
       data: {
         companyId,
@@ -121,6 +122,26 @@ export class BillingService {
         ...(tripId ? { tripId } : {}),
       },
     });
+  }
+
+  /** Para facturar se exige razón social, CUIT real y condición fiscal declarada. */
+  async assertFiscalDataComplete(companyId: string) {
+    const company = await this.prisma.company.findUnique({
+      where: { id: companyId },
+      select: { razonSocial: true, cuit: true, condicionFiscal: true },
+    });
+    if (!company) throw new NotFoundException('Empresa no encontrada');
+
+    const missing: string[] = [];
+    if (!company.razonSocial?.trim()) missing.push('razón social');
+    if (!company.cuit || company.cuit.startsWith('00-')) missing.push('CUIT');
+    if (company.condicionFiscal === 'NO_DECLARADA') missing.push('condición fiscal');
+
+    if (missing.length > 0) {
+      throw new BadRequestException(
+        `Completá tus datos fiscales (${missing.join(', ')}) en Mi Perfil para poder facturar.`,
+      );
+    }
   }
 
   // ── Transportista: financial overview ────────────────────────────────────────

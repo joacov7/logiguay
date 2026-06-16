@@ -66,6 +66,10 @@ export class CompaniesService {
 
   async update(id: string, dto: UpdateCompanyDto) {
     await this.findOne(id);
+    if (dto.cuit) {
+      const existing = await this.prisma.company.findUnique({ where: { cuit: dto.cuit } });
+      if (existing && existing.id !== id) throw new ConflictException('CUIT ya registrado');
+    }
     return this.prisma.company.update({ where: { id }, data: dto });
   }
 

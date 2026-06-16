@@ -1,6 +1,6 @@
 import { IsString, IsOptional, IsEnum, IsBoolean } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { PlanType } from '@prisma/client';
+import { PlanType, CondicionFiscal } from '@prisma/client';
 
 export class CreateCompanyDto {
   @ApiProperty({ example: 'Transportes Logiguay SA' })
@@ -26,6 +26,16 @@ export class CreateCompanyDto {
   @IsOptional()
   @IsEnum(PlanType)
   planType?: PlanType;
+
+  @ApiPropertyOptional({ description: 'Razón social (requerida para facturar)' })
+  @IsOptional()
+  @IsString()
+  razonSocial?: string;
+
+  @ApiPropertyOptional({ enum: CondicionFiscal })
+  @IsOptional()
+  @IsEnum(CondicionFiscal)
+  condicionFiscal?: CondicionFiscal;
 }
 
 export class UpdateCompanyDto {
@@ -33,6 +43,21 @@ export class UpdateCompanyDto {
   @IsOptional()
   @IsString()
   name?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  cuit?: string;
+
+  @ApiPropertyOptional({ description: 'Razón social (requerida para facturar)' })
+  @IsOptional()
+  @IsString()
+  razonSocial?: string;
+
+  @ApiPropertyOptional({ enum: CondicionFiscal })
+  @IsOptional()
+  @IsEnum(CondicionFiscal)
+  condicionFiscal?: CondicionFiscal;
 
   @ApiPropertyOptional()
   @IsOptional()

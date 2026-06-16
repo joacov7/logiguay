@@ -8,7 +8,7 @@ import {
   Max,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { VehicleType, VehicleStatus } from '@prisma/client';
+import { VehicleType, VehicleStatus, TrackingMode, TrackerProtocol } from '@prisma/client';
 
 export class CreateVehicleDto {
   @ApiProperty()
@@ -55,6 +55,16 @@ export class CreateVehicleDto {
   @IsOptional()
   @IsString()
   trackerDeviceId?: string;
+
+  @ApiPropertyOptional({ enum: TrackingMode, description: 'Fuente de seguimiento: APP (chofer) o GPS_FISICO' })
+  @IsOptional()
+  @IsEnum(TrackingMode)
+  trackingMode?: TrackingMode;
+
+  @ApiPropertyOptional({ enum: TrackerProtocol, description: 'Protocolo del equipo GPS físico' })
+  @IsOptional()
+  @IsEnum(TrackerProtocol)
+  trackerProtocol?: TrackerProtocol;
 }
 
 export class UpdateVehicleDto {
@@ -72,6 +82,16 @@ export class UpdateVehicleDto {
   @IsOptional()
   @IsString()
   trackerDeviceId?: string;
+
+  @ApiPropertyOptional({ enum: TrackingMode, description: 'Fuente de seguimiento: APP (chofer) o GPS_FISICO' })
+  @IsOptional()
+  @IsEnum(TrackingMode)
+  trackingMode?: TrackingMode;
+
+  @ApiPropertyOptional({ enum: TrackerProtocol, description: 'Protocolo del equipo GPS físico' })
+  @IsOptional()
+  @IsEnum(TrackerProtocol)
+  trackerProtocol?: TrackerProtocol;
 
   @ApiPropertyOptional()
   @IsOptional()

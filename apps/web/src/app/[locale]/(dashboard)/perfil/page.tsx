@@ -24,8 +24,19 @@ const profileSchema = z.object({
 
 const companySchema = z.object({
   name: z.string().min(1, 'Requerido'),
+  razonSocial: z.string().optional(),
+  cuit: z.string().optional(),
+  condicionFiscal: z.string().optional(),
   address: z.string().optional(),
 });
+
+const CONDICION_FISCAL_OPTIONS = [
+  { value: 'NO_DECLARADA', label: 'Sin declarar' },
+  { value: 'RESPONSABLE_INSCRIPTO', label: 'Responsable Inscripto' },
+  { value: 'MONOTRIBUTO', label: 'Monotributo' },
+  { value: 'EXENTO', label: 'Exento' },
+  { value: 'CONSUMIDOR_FINAL', label: 'Consumidor Final' },
+];
 
 type ProfileForm = z.infer<typeof profileSchema>;
 type CompanyForm = z.infer<typeof companySchema>;
@@ -47,8 +58,16 @@ export default function PerfilPage() {
     queryFn: async () => {
       const res = await api.get('/companies/mine');
       // Response: [{ companyId, company: { id, name, address, ... } }]
-      return (res.data as { company: { id: string; name: string; address?: string } }[])
-        .map((cu) => cu.company);
+      return (res.data as {
+        company: {
+          id: string;
+          name: string;
+          address?: string;
+          razonSocial?: string;
+          cuit?: string;
+          condicionFiscal?: string;
+        };
+      }[]).map((cu) => cu.company);
     },
   });
 
@@ -84,7 +103,13 @@ export default function PerfilPage() {
 
   useEffect(() => {
     if (company) {
-      resetCompany({ name: company.name ?? '', address: company.address ?? '' });
+      resetCompany({
+        name: company.name ?? '',
+        razonSocial: company.razonSocial ?? '',
+        cuit: company.cuit && !company.cuit.startsWith('00-') ? company.cuit : '',
+        condicionFiscal: company.condicionFiscal ?? 'NO_DECLARADA',
+        address: company.address ?? '',
+      });
     }
   }, [company, resetCompany]);
 
@@ -103,6 +128,30 @@ export default function PerfilPage() {
       api.post('/companies', { ...data, country: 'AR', planType: 'FREE' }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['my-companies'] }),
   });
+
+  const fiscalFields = (
+    <div className="border-t pt-4 mt-2">
+      <p className="text-sm font-medium text-gray-700 mb-1">Datos fiscales</p>
+      <p className="text-xs text-gray-400 mb-3">Necesarios para poder emitir facturas.</p>
+      <div className="space-y-4">
+        <Input label="Razón social" {...regCompany('razonSocial')} error={companyErrors.razonSocial?.message} placeholder="Transportes García S.R.L." />
+        <div className="grid grid-cols-2 gap-4">
+          <Input label="CUIT" {...regCompany('cuit')} error={companyErrors.cuit?.message} placeholder="20-12345678-9" />
+          <div>
+            <label className="text-sm font-medium text-gray-700">Condición fiscal</label>
+            <select
+              {...regCompany('condicionFiscal')}
+              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {CONDICION_FISCAL_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
   if (meLoading) {
     return (
@@ -191,6 +240,7 @@ export default function PerfilPage() {
               </p>
             )}
             <Input label="Nombre de empresa *" {...regCompany('name')} error={companyErrors.name?.message} />
+            {fiscalFields}
             <Input label="Dirección" {...regCompany('address')} error={companyErrors.address?.message} />
             <div className="flex justify-end">
               <Button type="submit" disabled={companyMutation.isPending}>
@@ -213,6 +263,7 @@ export default function PerfilPage() {
               </p>
             )}
             <Input label="Nombre de empresa *" {...regCompany('name')} error={companyErrors.name?.message} />
+            {fiscalFields}
             <Input label="Dirección" {...regCompany('address')} error={companyErrors.address?.message} />
             <div className="flex justify-end">
               <Button type="submit" disabled={createCompanyMutation.isPending}>

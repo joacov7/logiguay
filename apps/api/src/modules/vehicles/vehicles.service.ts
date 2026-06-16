@@ -7,7 +7,7 @@ import {
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { CreateVehicleDto, UpdateVehicleDto, UpdateVehicleStatusDto } from './dto/vehicle.dto';
-import { VehicleType, VehicleStatus } from '@prisma/client';
+import { VehicleType, VehicleStatus, TrackingMode, TrackerProtocol } from '@prisma/client';
 
 interface FindAllFilters {
   companyId: string;
@@ -187,11 +187,25 @@ export class VehiclesService {
   }
 
   async adminUpdateImei(id: string, trackerDeviceId: string | null) {
+    return this.adminUpdateTracking(id, { trackerDeviceId });
+  }
+
+  async adminUpdateTracking(
+    id: string,
+    data: {
+      trackerDeviceId?: string | null;
+      trackingMode?: TrackingMode;
+      trackerProtocol?: TrackerProtocol | null;
+    },
+  ) {
     const vehicle = await this.prisma.vehicle.findUnique({ where: { id } });
     if (!vehicle) throw new NotFoundException('Vehículo no encontrado');
-    return this.prisma.vehicle.update({
-      where: { id },
-      data: { trackerDeviceId: trackerDeviceId || null },
-    });
+
+    const update: any = {};
+    if (data.trackerDeviceId !== undefined) update.trackerDeviceId = data.trackerDeviceId || null;
+    if (data.trackingMode !== undefined) update.trackingMode = data.trackingMode;
+    if (data.trackerProtocol !== undefined) update.trackerProtocol = data.trackerProtocol || null;
+
+    return this.prisma.vehicle.update({ where: { id }, data: update });
   }
 }

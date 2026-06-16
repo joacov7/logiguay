@@ -18,7 +18,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { VehicleType, VehicleStatus } from '@prisma/client';
+import { VehicleType, VehicleStatus, TrackingMode, TrackerProtocol } from '@prisma/client';
 
 @ApiTags('Vehicles')
 @ApiBearerAuth()
@@ -90,5 +90,21 @@ export class VehiclesController {
   @ApiOperation({ summary: '[Admin] Asignar IMEI GPS a vehículo' })
   adminUpdateImei(@Param('id') id: string, @Body('trackerDeviceId') trackerDeviceId: string | null) {
     return this.vehiclesService.adminUpdateImei(id, trackerDeviceId);
+  }
+
+  @Patch('admin/:id/tracking')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN' as any)
+  @ApiOperation({ summary: '[Admin] Configurar seguimiento (IMEI, modo y protocolo)' })
+  adminUpdateTracking(
+    @Param('id') id: string,
+    @Body()
+    body: {
+      trackerDeviceId?: string | null;
+      trackingMode?: TrackingMode;
+      trackerProtocol?: TrackerProtocol | null;
+    },
+  ) {
+    return this.vehiclesService.adminUpdateTracking(id, body);
   }
 }
