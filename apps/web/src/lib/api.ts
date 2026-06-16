@@ -49,6 +49,9 @@ api.interceptors.response.use(
       } catch {
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
+        localStorage.removeItem('user');
+        const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+        document.cookie = `accessToken=; max-age=0; path=/; SameSite=Lax${secure}`;
         window.location.href = '/login';
       }
     }
