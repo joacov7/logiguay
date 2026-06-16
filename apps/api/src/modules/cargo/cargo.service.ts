@@ -46,6 +46,7 @@ export class CargoService {
 
   async findAll(filters: {
     companyId?: string;
+    userId?: string;
     status?: string;
     page?: number;
     limit?: number;
@@ -54,12 +55,26 @@ export class CargoService {
     radiusKm?: number;
     province?: string;
   }) {
-    const { companyId, status, page = 1, limit = 20, lat, lng, radiusKm, province } = filters;
+    const { companyId, userId, status, page = 1, limit = 20, lat, lng, radiusKm, province } = filters;
     const p = Number(page) || 1;
     const l = Number(limit) || 20;
     const skip = (p - 1) * l;
     const where: Prisma.CargoWhereInput = {};
-    if (companyId) where.companyId = companyId;
+
+    if (userId) {
+      // Fetch all companies this user belongs to and filter by all of them
+      const memberships = await this.prisma.companyUser.findMany({
+        where: { userId },
+        select: { companyId: true },
+      });
+      const companyIds = memberships.map((m) => m.companyId);
+      if (companyIds.length === 0) {
+        return { data: [], total: 0, page: p, limit: l, pages: 0 };
+      }
+      where.companyId = companyIds.length === 1 ? companyIds[0] : { in: companyIds };
+    } else if (companyId) {
+      where.companyId = companyId;
+    }
     if (status) {
       const statuses = status.split(',').map((s) => s.trim()).filter(Boolean);
       (where as any).status = statuses.length === 1 ? statuses[0] : { in: statuses };
@@ -122,17 +137,22 @@ export class CargoService {
     return cargo;
   }
 
-  // Toda operación de escritura exige que la carga pertenezca a la empresa del usuario (salvo ADMIN)
-  private assertOwnership(cargo: { companyId: string }, user?: RequestUser) {
+  private async assertOwnershipAsync(cargo: { companyId: string }, user?: RequestUser & { id?: string }) {
     if (!user || user.role === 'ADMIN') return;
-    if (!user.companyId || cargo.companyId !== user.companyId) {
+    if (!user.id) throw new ForbiddenException('No tenés acceso a esta carga');
+    const memberships = await this.prisma.companyUser.findMany({
+      where: { userId: user.id },
+      select: { companyId: true },
+    });
+    const companyIds = memberships.map((m) => m.companyId);
+    if (!companyIds.includes(cargo.companyId)) {
       throw new ForbiddenException('No tenés acceso a esta carga');
     }
   }
 
   async update(id: string, dto: UpdateCargoDto, user?: RequestUser) {
     const cargo = await this.findOne(id);
-    this.assertOwnership(cargo, user);
+    await this.assertOwnershipAsync(cargo, user as any);
 
     if (cargo.status !== 'PENDIENTE') {
       throw new BadRequestException('Solo se pueden editar cargas en estado PENDIENTE');
@@ -150,7 +170,7 @@ export class CargoService {
 
   async publish(id: string, user?: RequestUser) {
     const cargo = await this.findOne(id);
-    this.assertOwnership(cargo, user);
+    await this.assertOwnershipAsync(cargo, user as any);
     if (cargo.status !== 'PENDIENTE') {
       throw new BadRequestException('Solo se pueden publicar cargas en estado PENDIENTE');
     }
@@ -159,13 +179,13 @@ export class CargoService {
 
   async cancel(id: string, user?: RequestUser) {
     const cargo = await this.findOne(id);
-    this.assertOwnership(cargo, user);
+    await this.assertOwnershipAsync(cargo, user as any);
     return this.prisma.cargo.update({ where: { id }, data: { status: 'CANCELADO' } });
   }
 
   async remove(id: string, user?: RequestUser) {
     const cargo = await this.findOne(id);
-    this.assertOwnership(cargo, user);
+    await this.assertOwnershipAsync(cargo, user as any);
     if (cargo.status !== 'PENDIENTE') {
       throw new BadRequestException('Solo se pueden eliminar cargas en estado PENDIENTE');
     }
@@ -339,7 +359,7 @@ export class CargoService {
 
   async selectQuote(cargoId: string, quoteId: string, user?: RequestUser) {
     const cargo = await this.findOne(cargoId);
-    this.assertOwnership(cargo, user);
+    await this.assertOwnershipAsync(cargo, user as any);
 
     if (!['PUBLICADO', 'COTIZANDO'].includes(cargo.status)) {
       throw new BadRequestException('La carga no está en un estado válido para seleccionar cotización');

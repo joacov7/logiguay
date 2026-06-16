@@ -47,9 +47,11 @@ export class CargoController {
     @Query('radiusKm') radiusKm?: number,
     @Query('province') province?: string,
   ) {
-    // No-ADMIN solo ve cargas de su propia empresa
-    const effectiveCompanyId = user.role === Role.ADMIN ? companyId : user.companyId;
-    return this.cargoService.findAll({ companyId: effectiveCompanyId, status, page, limit, lat, lng, radiusKm, province });
+    if (user.role === Role.ADMIN) {
+      return this.cargoService.findAll({ companyId, status, page, limit, lat, lng, radiusKm, province });
+    }
+    // Non-admin: fetch cargas across ALL companies the user belongs to
+    return this.cargoService.findAll({ userId: user.id, status, page, limit, lat, lng, radiusKm, province });
   }
 
   @Get('marketplace')
