@@ -31,7 +31,7 @@ export class CargoController {
   create(@Body() dto: CreateCargoDto, @CurrentUser() user: any) {
     // Solo ADMIN puede crear cargas a nombre de otra empresa
     const companyId = user.role === Role.ADMIN && dto.companyId ? dto.companyId : user.companyId;
-    return this.cargoService.create({ ...dto, companyId });
+    return this.cargoService.create({ ...dto, companyId, userId: user.id });
   }
 
   @Get()

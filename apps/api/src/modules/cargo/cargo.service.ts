@@ -26,22 +26,65 @@ export class CargoService {
     private readonly email: EmailService,
   ) {}
 
-  async create(dto: CreateCargoDto & { companyId: string }) {
+  async create(dto: CreateCargoDto & { companyId?: string | null; userId?: string }) {
+    // Auto-reparación: si el usuario no tiene empresa vinculada, le creamos una
+    // al vuelo y la asociamos. Así un DADOR nunca queda en un estado roto donde
+    // publica cargas que después no puede ver.
+    let companyId = dto.companyId ?? undefined;
+    if (!companyId) {
+      if (!dto.userId) {
+        throw new BadRequestException('No se pudo determinar la empresa del usuario');
+      }
+      companyId = await this.ensureUserCompany(dto.userId);
+    }
+
     const startOfMonth = new Date();
     startOfMonth.setDate(1);
     startOfMonth.setHours(0, 0, 0, 0);
     const monthlyCount = await this.prisma.cargo.count({
-      where: { companyId: dto.companyId, createdAt: { gte: startOfMonth } },
+      where: { companyId, createdAt: { gte: startOfMonth } },
     });
-    await this.subscriptions.checkLimit(dto.companyId, 'maxMonthlyPublications', monthlyCount);
+    await this.subscriptions.checkLimit(companyId, 'maxMonthlyPublications', monthlyCount);
+
+    const { userId: _u, companyId: _c, ...rest } = dto;
     return this.prisma.cargo.create({
       data: {
-        ...dto,
+        ...rest,
+        companyId,
         requiredDate: dto.requiredDate ? new Date(dto.requiredDate) : null,
         auctionEndsAt: dto.auctionEndsAt ? new Date(dto.auctionEndsAt) : null,
         status: 'PUBLICADO',
       },
     });
+  }
+
+  // Devuelve la empresa del usuario; si no tiene ninguna, le crea una y la vincula.
+  private async ensureUserCompany(userId: string): Promise<string> {
+    const existing = await this.prisma.companyUser.findFirst({
+      where: { userId },
+      orderBy: { companyId: 'asc' },
+      select: { companyId: true },
+    });
+    if (existing) return existing.companyId;
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { firstName: true, lastName: true },
+    });
+    if (!user) throw new NotFoundException('Usuario no encontrado');
+
+    const company = await this.prisma.company.create({
+      data: {
+        name: `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || 'Mi empresa',
+        cuit: `AUTO-${Date.now()}`,
+        country: 'AR',
+        planType: 'FREE',
+      },
+    });
+    await this.prisma.companyUser.create({
+      data: { userId, companyId: company.id },
+    });
+    return company.id;
   }
 
   async findAll(filters: {
