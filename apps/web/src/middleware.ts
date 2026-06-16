@@ -32,7 +32,7 @@ export function middleware(request: NextRequest) {
   }
 
   if (token && (bare === '/login' || bare === '/register')) {
-    return NextResponse.redirect(new URL('/', request.url));
+    return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
   return intlMiddleware(request);
