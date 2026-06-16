@@ -32,6 +32,14 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const logger = new Logger('Bootstrap');
 
+  // Desactivar ETag: evita respuestas 304 que devuelven datos cacheados
+  // y obligan al cliente a mostrar listas desactualizadas.
+  const httpAdapter = app.getHttpAdapter();
+  const instance = httpAdapter.getInstance();
+  if (instance && typeof instance.set === 'function') {
+    instance.set('etag', false);
+  }
+
   assertSecretsAreSafe(logger);
 
   app.setGlobalPrefix('api/v1');
