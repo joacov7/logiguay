@@ -6,7 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   Truck, Navigation, Package, Clock, DollarSign, AlertTriangle,
   CheckCircle, MapPin, TrendingUp, TrendingDown,
-  Timer, Flag, Loader2, Wheat, BarChart3,
+  Timer, Flag, Wheat, BarChart3,
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { format } from 'date-fns';
@@ -617,14 +617,6 @@ export default function DashboardPage() {
                 </div>
               </div>
             </div>
-            <button
-              className="flex-shrink-0 inline-flex items-center gap-2 px-5 py-2.5 text-white text-sm font-semibold rounded-lg transition-colors shadow-lg"
-              style={{ background: '#15A66A' }}
-              onMouseEnter={e => (e.currentTarget.style.background = '#12905d')}
-              onMouseLeave={e => (e.currentTarget.style.background = '#15A66A')}
-            >
-              <Loader2 className="h-4 w-4" /> Generar reporte diario
-            </button>
           </div>
         </div>
 
