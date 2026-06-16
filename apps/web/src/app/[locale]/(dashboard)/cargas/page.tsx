@@ -15,7 +15,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 const STATUS_OPTIONS = [
-  { value: 'PUBLICADO,COTIZANDO', label: 'Activas' },
+  { value: 'PENDIENTE,PUBLICADO,COTIZANDO', label: 'Activas' },
   { value: '', label: 'Todas' },
   { value: 'PUBLICADO', label: 'Publicado' },
   { value: 'COTIZANDO', label: 'Cotizando' },
@@ -60,7 +60,7 @@ function buildPDFRows(cargas: Cargo[]): (string | number)[][][] {
 
 export default function CargasPage() {
   const [page, setPage] = useState(1);
-  const [statusFilter, setStatusFilter] = useState('PUBLICADO,COTIZANDO');
+  const [statusFilter, setStatusFilter] = useState('PENDIENTE,PUBLICADO,COTIZANDO');
   const [selectedCargoId, setSelectedCargoId] = useState<string | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);

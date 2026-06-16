@@ -39,7 +39,7 @@ export class CargoService {
         ...dto,
         requiredDate: dto.requiredDate ? new Date(dto.requiredDate) : null,
         auctionEndsAt: dto.auctionEndsAt ? new Date(dto.auctionEndsAt) : null,
-        status: 'PENDIENTE',
+        status: 'PUBLICADO',
       },
     });
   }
