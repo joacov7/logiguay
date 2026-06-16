@@ -124,6 +124,48 @@ export class CargoService {
     return { data: rawData, total, page: p, limit: l, pages: Math.ceil(total / l) };
   }
 
+  async debug(userId: string) {
+    const memberships = await this.prisma.companyUser.findMany({
+      where: { userId },
+      select: { companyId: true, role: true, company: { select: { name: true } } },
+    });
+    const userCompanyIds = memberships.map((m) => m.companyId);
+
+    // Todas las cargas agrupadas por empresa (cualquier empresa)
+    const allCargo = await this.prisma.cargo.findMany({
+      select: {
+        id: true,
+        status: true,
+        type: true,
+        companyId: true,
+        company: { select: { name: true } },
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+
+    return {
+      userId,
+      userCompanies: memberships.map((m) => ({
+        companyId: m.companyId,
+        name: m.company?.name,
+        role: m.role,
+      })),
+      userCompanyIds,
+      totalCargoInDb: allCargo.length,
+      cargo: allCargo.map((c) => ({
+        id: c.id,
+        type: c.type,
+        status: c.status,
+        companyId: c.companyId,
+        companyName: c.company?.name,
+        belongsToUser: userCompanyIds.includes(c.companyId),
+        createdAt: c.createdAt,
+      })),
+    };
+  }
+
   async findOne(id: string) {
     const cargo = await this.prisma.cargo.findUnique({
       where: { id },
