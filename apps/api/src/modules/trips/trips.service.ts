@@ -105,7 +105,10 @@ export class TripsService {
 
     if (companyId) where.transportCompanyId = companyId;
     if (cargoCompanyId) where.cargo = { companyId: cargoCompanyId };
-    if (status) where.status = status;
+    if (status) {
+      const statuses = status.split(',').map((s) => s.trim()).filter(Boolean);
+      where.status = statuses.length === 1 ? statuses[0] : { in: statuses };
+    }
     if (driverId) where.driverId = driverId;
     if (vehicleId) where.vehicleId = vehicleId;
 
