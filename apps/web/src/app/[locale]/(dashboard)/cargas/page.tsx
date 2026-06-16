@@ -98,15 +98,18 @@ export default function CargasPage() {
       const res = await api.get(`/cargo?${params.toString()}`);
       return res.data;
     },
+    refetchInterval: 30_000,
   });
 
-  const { data: quotesData, isLoading: detailLoading } = useQuery<{ data: Quote[] }>({
+  const { data: quotesData, isLoading: detailLoading, refetch: refetchQuotes } = useQuery<{ data: Quote[] }>({
     queryKey: ['cargo-quotes', selectedCargoId],
     queryFn: async () => {
       const res = await api.get(`/quotes/cargo/${selectedCargoId}`);
       return res.data;
     },
     enabled: !!selectedCargoId,
+    refetchInterval: 10_000,
+    staleTime: 0,
   });
 
   const selectQuoteMutation = useMutation({
@@ -262,13 +265,26 @@ export default function CargasPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
             <div className="flex items-center justify-between p-6 border-b">
-              <h2 className="text-lg font-semibold text-gray-900">Cotizaciones recibidas</h2>
-              <button
-                onClick={() => setSelectedCargoId(null)}
-                className="text-gray-400 hover:text-gray-600 text-xl leading-none"
-              >
-                ×
-              </button>
+              <h2 className="text-lg font-semibold text-gray-900">
+                Cotizaciones recibidas
+                {quotesData?.data && (
+                  <span className="ml-2 text-sm font-normal text-gray-400">({quotesData.data.length})</span>
+                )}
+              </h2>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => refetchQuotes()}
+                  className="text-xs text-blue-600 hover:text-blue-800 px-2 py-1 rounded border border-blue-200 hover:border-blue-400"
+                >
+                  Actualizar
+                </button>
+                <button
+                  onClick={() => setSelectedCargoId(null)}
+                  className="text-gray-400 hover:text-gray-600 text-xl leading-none"
+                >
+                  ×
+                </button>
+              </div>
             </div>
 
             <div className="overflow-y-auto flex-1 p-6">
