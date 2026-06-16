@@ -45,7 +45,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         firstName: true,
         lastName: true,
         isActive: true,
-        companyUsers: { select: { companyId: true }, take: 1 },
+        companyUsers: {
+          select: { companyId: true },
+          orderBy: { companyId: 'asc' },
+          take: 1,
+        },
       },
     });
 

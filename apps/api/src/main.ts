@@ -40,6 +40,14 @@ async function bootstrap() {
     instance.set('etag', false);
   }
 
+  // Las respuestas de la API nunca deben cachearse (ni en el browser ni en proxies).
+  // Esto elimina por completo los 304 con datos viejos en listados como /cargo.
+  app.use((_req: any, res: any, next: any) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    next();
+  });
+
   assertSecretsAreSafe(logger);
 
   app.setGlobalPrefix('api/v1');
