@@ -1,3 +1,14 @@
+import * as Sentry from '@sentry/node';
+import { nodeProfilingIntegration } from '@sentry/profiling-node';
+
+Sentry.init({
+  dsn: process.env.SENTRY_DSN,
+  integrations: [nodeProfilingIntegration()],
+  tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.2 : 0,
+  profilesSampleRate: 0,
+  enabled: !!process.env.SENTRY_DSN,
+});
+
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';

@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/node';
 import {
   ExceptionFilter,
   Catch,
@@ -26,7 +27,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       message = typeof res === 'string' ? res : (res as any).message || res;
     } else if (exception instanceof Error) {
       this.logger.error(`Unhandled exception: ${exception.message}`, exception.stack);
-      // En producción no exponemos detalles internos (Prisma, FS, etc.) al cliente
+      Sentry.captureException(exception);
       if (process.env.NODE_ENV !== 'production') {
         message = exception.message;
       }
