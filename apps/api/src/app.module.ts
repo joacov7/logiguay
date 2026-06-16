@@ -30,6 +30,7 @@ import { RatingsModule } from './modules/ratings/ratings.module';
 import { TurnosModule } from './modules/turnos/turnos.module';
 import { CamionesModule } from './modules/camiones/camiones.module';
 import { MarketModule } from './modules/market/market.module';
+import { AdminModule } from './modules/admin/admin.module';
 
 @Module({
   imports: [
@@ -58,6 +59,7 @@ import { MarketModule } from './modules/market/market.module';
     TurnosModule,
     CamionesModule,
     MarketModule,
+    AdminModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
