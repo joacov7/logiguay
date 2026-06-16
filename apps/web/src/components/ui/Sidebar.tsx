@@ -144,7 +144,7 @@ export function Sidebar({ onLogout, isOpen, onClose }: SidebarProps) {
             className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
           >
             <LogOut className="h-4 w-4" />
-            {t('logout')}
+            Cerrar sesión
           </button>
         </div>
       </aside>

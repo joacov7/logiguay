@@ -24,8 +24,9 @@ const nextConfig = {
 
 export default withSentryConfig(withNextIntl(nextConfig), {
   silent: true,
-  disableLogger: true,
   tunnelRoute: '/monitoring',
   hideSourceMaps: true,
-  autoInstrumentServerFunctions: true,
+  webpack: {
+    treeshake: { removeDebugLogging: true },
+  },
 });
