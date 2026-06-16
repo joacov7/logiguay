@@ -96,6 +96,12 @@ export default function PerfilPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['my-companies'] }),
   });
 
+  const createCompanyMutation = useMutation({
+    mutationFn: (data: CompanyForm) =>
+      api.post('/companies', { ...data, cuit: '00-00000000-0', country: 'AR', planType: 'FREE' }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['my-companies'] }),
+  });
+
   if (meLoading) {
     return (
       <div className="flex items-center justify-center py-16">
@@ -167,12 +173,12 @@ export default function PerfilPage() {
       </Card>
 
       {/* Company */}
-      {company && (
-        <Card>
-          <div className="flex items-center gap-2 mb-4">
-            <Building2 className="h-4 w-4 text-gray-500" />
-            <h2 className="text-base font-semibold text-gray-900">Datos de empresa</h2>
-          </div>
+      <Card>
+        <div className="flex items-center gap-2 mb-4">
+          <Building2 className="h-4 w-4 text-gray-500" />
+          <h2 className="text-base font-semibold text-gray-900">Datos de empresa</h2>
+        </div>
+        {company ? (
           <form onSubmit={handleCompany((data) => companyMutation.mutate(data))} className="space-y-4">
             {companyMutation.isSuccess && (
               <p className="text-sm text-green-600 bg-green-50 rounded-lg px-3 py-2">Empresa actualizada correctamente.</p>
@@ -191,8 +197,30 @@ export default function PerfilPage() {
               </Button>
             </div>
           </form>
-        </Card>
-      )}
+        ) : (
+          <form onSubmit={handleCompany((data) => createCompanyMutation.mutate(data))} className="space-y-4">
+            <p className="text-sm text-amber-600 bg-amber-50 rounded-lg px-3 py-2">
+              Todavía no tenés empresa registrada. Creá una para poder cotizar cargas.
+            </p>
+            {createCompanyMutation.isSuccess && (
+              <p className="text-sm text-green-600 bg-green-50 rounded-lg px-3 py-2">¡Empresa creada! Ya podés cotizar cargas.</p>
+            )}
+            {createCompanyMutation.error && (
+              <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">
+                {(createCompanyMutation.error as any)?.response?.data?.message || 'Error al crear'}
+              </p>
+            )}
+            <Input label="Nombre de empresa *" {...regCompany('name')} error={companyErrors.name?.message} />
+            <Input label="Dirección" {...regCompany('address')} error={companyErrors.address?.message} />
+            <div className="flex justify-end">
+              <Button type="submit" disabled={createCompanyMutation.isPending}>
+                <Save className="h-4 w-4 mr-1" />
+                {createCompanyMutation.isPending ? 'Creando...' : 'Crear empresa'}
+              </Button>
+            </div>
+          </form>
+        )}
+      </Card>
     </div>
   );
 }

@@ -49,12 +49,13 @@ export class AuthService {
       },
     });
 
-    // Create company if companyName provided
+    // Create company if companyName provided, or auto-create for TRANSPORTISTA
     let companyId: string | null = null;
-    if (dto.companyName) {
+    const needsCompany = dto.companyName || dto.role === 'TRANSPORTISTA';
+    if (needsCompany) {
       const company = await this.prisma.company.create({
         data: {
-          name: dto.companyName,
+          name: dto.companyName || `${dto.firstName} ${dto.lastName}`,
           cuit: dto.cuit ?? '00-00000000-0',
           country: 'AR',
           planType: 'FREE',
