@@ -90,7 +90,7 @@ export default function CargasPage() {
     setExportOpen(false);
   }
 
-  const { data, isLoading } = useQuery<PaginatedResponse<Cargo>>({
+  const { data, isLoading, error } = useQuery<PaginatedResponse<Cargo>>({
     queryKey: ['cargas', page, statusFilter],
     queryFn: async () => {
       const params = new URLSearchParams({ page: String(page), limit: '20' });
@@ -185,6 +185,11 @@ export default function CargasPage() {
         {isLoading ? (
           <div className="flex items-center justify-center py-16 text-gray-400">
             <div className="animate-spin h-8 w-8 border-2 border-blue-600 border-t-transparent rounded-full" />
+          </div>
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center py-16 text-red-500">
+            <p className="font-medium">Error al cargar</p>
+            <p className="text-sm mt-1">{(error as any)?.response?.data?.message || (error as any)?.message || 'Error desconocido'}</p>
           </div>
         ) : !data?.data.length ? (
           <div className="flex flex-col items-center justify-center py-16 text-gray-400">

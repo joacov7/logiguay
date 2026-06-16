@@ -62,9 +62,7 @@ export class CargoService {
     if (companyId) where.companyId = companyId;
     if (status) {
       const statuses = status.split(',').map((s) => s.trim()).filter(Boolean);
-      where.status = statuses.length === 1
-        ? statuses[0] as Prisma.EnumCargoStatusFilter
-        : { in: statuses } as Prisma.EnumCargoStatusFilter;
+      (where as any).status = statuses.length === 1 ? statuses[0] : { in: statuses };
     }
     if (province) where.originAddress = { contains: province, mode: 'insensitive' };
 
