@@ -103,6 +103,7 @@ export class CargoService {
     const l = Number(limit) || 20;
     const skip = (p - 1) * l;
     const where: Prisma.CargoWhereInput = {};
+    const _diag: any = { receivedUserId: userId ?? null, receivedCompanyId: companyId ?? null };
 
     if (userId) {
       // Fetch all companies this user belongs to and filter by all of them
@@ -111,8 +112,9 @@ export class CargoService {
         select: { companyId: true },
       });
       const companyIds = memberships.map((m) => m.companyId);
+      _diag.computedCompanyIds = companyIds;
       if (companyIds.length === 0) {
-        return { data: [], total: 0, page: p, limit: l, pages: 0 };
+        return { data: [], total: 0, page: p, limit: l, pages: 0, _diag };
       }
       where.companyId = companyIds.length === 1 ? companyIds[0] : { in: companyIds };
     } else if (companyId) {
@@ -164,7 +166,8 @@ export class CargoService {
       return { data, total: filteredTotal, page: p, limit: l, pages: Math.ceil(filteredTotal / l) };
     }
 
-    return { data: rawData, total, page: p, limit: l, pages: Math.ceil(total / l) };
+    _diag.where = where as any;
+    return { data: rawData, total, page: p, limit: l, pages: Math.ceil(total / l), _diag };
   }
 
   async debug(userId: string) {
