@@ -46,7 +46,9 @@ export default function PerfilPage() {
     queryKey: ['my-companies'],
     queryFn: async () => {
       const res = await api.get('/companies/mine');
-      return res.data as { id: string; name: string; address?: string }[];
+      // Response: [{ companyId, company: { id, name, address, ... } }]
+      return (res.data as { company: { id: string; name: string; address?: string } }[])
+        .map((cu) => cu.company);
     },
   });
 
