@@ -84,13 +84,19 @@
 
 ---
 
+### ✅ RESUELTO — Admin no podía resetear contraseñas de usuarios
+- **Fix**: Nuevo endpoint `PATCH /admin/users/:id/reset-password` (bcrypt cost 12, mínimo 8 caracteres). Botón "Contraseña" en la página de usuarios del admin. De paso se corrigió: el toggle activo llamaba a `/users/:id` (ahora `/admin/users/:id`) y la columna empresa no mostraba nada (el endpoint admin devuelve `companyUsers[]`).
+- **Archivos**: `apps/api/src/modules/admin/admin.service.ts`, `admin.controller.ts`, `apps/web/src/app/[locale]/(dashboard)/admin/usuarios/page.tsx`
+
+---
+
 ## Pendientes
 
 | # | Tema | Estado |
 |---|------|--------|
 | 1 | Verificar que cargas aparecen en /cargas tras rebuild | 🔄 Pendiente de prueba en prod |
 | 2 | Verificar panel admin tras rebuild | 🔄 Pendiente de prueba en prod |
-| 3 | Cambiar contraseña admin (fue expuesta en URL) | ⚠️ Urgente |
+| 3 | Cambiar contraseña admin (fue expuesta en URL) | 🔄 Ahora posible desde panel admin tras rebuild |
 | 4 | Integración Resend (emails transaccionales) | ❌ Sin API key |
 | 5 | GPS West A10 no conecta a Traccar | ❌ Sin resolver |
 | 6 | Password reset no envía email (solo loguea en consola) | ❌ Depende de Resend |

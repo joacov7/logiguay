@@ -61,4 +61,10 @@ export class AdminController {
   updateUser(@Param('id') id: string, @Body() body: any) {
     return this.adminService.updateUser(id, body);
   }
+
+  @Patch('users/:id/reset-password')
+  @ApiOperation({ summary: 'Resetear contraseña de un usuario' })
+  resetUserPassword(@Param('id') id: string, @Body() body: { password: string }) {
+    return this.adminService.resetUserPassword(id, body?.password);
+  }
 }

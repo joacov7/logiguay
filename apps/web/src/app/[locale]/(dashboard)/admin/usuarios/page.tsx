@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Users, ShieldAlert, Pencil, Check, X } from 'lucide-react';
+import { Users, ShieldAlert, Pencil, Check, X, KeyRound } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import {
@@ -70,10 +70,27 @@ export default function AdminUsuariosPage() {
 
   const handleToggleActive = async (u: any) => {
     try {
-      await api.patch(`/users/${u.id}`, { isActive: !u.isActive });
+      await api.patch(`/admin/users/${u.id}`, { isActive: !u.isActive });
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
     } catch {
       alert('Error al cambiar estado.');
+    }
+  };
+
+  const handleResetPassword = async (u: any) => {
+    const newPassword = window.prompt(
+      `Nueva contraseña para ${u.email} (mínimo 8 caracteres):`,
+    );
+    if (newPassword === null) return;
+    if (newPassword.length < 8) {
+      alert('La contraseña debe tener al menos 8 caracteres.');
+      return;
+    }
+    try {
+      await api.patch(`/admin/users/${u.id}/reset-password`, { password: newPassword });
+      alert(`Contraseña actualizada para ${u.email}.`);
+    } catch {
+      alert('Error al resetear la contraseña.');
     }
   };
 
@@ -157,7 +174,7 @@ export default function AdminUsuariosPage() {
                     )}
                   </TableCell>
                   <TableCell className="text-gray-500">
-                    {u.company?.name ?? u.companyId ?? '—'}
+                    {u.companyUsers?.[0]?.company?.name ?? u.company?.name ?? '—'}
                   </TableCell>
                   <TableCell>
                     <span
@@ -201,6 +218,14 @@ export default function AdminUsuariosPage() {
                           >
                             <Pencil className="h-3.5 w-3.5" />
                             Editar rol
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleResetPassword(u)}
+                          >
+                            <KeyRound className="h-3.5 w-3.5" />
+                            Contraseña
                           </Button>
                           <Button
                             size="sm"

@@ -1,5 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class AdminService {
@@ -142,5 +143,17 @@ export class AdminService {
     return this.prisma.user.update({ where: { id }, data, select: {
       id: true, email: true, firstName: true, lastName: true, role: true, isActive: true,
     }});
+  }
+
+  async resetUserPassword(id: string, newPassword: string) {
+    if (!newPassword || newPassword.length < 8) {
+      throw new BadRequestException('La contraseña debe tener al menos 8 caracteres');
+    }
+    const user = await this.prisma.user.findUnique({ where: { id }, select: { id: true } });
+    if (!user) throw new NotFoundException('Usuario no encontrado');
+
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
+    await this.prisma.user.update({ where: { id }, data: { password: hashedPassword } });
+    return { success: true };
   }
 }
