@@ -114,6 +114,22 @@ async function bootstrap() {
   const port = process.env.API_PORT || 3001;
   await app.listen(port);
 
+  // Registrar webhook de Telegram si está configurado
+  const telegramToken = process.env.TELEGRAM_BOT_TOKEN;
+  const telegramSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
+  const apiPublicUrl = process.env.API_PUBLIC_URL;
+  if (telegramToken && apiPublicUrl) {
+    const { TelegramService } = await import('./modules/telegram/telegram.service');
+    const telegramService = app.get(TelegramService, { strict: false });
+    if (telegramService) {
+      const webhookUrl = `${apiPublicUrl}/api/v1/telegram/webhook`;
+      await telegramService.bot.telegram.setWebhook(webhookUrl, {
+        secret_token: telegramSecret,
+      });
+      logger.log(`Telegram webhook registrado: ${webhookUrl}`);
+    }
+  }
+
   logger.log(`LOGIGUAY API running on http://localhost:${port}/api/v1`);
   if (!isProd) logger.log(`Swagger docs: http://localhost:${port}/api/docs`);
 }

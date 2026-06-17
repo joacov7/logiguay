@@ -31,6 +31,7 @@ import { TurnosModule } from './modules/turnos/turnos.module';
 import { CamionesModule } from './modules/camiones/camiones.module';
 import { MarketModule } from './modules/market/market.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { TelegramModule } from './modules/telegram/telegram.module';
 
 @Module({
   imports: [
@@ -60,6 +61,7 @@ import { AdminModule } from './modules/admin/admin.module';
     CamionesModule,
     MarketModule,
     AdminModule,
+    TelegramModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
