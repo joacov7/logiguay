@@ -31,6 +31,14 @@ const CARGO_TYPES = [
   { value: 'Peligrosa', label: 'Carga peligrosa' },
 ];
 
+// Para granel y cargas pesadas la medida natural es la tonelada; para cargas
+// voluminosas, el m³. Según el tipo elegido mostramos la medida principal y
+// dejamos la otra como opcional.
+const VOLUME_FIRST_TYPES = ['General', 'Refrigerados', 'Otro', 'Peligrosa'];
+function primaryUnit(type?: string): 'tons' | 'volume' {
+  return type && VOLUME_FIRST_TYPES.includes(type) ? 'volume' : 'tons';
+}
+
 const schema = z
   .object({
     type: z.string().min(1, 'Requerido'),
@@ -76,6 +84,10 @@ export default function NuevaCargaPage() {
     resolver: zodResolver(schema),
     defaultValues: { isAuction: false },
   });
+
+  const cargoType = watch('type');
+  const unit = primaryUnit(cargoType);
+  const [showSecondaryMeasure, setShowSecondaryMeasure] = useState(false);
 
   const originAddress = watch('originAddress') ?? '';
   const destinationAddress = watch('destinationAddress') ?? '';
@@ -156,24 +168,59 @@ export default function NuevaCargaPage() {
             />
           </div>
 
-          {/* Peso y volumen */}
-          <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="Peso (toneladas)"
-              type="number"
-              step="0.01"
-              placeholder="0.00"
-              error={errors.weightTons?.message}
-              {...register('weightTons', { valueAsNumber: true })}
-            />
-            <Input
-              label="Volumen (m³)"
-              type="number"
-              step="0.01"
-              placeholder="0.00"
-              error={errors.volumeM3?.message}
-              {...register('volumeM3', { valueAsNumber: true })}
-            />
+          {/* Peso / volumen: la medida principal depende del tipo de carga */}
+          <div className="space-y-2">
+            <div className="grid grid-cols-2 gap-4">
+              {unit === 'tons' ? (
+                <Input
+                  label="Peso (toneladas)"
+                  type="number"
+                  step="0.01"
+                  placeholder="0.00"
+                  error={errors.weightTons?.message}
+                  {...register('weightTons', { valueAsNumber: true })}
+                />
+              ) : (
+                <Input
+                  label="Volumen (m³)"
+                  type="number"
+                  step="0.01"
+                  placeholder="0.00"
+                  error={errors.volumeM3?.message}
+                  {...register('volumeM3', { valueAsNumber: true })}
+                />
+              )}
+
+              {showSecondaryMeasure &&
+                (unit === 'tons' ? (
+                  <Input
+                    label="Volumen (m³) — opcional"
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    error={errors.volumeM3?.message}
+                    {...register('volumeM3', { valueAsNumber: true })}
+                  />
+                ) : (
+                  <Input
+                    label="Peso (toneladas) — opcional"
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    error={errors.weightTons?.message}
+                    {...register('weightTons', { valueAsNumber: true })}
+                  />
+                ))}
+            </div>
+            {!showSecondaryMeasure && (
+              <button
+                type="button"
+                onClick={() => setShowSecondaryMeasure(true)}
+                className="text-xs font-medium text-blue-600 hover:text-blue-700"
+              >
+                + Agregar {unit === 'tons' ? 'volumen (m³)' : 'peso (toneladas)'} (opcional)
+              </button>
+            )}
           </div>
 
           {/* Origen */}
