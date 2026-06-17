@@ -49,7 +49,8 @@ export class RatingsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(fromUserId: string, dto: CreateRatingDto) {
-    const { tripId, toUserId, toCompanyId, comment, ...cats } = dto;
+    const { tripId, toCompanyId, comment, ...cats } = dto;
+    let { toUserId } = dto;
 
     // Validate all category scores
     const allCats = [...TRANSPORTISTA_CATS, ...DADOR_CATS];
@@ -64,6 +65,20 @@ export class RatingsService {
     if (!trip) throw new NotFoundException('Viaje no encontrado');
     if (trip.status !== 'FINALIZADO') {
       throw new BadRequestException('Solo se puede calificar un viaje finalizado');
+    }
+
+    // Si el frontend no pudo determinar el usuario destino (ej: el viaje no tiene
+    // chofer asignado), lo resolvemos desde la empresa destino para no fallar.
+    if (!toUserId && toCompanyId) {
+      const member = await this.prisma.companyUser.findFirst({
+        where: { companyId: toCompanyId },
+        orderBy: { userId: 'asc' },
+        select: { userId: true },
+      });
+      toUserId = member?.userId ?? '';
+    }
+    if (!toUserId) {
+      throw new BadRequestException('No se pudo determinar a quién calificar');
     }
 
     const existing = await this.prisma.rating.findUnique({

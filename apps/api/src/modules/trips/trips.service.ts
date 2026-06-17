@@ -91,18 +91,37 @@ export class TripsService {
   async findAll(filters: {
     companyId?: string;
     cargoCompanyId?: string;
+    userId?: string;
+    scope?: 'transport' | 'cargo';
     status?: string;
     driverId?: string;
     vehicleId?: string;
     page?: number;
     limit?: number;
   }) {
-    const { companyId, cargoCompanyId, status, driverId, vehicleId } = filters;
+    const { companyId, cargoCompanyId, userId, scope, status, driverId, vehicleId } = filters;
     const page = Number(filters.page) || 1;
     const limit = Number(filters.limit) || 20;
     const skip = (page - 1) * limit;
     const where: any = {};
 
+    // Cuando llega userId+scope, filtramos por TODAS las empresas del usuario
+    // (un usuario puede pertenecer a varias). Consistente con el listado de cargas.
+    if (userId && scope) {
+      const memberships = await this.prisma.companyUser.findMany({
+        where: { userId },
+        select: { companyId: true },
+      });
+      const companyIds = memberships.map((m) => m.companyId);
+      if (companyIds.length === 0) {
+        return { data: [], total: 0, page, limit, pages: 0 };
+      }
+      if (scope === 'transport') {
+        where.transportCompanyId = companyIds.length === 1 ? companyIds[0] : { in: companyIds };
+      } else {
+        where.cargo = { companyId: companyIds.length === 1 ? companyIds[0] : { in: companyIds } };
+      }
+    }
     if (companyId) where.transportCompanyId = companyId;
     if (cargoCompanyId) where.cargo = { companyId: cargoCompanyId };
     if (status) {
@@ -139,7 +158,7 @@ export class TripsService {
     return { data, total, page, limit, pages: Math.ceil(total / limit) };
   }
 
-  async findOne(id: string, requester?: { role: string; companyId?: string; driverId?: string }) {
+  async findOne(id: string, requester?: { role: string; companyId?: string; driverId?: string; id?: string }) {
     const trip = await this.prisma.trip.findUnique({
       where: { id },
       include: {
@@ -156,9 +175,18 @@ export class TripsService {
 
     if (requester && requester.role !== 'ADMIN') {
       const role = requester.role;
+      // El usuario puede pertenecer a varias empresas: validamos contra todas.
+      let companyIds: string[] = requester.companyId ? [requester.companyId] : [];
+      if (requester.id && (role === 'TRANSPORTISTA' || role === 'DADOR')) {
+        const memberships = await this.prisma.companyUser.findMany({
+          where: { userId: requester.id },
+          select: { companyId: true },
+        });
+        companyIds = memberships.map((m) => m.companyId);
+      }
       const allowed =
-        (role === 'TRANSPORTISTA' && trip.transportCompanyId === requester.companyId) ||
-        (role === 'DADOR' && (trip.cargo as any)?.companyId === requester.companyId) ||
+        (role === 'TRANSPORTISTA' && companyIds.includes(trip.transportCompanyId ?? '')) ||
+        (role === 'DADOR' && companyIds.includes((trip.cargo as any)?.companyId ?? '')) ||
         (role === 'CHOFER' && trip.driverId === requester.driverId);
       if (!allowed) throw new NotFoundException('Viaje no encontrado');
     }

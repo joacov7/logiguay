@@ -40,7 +40,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/dashboard',   label: 'Dashboard',         icon: LayoutDashboard },
   { href: '/cargas',      label: 'Cargas',             icon: Package,      roles: ['DADOR', 'ADMIN'] },
   { href: '/bolsa',       label: 'Bolsa de Cargas',    icon: ShoppingBag,  roles: ['TRANSPORTISTA', 'DADOR', 'ADMIN'] },
-  { href: '/viajes',      label: 'Viajes',             icon: Navigation,   roles: ['TRANSPORTISTA', 'ADMIN'] },
+  { href: '/viajes',      label: 'Viajes',             icon: Navigation,   roles: ['TRANSPORTISTA', 'DADOR', 'ADMIN'] },
   { href: '/flota',       label: 'Flota',              icon: Truck,        roles: ['TRANSPORTISTA', 'ADMIN'] },
   { href: '/choferes',    label: 'Choferes',           icon: Users,        roles: ['TRANSPORTISTA', 'ADMIN'] },
   { href: '/tracking',    label: 'Tracking',           icon: MapPin,       roles: ['TRANSPORTISTA', 'ADMIN'] },

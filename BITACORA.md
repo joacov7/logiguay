@@ -105,6 +105,14 @@
 
 ---
 
+### ✅ RESUELTO — DADOR no veía progreso del viaje y calificar daba error
+- **Progreso del viaje**: Se agregó "Viajes" al menú del DADOR. La página de viajes ya muestra la línea de tiempo del estado (Asignado → En camino → Cargando → En tránsito → Descargando → Finalizado). Para el DADOR es **solo lectura** (se ocultan los botones de avanzar/cancelar, que son del transportista/chofer).
+- **Trips multi-empresa**: `GET /trips` para DADOR/TRANSPORTISTA ahora filtra por TODAS las empresas del usuario (antes usaba solo `user.companyId`). Igual el control de acceso en `findOne`. Consistente con el fix de cargas.
+- **Error al calificar**: El `toUserId` llegaba vacío cuando el frontend no podía determinar el chofer → fallaba la FK. Ahora el backend, si no recibe `toUserId` pero sí `toCompanyId`, resuelve el usuario principal de esa empresa. Nunca más falla por eso.
+- **Archivos**: `apps/api/src/modules/ratings/ratings.service.ts`, `apps/api/src/modules/trips/trips.service.ts`, `trips.controller.ts`, `apps/web/src/components/ui/Sidebar.tsx`, `apps/web/src/app/[locale]/(dashboard)/viajes/page.tsx`
+
+---
+
 ## Pendientes
 
 | # | Tema | Estado |

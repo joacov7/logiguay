@@ -38,20 +38,27 @@ export class TripsController {
     @Query('page') page?: number,
     @Query('limit') limit?: number,
   ) {
-    let companyId: string | undefined;
-    let cargoCompanyId: string | undefined;
+    let scope: 'transport' | 'cargo' | undefined;
     let driverId: string | undefined;
 
     if (user.role === 'TRANSPORTISTA') {
-      companyId = user.companyId;
+      scope = 'transport';
     } else if (user.role === 'DADOR') {
-      cargoCompanyId = user.companyId;
+      scope = 'cargo';
     } else if (user.role === 'CHOFER') {
       driverId = user.driverId;
     }
     // ADMIN can see everything without forced filters
 
-    return this.tripsService.findAll({ companyId, cargoCompanyId, status, driverId, vehicleId, page, limit });
+    return this.tripsService.findAll({
+      userId: scope ? user.id : undefined,
+      scope,
+      status,
+      driverId,
+      vehicleId,
+      page,
+      limit,
+    });
   }
 
   @Get(':id')

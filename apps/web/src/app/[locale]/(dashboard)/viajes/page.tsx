@@ -58,6 +58,9 @@ function DriverRatingBadge({ userId }: { userId: string }) {
 export default function ViajesPage() {
   const { user } = useAuth();
   const companyId = (user as any)?.companyId as string | undefined;
+  // El DADOR ve los viajes de sus cargas en modo seguimiento (solo lectura);
+  // no puede avanzar ni cancelar el viaje del transportista.
+  const isDadorRole = (user as any)?.role === 'DADOR';
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState('');
   const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
@@ -498,7 +501,7 @@ export default function ViajesPage() {
                   {statusMutation.isError && (
                     <p className="text-xs text-red-600 text-center">Error al actualizar. Intentá de nuevo.</p>
                   )}
-                  {nextStage?.action && trip.status !== 'ASIGNADO' || (trip.status === 'ASIGNADO' && (trip.vehicle as any)?.plate) ? (
+                  {!isDadorRole && (nextStage?.action && trip.status !== 'ASIGNADO' || (trip.status === 'ASIGNADO' && (trip.vehicle as any)?.plate)) ? (
                     nextStage?.action && (
                       <Button className="w-full" loading={statusMutation.isPending}
                         onClick={() => statusMutation.mutate({ status: nextStage.status })}>
@@ -507,7 +510,7 @@ export default function ViajesPage() {
                     )
                   ) : null}
 
-                  {trip.status !== 'FINALIZADO' && trip.status !== 'CANCELADO' && (
+                  {!isDadorRole && trip.status !== 'FINALIZADO' && trip.status !== 'CANCELADO' && (
                     !showCancel ? (
                       <Button variant="outline" className="w-full text-red-600 border-red-200 hover:bg-red-50"
                         onClick={() => setShowCancel(true)}>
