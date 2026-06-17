@@ -26,6 +26,13 @@ export default function TransportistaLayout() {
         }}
       />
       <Tabs.Screen
+        name="mapa"
+        options={{
+          title: 'Mapa',
+          tabBarIcon: ({ color, size }) => <Ionicons name="map-outline" size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="bolsa"
         options={{
           title: 'Bolsa',

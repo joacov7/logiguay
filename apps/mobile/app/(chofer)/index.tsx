@@ -119,37 +119,43 @@ export default function ChoferTripScreen() {
           </View>
 
           {/* Route */}
-          <View style={s.card}>
-            <Text style={s.cardTitle}>Ruta</Text>
-            <View style={s.routeRow}>
-              <View style={[s.dot, { backgroundColor: '#22c55e' }]} />
-              <View style={s.routeInfo}>
-                <Text style={s.routeLabel}>ORIGEN</Text>
-                <Text style={s.routeText}>{trip.cargo.originAddress}</Text>
+          {trip.cargo && (
+            <View style={s.card}>
+              <Text style={s.cardTitle}>Ruta</Text>
+              <View style={s.routeRow}>
+                <View style={[s.dot, { backgroundColor: '#22c55e' }]} />
+                <View style={s.routeInfo}>
+                  <Text style={s.routeLabel}>ORIGEN</Text>
+                  <Text style={s.routeText}>{trip.cargo.originAddress}</Text>
+                </View>
+              </View>
+              <View style={s.routeLine} />
+              <View style={s.routeRow}>
+                <View style={[s.dot, { backgroundColor: '#ef4444' }]} />
+                <View style={s.routeInfo}>
+                  <Text style={s.routeLabel}>DESTINO</Text>
+                  <Text style={s.routeText}>{trip.cargo.destinationAddress}</Text>
+                </View>
               </View>
             </View>
-            <View style={s.routeLine} />
-            <View style={s.routeRow}>
-              <View style={[s.dot, { backgroundColor: '#ef4444' }]} />
-              <View style={s.routeInfo}>
-                <Text style={s.routeLabel}>DESTINO</Text>
-                <Text style={s.routeText}>{trip.cargo.destinationAddress}</Text>
-              </View>
-            </View>
-          </View>
+          )}
 
           {/* Cargo info */}
           <View style={s.card}>
             <Text style={s.cardTitle}>Carga</Text>
-            <View style={s.infoRow}>
-              <Text style={s.infoLabel}>Tipo</Text>
-              <Text style={s.infoValue}>{trip.cargo.type}</Text>
-            </View>
-            {trip.cargo.weightTons != null && (
-              <View style={s.infoRow}>
-                <Text style={s.infoLabel}>Peso</Text>
-                <Text style={s.infoValue}>{trip.cargo.weightTons} t</Text>
-              </View>
+            {trip.cargo && (
+              <>
+                <View style={s.infoRow}>
+                  <Text style={s.infoLabel}>Tipo</Text>
+                  <Text style={s.infoValue}>{trip.cargo.type}</Text>
+                </View>
+                {trip.cargo.weightTons != null && (
+                  <View style={s.infoRow}>
+                    <Text style={s.infoLabel}>Peso</Text>
+                    <Text style={s.infoValue}>{trip.cargo.weightTons} t</Text>
+                  </View>
+                )}
+              </>
             )}
             <View style={s.infoRow}>
               <Text style={s.infoLabel}>Tarifa acordada</Text>
