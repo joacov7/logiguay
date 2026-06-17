@@ -27,8 +27,37 @@ export default function TrackingPage() {
   const companyIds: string[] = companiesData?.companyIds ??
     ((user as any)?.companyId ? [(user as any).companyId] : []);
 
-  const { positions, connected, alerts, error } = useTracking({ companyIds });
+  const { positions: livePositions, connected, alerts, error } = useTracking({ companyIds });
   const [selectedVehicle, setSelectedVehicle] = useState<string | null>(null);
+
+  // Fallback robusto: además del push por WebSocket, hacemos polling de las
+  // posiciones guardadas (Redis/DB). Así el camión aparece aunque el socket
+  // tenga problemas de suscripción.
+  const { data: fleetData } = useQuery({
+    queryKey: ['tracking-fleet'],
+    enabled: companyIds.length > 0,
+    refetchInterval: 10000,
+    queryFn: () => api.get('/tracking/fleet').then((r) => r.data),
+  });
+
+  // Combinar posiciones del polling con las del socket (las del socket pisan
+  // a las del polling porque son más recientes).
+  const positions: Record<string, any> = {};
+  (fleetData ?? []).forEach((v: any) => {
+    if (v.position?.lat != null && v.position?.lng != null) {
+      positions[v.id] = {
+        vehicleId: v.id,
+        lat: v.position.lat,
+        lng: v.position.lng,
+        speed: v.position.speed,
+        heading: v.position.heading,
+        timestamp: v.position.timestamp,
+        connectionStatus: v.position.connectionStatus ?? 'CONNECTED',
+        plate: v.plate,
+      };
+    }
+  });
+  Object.assign(positions, livePositions);
 
   const { data: tripsData } = useQuery({
     queryKey: ['tracking-trips', companyIds.join(',')],
