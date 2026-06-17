@@ -44,6 +44,7 @@ interface Props {
 
 export default function LocationPicker({ lat, lng, onPick }: Props) {
   const [loadingAddr, setLoadingAddr] = useState(false);
+  const [view, setView] = useState<'map' | 'satellite'>('map');
 
   const center: [number, number] = lat != null && lng != null ? [lat, lng] : DEFAULT_CENTER;
   const zoom = lat != null && lng != null ? PINNED_ZOOM : DEFAULT_ZOOM;
@@ -72,12 +73,39 @@ export default function LocationPicker({ lat, lng, onPick }: Props) {
 
   return (
     <div className="space-y-2">
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          onClick={() => setView('map')}
+          className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+            view === 'map' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          Mapa
+        </button>
+        <button
+          type="button"
+          onClick={() => setView('satellite')}
+          className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+            view === 'satellite' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          Satélite
+        </button>
+      </div>
       <div className="rounded-lg overflow-hidden border border-gray-300" style={{ height: 280 }}>
         <MapContainer center={center} zoom={zoom} style={{ height: '100%', width: '100%' }} scrollWheelZoom>
-          <TileLayer
-            attribution='&copy; OpenStreetMap'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
+          {view === 'satellite' ? (
+            <TileLayer
+              attribution='&copy; Esri'
+              url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+            />
+          ) : (
+            <TileLayer
+              attribution='&copy; OpenStreetMap'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+          )}
           <ClickHandler onPick={handlePick} />
           <Recenter lat={lat} lng={lng} />
           {lat != null && lng != null && (
