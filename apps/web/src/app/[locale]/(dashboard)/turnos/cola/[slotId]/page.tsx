@@ -6,7 +6,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Clock, CheckCircle, AlertTriangle, User, Truck, ArrowLeft } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { useLink } from '@/i18n/routing';
 import api from '@/lib/api';
 import { io, Socket } from 'socket.io-client';
 
