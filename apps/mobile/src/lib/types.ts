@@ -27,7 +27,7 @@ export interface Trip {
     originAddress: string;
     destinationAddress: string;
     weightTons: number;
-  };
+  } | null;
   vehicle?: { plate: string };
   driver?: { user: { firstName: string; lastName: string } };
   startedAt?: string;

@@ -316,35 +316,39 @@ export default function TripDetailScreen() {
         </View>
 
         {/* Cargo */}
-        <SectionCard title="Carga">
-          <InfoRow label="Tipo de carga" value={trip.cargo.type} />
-          <InfoRow label="Peso" value={`${trip.cargo.weightTons} toneladas`} />
-        </SectionCard>
+        {trip.cargo && (
+          <SectionCard title="Carga">
+            <InfoRow label="Tipo de carga" value={trip.cargo.type} />
+            <InfoRow label="Peso" value={`${trip.cargo.weightTons} toneladas`} />
+          </SectionCard>
+        )}
 
         {/* Route */}
-        <SectionCard title="Ruta">
-          <View style={styles.routeContainer}>
-            <View style={styles.routeItem}>
-              <View style={[styles.routeDot, { backgroundColor: '#22c55e' }]} />
-              <View style={styles.routeTextWrapper}>
-                <Text style={styles.routeItemLabel}>Origen</Text>
-                <Text style={styles.routeItemValue}>
-                  {trip.cargo.originAddress}
-                </Text>
+        {trip.cargo && (
+          <SectionCard title="Ruta">
+            <View style={styles.routeContainer}>
+              <View style={styles.routeItem}>
+                <View style={[styles.routeDot, { backgroundColor: '#22c55e' }]} />
+                <View style={styles.routeTextWrapper}>
+                  <Text style={styles.routeItemLabel}>Origen</Text>
+                  <Text style={styles.routeItemValue}>
+                    {trip.cargo.originAddress}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.routeConnector} />
+              <View style={styles.routeItem}>
+                <View style={[styles.routeDot, { backgroundColor: '#ef4444' }]} />
+                <View style={styles.routeTextWrapper}>
+                  <Text style={styles.routeItemLabel}>Destino</Text>
+                  <Text style={styles.routeItemValue}>
+                    {trip.cargo.destinationAddress}
+                  </Text>
+                </View>
               </View>
             </View>
-            <View style={styles.routeConnector} />
-            <View style={styles.routeItem}>
-              <View style={[styles.routeDot, { backgroundColor: '#ef4444' }]} />
-              <View style={styles.routeTextWrapper}>
-                <Text style={styles.routeItemLabel}>Destino</Text>
-                <Text style={styles.routeItemValue}>
-                  {trip.cargo.destinationAddress}
-                </Text>
-              </View>
-            </View>
-          </View>
-        </SectionCard>
+          </SectionCard>
+        )}
 
         {/* Financial */}
         <SectionCard title="Finanzas">
