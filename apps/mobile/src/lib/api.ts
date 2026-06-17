@@ -1,9 +1,13 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// En emulador Android, 10.0.2.2 apunta al localhost de la PC host.
-// En dispositivo físico, cambiá por la IP local de tu PC (ej: 192.168.1.100).
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://10.0.2.2:3001';
+// Por defecto apunta a la API de producción, que funciona desde cualquier
+// dispositivo (Expo Go en celular físico, emulador, etc.).
+// Para desarrollo local, definí EXPO_PUBLIC_API_URL en apps/mobile/.env:
+//   - Emulador Android:  http://10.0.2.2:3001
+//   - Simulador iOS/web: http://localhost:3001
+//   - Celular físico:    http://<IP-de-tu-PC>:3001
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.logiguay.com.ar';
 
 export const api = axios.create({
   baseURL: `${API_URL}/api/v1`,
