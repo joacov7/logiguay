@@ -6,7 +6,9 @@
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "scheme": "logiguay",
+    "icon": "./assets/icon.png",
     "splash": {
+      "image": "./assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#F0F0F0"
     },
@@ -24,6 +26,7 @@
       "package": "com.logiguay.app",
       "versionCode": 1,
       "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#15A66A"
       },
       "permissions": [
@@ -46,6 +49,9 @@
         }
       ],
       ["expo-notifications", { "sounds": [] }]
-    ]
+    ],
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
   }
 }
