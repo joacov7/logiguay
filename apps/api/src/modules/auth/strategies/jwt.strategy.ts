@@ -50,6 +50,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
           orderBy: { companyId: 'asc' },
           take: 1,
         },
+        drivers: { select: { id: true }, take: 1 },
       },
     });
 
@@ -57,7 +58,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('Usuario no encontrado o inactivo');
     }
 
-    const { companyUsers, ...rest } = user;
-    return { ...rest, companyId: companyUsers[0]?.companyId ?? null };
+    const { companyUsers, drivers, ...rest } = user;
+    return {
+      ...rest,
+      companyId: companyUsers[0]?.companyId ?? null,
+      driverId: drivers[0]?.id ?? null,
+    };
   }
 }

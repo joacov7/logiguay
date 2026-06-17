@@ -74,16 +74,7 @@ export default function RootLayout() {
           <Stack.Screen name="(transportista)" />
           <Stack.Screen name="(dador)" />
           <Stack.Screen name="(chofer)" />
-          <Stack.Screen
-            name="trip/[id]"
-            options={{
-              headerShown: true,
-              title: 'Detalle del viaje',
-              headerBackTitle: 'Volver',
-              headerStyle: { backgroundColor: '#fff' },
-              headerTintColor: '#1e3a8a',
-            }}
-          />
+          <Stack.Screen name="trip/[id]" options={{ headerShown: false }} />
         </Stack>
       </AuthGuard>
     </QueryClientProvider>
