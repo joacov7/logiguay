@@ -62,4 +62,40 @@ export class TurnosController {
   cancelBooking(@Param('id') id: string, @CurrentUser('companyId') companyId: string) {
     return this.turnosService.cancelBooking(id, companyId);
   }
+
+  @Patch('bookings/:id/checkin')
+  @ApiOperation({ summary: 'Check-in: chofer marca llegada a la planta' })
+  checkIn(@Param('id') id: string, @CurrentUser('companyId') companyId: string) {
+    return this.turnosService.checkIn(id, companyId);
+  }
+
+  @Patch('bookings/:id/delay')
+  @ApiOperation({ summary: 'Reportar demora estimada' })
+  reportDelay(
+    @Param('id') id: string,
+    @CurrentUser('companyId') companyId: string,
+    @Body() body: { delayMinutes: number; delayNote?: string },
+  ) {
+    return this.turnosService.reportDelay(id, companyId, body.delayMinutes, body.delayNote);
+  }
+
+  @Patch('bookings/:id/attend')
+  @Roles(Role.DADOR, Role.ADMIN)
+  @ApiOperation({ summary: 'Planta inicia atención del camión' })
+  attendBooking(@Param('id') id: string, @CurrentUser('companyId') companyId: string) {
+    return this.turnosService.attendBooking(id, companyId);
+  }
+
+  @Patch('bookings/:id/complete')
+  @Roles(Role.DADOR, Role.ADMIN)
+  @ApiOperation({ summary: 'Planta marca camión como completado' })
+  completeBooking(@Param('id') id: string, @CurrentUser('companyId') companyId: string) {
+    return this.turnosService.completeBooking(id, companyId);
+  }
+
+  @Get('slots/:slotId/queue')
+  @ApiOperation({ summary: 'Cola en tiempo real de un turno' })
+  getQueue(@Param('slotId') slotId: string) {
+    return this.turnosService.getQueue(slotId);
+  }
 }

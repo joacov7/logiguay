@@ -165,4 +165,18 @@ export class TrackingGateway implements OnGatewayConnection, OnGatewayDisconnect
     this.server.to(`trip:${tripId}`).emit('trip-status', { tripId, status });
     this.server.to(`company:${companyId}`).emit('trip-status', { tripId, status });
   }
+
+  @SubscribeMessage('subscribe-slot-queue')
+  handleSubscribeSlotQueue(@MessageBody() slotId: string, @ConnectedSocket() client: Socket) {
+    client.join(`slot-queue:${slotId}`);
+  }
+
+  @SubscribeMessage('unsubscribe-slot-queue')
+  handleUnsubscribeSlotQueue(@MessageBody() slotId: string, @ConnectedSocket() client: Socket) {
+    client.leave(`slot-queue:${slotId}`);
+  }
+
+  broadcastQueueUpdate(slotId: string, queue: any): void {
+    this.server.to(`slot-queue:${slotId}`).emit('queue-update', queue);
+  }
 }

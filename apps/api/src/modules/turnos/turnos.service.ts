@@ -1,9 +1,14 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { TrackingGateway } from '../tracking/tracking.gateway';
 
 @Injectable()
 export class TurnosService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => TrackingGateway))
+    private readonly gateway: TrackingGateway,
+  ) {}
 
   async createSlot(companyId: string, dto: {
     plantName: string;
@@ -120,9 +125,87 @@ export class TurnosService {
     const booking = await this.prisma.turnBooking.findUnique({ where: { id: bookingId } });
     if (!booking) throw new NotFoundException('Reserva no encontrada');
     if (booking.companyId !== companyId) throw new ForbiddenException('Sin acceso');
-    return this.prisma.turnBooking.update({
+    const updated = await this.prisma.turnBooking.update({
       where: { id: bookingId },
       data: { status: 'CANCELADO' },
     });
+    const queue = await this.getQueue(booking.slotId);
+    this.gateway.broadcastQueueUpdate(booking.slotId, queue);
+    return updated;
+  }
+
+  async checkIn(bookingId: string, companyId: string) {
+    const booking = await this.prisma.turnBooking.findUnique({ where: { id: bookingId } });
+    if (!booking) throw new NotFoundException('Reserva no encontrada');
+    if (booking.companyId !== companyId) throw new ForbiddenException('Sin acceso');
+    if (booking.status === 'CANCELADO') throw new BadRequestException('La reserva está cancelada');
+    const updated = await this.prisma.turnBooking.update({
+      where: { id: bookingId },
+      data: { status: 'EN_ESPERA', arrivedAt: new Date() },
+    });
+    const queue = await this.getQueue(booking.slotId);
+    this.gateway.broadcastQueueUpdate(booking.slotId, queue);
+    return updated;
+  }
+
+  async reportDelay(bookingId: string, companyId: string, delayMinutes: number, delayNote?: string) {
+    const booking = await this.prisma.turnBooking.findUnique({ where: { id: bookingId } });
+    if (!booking) throw new NotFoundException('Reserva no encontrada');
+    if (booking.companyId !== companyId) throw new ForbiddenException('Sin acceso');
+    const updated = await this.prisma.turnBooking.update({
+      where: { id: bookingId },
+      data: { status: 'DEMORADO', delayMinutes, delayNote: delayNote ?? null },
+    });
+    const queue = await this.getQueue(booking.slotId);
+    this.gateway.broadcastQueueUpdate(booking.slotId, queue);
+    return updated;
+  }
+
+  async attendBooking(bookingId: string, companyId: string) {
+    const booking = await this.prisma.turnBooking.findUnique({
+      where: { id: bookingId },
+      include: { slot: true },
+    });
+    if (!booking) throw new NotFoundException('Reserva no encontrada');
+    if (booking.slot.companyId !== companyId) throw new ForbiddenException('Sin acceso');
+    const updated = await this.prisma.turnBooking.update({
+      where: { id: bookingId },
+      data: { status: 'EN_ATENCION' },
+    });
+    const queue = await this.getQueue(booking.slotId);
+    this.gateway.broadcastQueueUpdate(booking.slotId, queue);
+    return updated;
+  }
+
+  async completeBooking(bookingId: string, companyId: string) {
+    const booking = await this.prisma.turnBooking.findUnique({
+      where: { id: bookingId },
+      include: { slot: true },
+    });
+    if (!booking) throw new NotFoundException('Reserva no encontrada');
+    if (booking.slot.companyId !== companyId) throw new ForbiddenException('Sin acceso');
+    const updated = await this.prisma.turnBooking.update({
+      where: { id: bookingId },
+      data: { status: 'COMPLETADO' },
+    });
+    const queue = await this.getQueue(booking.slotId);
+    this.gateway.broadcastQueueUpdate(booking.slotId, queue);
+    return updated;
+  }
+
+  async getQueue(slotId: string) {
+    const slot = await this.prisma.turnSlot.findUnique({
+      where: { id: slotId },
+      include: {
+        company: { select: { id: true, name: true } },
+        bookings: {
+          where: { status: { not: 'CANCELADO' } },
+          orderBy: [{ arrivedAt: 'asc' }, { createdAt: 'asc' }],
+          include: { company: { select: { id: true, name: true } } },
+        },
+      },
+    });
+    if (!slot) throw new NotFoundException('Turno no encontrado');
+    return slot;
   }
 }

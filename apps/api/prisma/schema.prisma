@@ -526,8 +526,11 @@ model TurnBooking {
   driverName   String?
   vehiclePlate String?
   notes        String?
-  status       String   @default("CONFIRMADO")
-  createdAt    DateTime @default(now())
+  status       String    @default("CONFIRMADO")
+  arrivedAt    DateTime?
+  delayMinutes Int?
+  delayNote    String?
+  createdAt    DateTime  @default(now())
 
   slot    TurnSlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
   company Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)

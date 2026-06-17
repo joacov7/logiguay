@@ -280,11 +280,18 @@ export default function TurnosPage() {
                   {slot.notes && <p className="text-xs text-gray-400 mt-1">{slot.notes}</p>}
                   {!isDador && <p className="text-xs text-gray-400 mt-1">{slot.company?.name}</p>}
                 </div>
-                {isTransportista && slot.availableSpots > 0 && (
-                  <Button size="sm" onClick={() => setBookingSlot(slot)}>
-                    Reservar
-                  </Button>
-                )}
+                <div className="flex flex-col gap-2">
+                  {isDador && (
+                    <a href={`turnos/cola/${slot.id}`}>
+                      <Button size="sm" variant="secondary">Ver cola</Button>
+                    </a>
+                  )}
+                  {isTransportista && slot.availableSpots > 0 && (
+                    <Button size="sm" onClick={() => setBookingSlot(slot)}>
+                      Reservar
+                    </Button>
+                  )}
+                </div>
               </div>
             </Card>
           ))}
