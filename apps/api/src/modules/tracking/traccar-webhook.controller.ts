@@ -57,6 +57,7 @@ export class TraccarWebhookController {
 
     if (result) {
       this.gateway.broadcastPosition(result.vehicleId, result.position);
+      this.gateway.broadcastPositionToCompany(result.companyId, result.vehicleId, result.position);
     }
 
     // 200 siempre que el payload sea válido: si el dispositivo no está

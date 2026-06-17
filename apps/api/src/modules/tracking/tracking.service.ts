@@ -80,10 +80,10 @@ export class TrackingService {
     lng: number;
     speedKnots?: number;
     course?: number;
-  }): Promise<{ vehicleId: string; position: StoredPosition } | null> {
+  }): Promise<{ vehicleId: string; companyId: string; position: StoredPosition } | null> {
     const vehicle = await this.prisma.vehicle.findUnique({
       where: { trackerDeviceId: payload.uniqueId },
-      select: { id: true },
+      select: { id: true, companyId: true },
     });
     if (!vehicle) {
       this.logger.warn(`Traccar: dispositivo ${payload.uniqueId} sin vehículo vinculado`);
@@ -98,7 +98,7 @@ export class TrackingService {
       heading: payload.course,
     });
 
-    return { vehicleId: vehicle.id, position };
+    return { vehicleId: vehicle.id, companyId: vehicle.companyId, position };
   }
 
   private async getActiveTrip(vehicleId: string) {
