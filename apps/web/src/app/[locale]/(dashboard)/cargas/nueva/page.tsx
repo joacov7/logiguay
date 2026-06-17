@@ -1,14 +1,17 @@
 'use client';
 
 import React, { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useRouter } from '@/i18n/routing';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMutation } from '@tanstack/react-query';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Map as MapIcon } from 'lucide-react';
 import Link from 'next/link';
 import { Card } from '@/components/ui/Card';
+
+const LocationPicker = dynamic(() => import('@/components/ui/LocationPicker'), { ssr: false });
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { AddressAutocomplete } from '@/components/ui/AddressAutocomplete';
@@ -60,6 +63,8 @@ export default function NuevaCargaPage() {
   const router = useRouter();
   const { user } = useAuth();
   const [isAuction, setIsAuction] = useState(false);
+  const [showOriginMap, setShowOriginMap] = useState(false);
+  const [showDestMap, setShowDestMap] = useState(false);
 
   const {
     register,
@@ -173,7 +178,17 @@ export default function NuevaCargaPage() {
 
           {/* Origen */}
           <div className="space-y-2">
-            <h3 className="text-sm font-semibold text-gray-700">Origen</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-gray-700">Origen</h3>
+              <button
+                type="button"
+                onClick={() => setShowOriginMap((v) => !v)}
+                className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700"
+              >
+                <MapIcon className="h-3.5 w-3.5" />
+                {showOriginMap ? 'Ocultar mapa' : 'Marcar en el mapa'}
+              </button>
+            </div>
             <AddressAutocomplete
               label="Dirección"
               required
@@ -185,6 +200,17 @@ export default function NuevaCargaPage() {
               }}
               error={errors.originAddress?.message}
             />
+            {showOriginMap && (
+              <LocationPicker
+                lat={originLat}
+                lng={originLng}
+                onPick={(lat, lng, address) => {
+                  setValue('originLat', lat);
+                  setValue('originLng', lng);
+                  if (address) setValue('originAddress', address, { shouldValidate: true });
+                }}
+              />
+            )}
             {originLat != null && originLng != null && (
               <p className="text-xs text-gray-400">
                 Coords: {originLat.toFixed(5)}, {originLng.toFixed(5)}
@@ -194,7 +220,17 @@ export default function NuevaCargaPage() {
 
           {/* Destino */}
           <div className="space-y-2">
-            <h3 className="text-sm font-semibold text-gray-700">Destino</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-gray-700">Destino</h3>
+              <button
+                type="button"
+                onClick={() => setShowDestMap((v) => !v)}
+                className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700"
+              >
+                <MapIcon className="h-3.5 w-3.5" />
+                {showDestMap ? 'Ocultar mapa' : 'Marcar en el mapa'}
+              </button>
+            </div>
             <AddressAutocomplete
               label="Dirección"
               required
@@ -206,6 +242,17 @@ export default function NuevaCargaPage() {
               }}
               error={errors.destinationAddress?.message}
             />
+            {showDestMap && (
+              <LocationPicker
+                lat={destinationLat}
+                lng={destinationLng}
+                onPick={(lat, lng, address) => {
+                  setValue('destinationLat', lat);
+                  setValue('destinationLng', lng);
+                  if (address) setValue('destinationAddress', address, { shouldValidate: true });
+                }}
+              />
+            )}
             {destinationLat != null && destinationLng != null && (
               <p className="text-xs text-gray-400">
                 Coords: {destinationLat.toFixed(5)}, {destinationLng.toFixed(5)}

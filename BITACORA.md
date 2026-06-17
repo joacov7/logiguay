@@ -99,6 +99,12 @@
 
 ---
 
+### ✅ NUEVO — Selector de ubicación en mapa para cargas (campos / lugares sin calle)
+- **Qué**: Nuevo componente `LocationPicker` (Leaflet). En "Nueva carga", cada dirección (origen y destino) tiene un botón "Marcar en el mapa". Se toca el mapa para poner un pin (o se arrastra para ajustar), y con geocodificación inversa (Nominatim) se rellena la dirección automáticamente. Ideal para campos o lugares rurales sin dirección.
+- **Archivos**: `apps/web/src/components/ui/LocationPicker.tsx` (nuevo), `apps/web/src/app/[locale]/(dashboard)/cargas/nueva/page.tsx`
+
+---
+
 ## Pendientes
 
 | # | Tema | Estado |
