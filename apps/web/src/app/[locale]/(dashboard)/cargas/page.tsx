@@ -235,15 +235,16 @@ export default function CargasPage() {
                   <TableCell>{cargo._count?.quotes ?? 0}</TableCell>
                   <TableCell>
                     {(cargo._count?.quotes ?? 0) > 0 && (
-                      <Button
-                        size="sm"
-                        variant="outline"
+                      <button
                         onClick={() => setSelectedCargoId(cargo.id)}
-                        className="flex items-center gap-1"
+                        className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors"
+                        style={{ backgroundColor: '#F2870D' }}
+                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#d9760a')}
+                        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#F2870D')}
                       >
                         <Eye className="h-3 w-3" />
                         Ver ofertas ({cargo._count?.quotes})
-                      </Button>
+                      </button>
                     )}
                   </TableCell>
                 </TableRow>
