@@ -6,10 +6,12 @@ import { TrackingController } from './tracking.controller';
 import { TraccarWebhookController } from './traccar-webhook.controller';
 import { TrackingService } from './tracking.service';
 import { AlertsModule } from '../alerts/alerts.module';
+import { PrismaModule } from '../../common/prisma/prisma.module';
 
 @Module({
   imports: [
     AlertsModule,
+    PrismaModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: (cfg: ConfigService) => ({ secret: cfg.get<string>('JWT_SECRET') }),

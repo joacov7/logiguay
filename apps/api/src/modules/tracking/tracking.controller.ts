@@ -3,13 +3,17 @@ import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger'
 import { TrackingService } from './tracking.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { PrismaService } from '../../common/prisma/prisma.service';
 
 @ApiTags('Tracking')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('tracking')
 export class TrackingController {
-  constructor(private readonly trackingService: TrackingService) {}
+  constructor(
+    private readonly trackingService: TrackingService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   @Get('vehicle/:vehicleId')
   @ApiOperation({ summary: 'Última posición de un vehículo' })
@@ -19,8 +23,14 @@ export class TrackingController {
 
   @Get('fleet')
   @ApiOperation({ summary: 'Posición de toda la flota de la empresa autenticada' })
-  getFleetPositions(@CurrentUser('companyId') companyId: string) {
-    return this.trackingService.getFleetPositions(companyId);
+  async getFleetPositions(@CurrentUser() user: any) {
+    // Usa todas las empresas del usuario, no solo la del JWT
+    const memberships = await this.prisma.companyUser.findMany({
+      where: { userId: user.id },
+      select: { companyId: true },
+    });
+    const companyIds = memberships.map((m) => m.companyId);
+    return this.trackingService.getFleetPositionsMulti(companyIds);
   }
 
   @Get('vehicle/:vehicleId/history')

@@ -276,9 +276,9 @@ export class TrackingService {
     });
   }
 
-  async getFleetPositions(companyId: string) {
+  async getFleetPositionsMulti(companyIds: string[]) {
     const vehicles = await this.prisma.vehicle.findMany({
-      where: { companyId, status: 'ACTIVO' },
+      where: { companyId: { in: companyIds } },
       select: { id: true, plate: true, type: true, brand: true, model: true },
     });
 
@@ -289,6 +289,10 @@ export class TrackingService {
         return { ...v, position, activeTrip: activeTrip ? { id: activeTrip.id, status: activeTrip.status } : null };
       }),
     );
+  }
+
+  async getFleetPositions(companyId: string) {
+    return this.getFleetPositionsMulti([companyId]);
   }
 
   async getVehicleHistory(vehicleId: string, from?: Date, to?: Date) {
