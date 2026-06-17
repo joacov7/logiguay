@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { User, Building2, Save, MessageCircle, CheckCircle, ExternalLink } from 'lucide-react';
+import { User, Building2, Save } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -274,58 +274,6 @@ export default function PerfilPage() {
           </form>
         )}
       </Card>
-
-      <TelegramLinkCard />
     </div>
-  );
-}
-
-function TelegramLinkCard() {
-  const { data, isLoading } = useQuery({
-    queryKey: ['telegram-link'],
-    queryFn: () => api.get('/telegram/link').then(r => r.data),
-  });
-
-  if (isLoading) return null;
-
-  return (
-    <Card>
-      <div className="flex items-start gap-4">
-        <div className="p-2 bg-blue-50 rounded-lg shrink-0">
-          <MessageCircle className="h-5 w-5 text-blue-600" />
-        </div>
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-1">
-            <h2 className="text-base font-semibold text-gray-800">Bot de Telegram</h2>
-            {data?.linked && (
-              <span className="flex items-center gap-1 text-xs text-green-600 font-medium bg-green-50 px-2 py-0.5 rounded-full">
-                <CheckCircle className="h-3 w-3" /> Vinculado
-              </span>
-            )}
-          </div>
-          <p className="text-sm text-gray-500 mb-4">
-            {data?.linked
-              ? 'Tu cuenta está vinculada con Telegram. Podés publicar cargas mandando "carga" al bot.'
-              : 'Vinculá tu cuenta para publicar cargas directamente desde Telegram sin abrir la web.'}
-          </p>
-          {!data?.linked && data?.url && (
-            <a href={data.url} target="_blank" rel="noopener noreferrer">
-              <Button variant="secondary" size="sm">
-                <ExternalLink className="h-4 w-4 mr-1.5" />
-                Vincular con Telegram
-              </Button>
-            </a>
-          )}
-          {data?.linked && (
-            <a href={`https://t.me/${data.botUsername}`} target="_blank" rel="noopener noreferrer">
-              <Button variant="secondary" size="sm">
-                <ExternalLink className="h-4 w-4 mr-1.5" />
-                Abrir bot
-              </Button>
-            </a>
-          )}
-        </div>
-      </div>
-    </Card>
   );
 }
