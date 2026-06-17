@@ -240,10 +240,8 @@ export default function TripDetailScreen() {
           onPress: async () => {
             setAdvancing(true);
             try {
-              const res = await api.patch<Trip>(`/trips/${trip.id}/status`, {
-                status: next,
-              });
-              setTrip(res.data);
+              await api.patch(`/trips/${trip.id}/status`, { status: next });
+              await fetchTrip();
             } catch (e: any) {
               Alert.alert(
                 'Error',

@@ -74,7 +74,7 @@ export default function ChoferTripScreen() {
           setUpdating(true);
           try {
             await api.patch(`/trips/${trip.id}/status`, { status: next.status });
-            await fetchTrip();
+            await fetchTrip(user);
           } catch (e: any) {
             Alert.alert('Error', e?.response?.data?.message || 'No se pudo actualizar el estado');
           } finally {
