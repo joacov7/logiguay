@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Calendar, Plus, Clock, MapPin, CheckCircle, XCircle } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { Link } from '@/i18n/routing';
 import api from '@/lib/api';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -282,9 +283,9 @@ export default function TurnosPage() {
                 </div>
                 <div className="flex flex-col gap-2">
                   {isDador && (
-                    <a href={`turnos/cola/${slot.id}`}>
+                    <Link href={`/turnos/cola/${slot.id}`}>
                       <Button size="sm" variant="secondary">Ver cola</Button>
-                    </a>
+                    </Link>
                   )}
                   {isTransportista && slot.availableSpots > 0 && (
                     <Button size="sm" onClick={() => setBookingSlot(slot)}>

@@ -6,6 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Clock, CheckCircle, AlertTriangle, User, Truck, ArrowLeft } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { Link } from '@/i18n/routing';
 import api from '@/lib/api';
 import { io, Socket } from 'socket.io-client';
 
@@ -148,9 +149,9 @@ export default function QueuePage() {
   return (
     <div className="space-y-6">
       <div className="flex items-start gap-3">
-        <a href="../" className="mt-1 p-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
+        <Link href="/turnos" className="mt-1 p-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
           <ArrowLeft className="h-4 w-4 text-gray-500" />
-        </a>
+        </Link>
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{slot.plantName}</h1>
           <p className="text-sm text-gray-500">
