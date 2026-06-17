@@ -90,6 +90,15 @@
 
 ---
 
+### ✅ RESUELTO (CAUSA RAÍZ REAL) — DADOR no veía NINGUNA carga en /cargas
+- **Síntoma**: `GET /cargo` devolvía `total: 0` aunque las cargas existían y pertenecían al usuario. El `findAll` llamado internamente devolvía las cargas correctas, pero por HTTP daba vacío.
+- **Causa real**: El `ValidationPipe` global tiene `enableImplicitConversion: true`. Los query params numéricos **ausentes** (`lat`, `lng`, `radiusKm`) llegaban como **`NaN`**, no como `undefined`. Entonces `geoActive = lat !== undefined && lng !== undefined` daba `true` (porque `NaN !== undefined`), activando el modo geo. El filtro por radio corría con `radiusKm = NaN`, y como `NaN <= NaN` es `false`, **filtraba TODAS las cargas** → `total: 0`.
+- **Fix**: Usar `Number.isFinite()` en vez de `!== undefined` para detectar `geoActive` y el filtro de radio en `cargo.service.ts findAll`.
+- **Nota**: Todo el periplo de "empresas" y "cuentas múltiples" fue una pista falsa. La data estaba bien; el bug era el filtro geográfico. Lección: los params numéricos opcionales con `enableImplicitConversion` se vuelven `NaN`, no `undefined`.
+- **Archivos**: `apps/api/src/modules/cargo/cargo.service.ts`
+
+---
+
 ## Pendientes
 
 | # | Tema | Estado |

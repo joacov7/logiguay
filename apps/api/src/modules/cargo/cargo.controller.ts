@@ -54,12 +54,6 @@ export class CargoController {
     return this.cargoService.findAll({ userId: user.id, status, page, limit, lat, lng, radiusKm, province });
   }
 
-  @Get('debug')
-  @ApiOperation({ summary: 'Diagnóstico: empresas del usuario vs empresas de las cargas' })
-  debug(@CurrentUser() user: any) {
-    return this.cargoService.debug(user.id);
-  }
-
   @Get('marketplace')
   @ApiOperation({ summary: 'Bolsa pública de cargas' })
   getMarketplace(@Query() filters: MarketplaceFilterDto) {

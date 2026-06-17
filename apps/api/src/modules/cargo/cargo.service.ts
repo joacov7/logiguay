@@ -103,7 +103,6 @@ export class CargoService {
     const l = Number(limit) || 20;
     const skip = (p - 1) * l;
     const where: Prisma.CargoWhereInput = {};
-    const _diag: any = { receivedUserId: userId ?? null, receivedCompanyId: companyId ?? null };
 
     if (userId) {
       // Fetch all companies this user belongs to and filter by all of them
@@ -112,9 +111,8 @@ export class CargoService {
         select: { companyId: true },
       });
       const companyIds = memberships.map((m) => m.companyId);
-      _diag.computedCompanyIds = companyIds;
       if (companyIds.length === 0) {
-        return { data: [], total: 0, page: p, limit: l, pages: 0, _diag };
+        return { data: [], total: 0, page: p, limit: l, pages: 0 };
       }
       where.companyId = companyIds.length === 1 ? companyIds[0] : { in: companyIds };
     } else if (companyId) {
@@ -126,7 +124,11 @@ export class CargoService {
     }
     if (province) where.originAddress = { contains: province, mode: 'insensitive' };
 
-    const geoActive = lat !== undefined && lng !== undefined;
+    // Importante: usar Number.isFinite y no `!== undefined`. Con enableImplicitConversion,
+    // los query params numéricos ausentes (lat/lng/radiusKm) llegan como NaN, no undefined,
+    // lo que activaba el modo geo por error y filtraba todas las cargas.
+    const hasRadius = Number.isFinite(radiusKm as any);
+    const geoActive = Number.isFinite(lat as any) && Number.isFinite(lng as any);
 
     const [rawData, total] = await Promise.all([
       this.prisma.cargo.findMany({
@@ -151,8 +153,8 @@ export class CargoService {
             : null,
       }));
 
-      if (radiusKm !== undefined) {
-        annotated = annotated.filter((c) => c.distanceKm === null || c.distanceKm <= radiusKm);
+      if (hasRadius) {
+        annotated = annotated.filter((c) => c.distanceKm === null || c.distanceKm <= radiusKm!);
       }
 
       annotated.sort((a, b) => {
@@ -166,60 +168,7 @@ export class CargoService {
       return { data, total: filteredTotal, page: p, limit: l, pages: Math.ceil(filteredTotal / l) };
     }
 
-    _diag.where = where as any;
-    return { data: rawData, total, page: p, limit: l, pages: Math.ceil(total / l), _diag };
-  }
-
-  async debug(userId: string) {
-    const memberships = await this.prisma.companyUser.findMany({
-      where: { userId },
-      select: { companyId: true, role: true, company: { select: { name: true } } },
-    });
-    const userCompanyIds = memberships.map((m) => m.companyId);
-
-    // Todas las cargas agrupadas por empresa (cualquier empresa)
-    const allCargo = await this.prisma.cargo.findMany({
-      select: {
-        id: true,
-        status: true,
-        type: true,
-        companyId: true,
-        company: { select: { name: true } },
-        createdAt: true,
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 50,
-    });
-
-    // Ejecutar el findAll real con el mismo userId para ver qué devuelve
-    const findAllResult = await this.findAll({
-      userId,
-      status: 'PENDIENTE,PUBLICADO,COTIZANDO',
-    });
-
-    return {
-      userId,
-      userCompanies: memberships.map((m) => ({
-        companyId: m.companyId,
-        name: m.company?.name,
-        role: m.role,
-      })),
-      userCompanyIds,
-      totalCargoInDb: allCargo.length,
-      findAllReturns: {
-        total: findAllResult.total,
-        ids: findAllResult.data.map((c: any) => c.id),
-      },
-      cargo: allCargo.map((c) => ({
-        id: c.id,
-        type: c.type,
-        status: c.status,
-        companyId: c.companyId,
-        companyName: c.company?.name,
-        belongsToUser: userCompanyIds.includes(c.companyId),
-        createdAt: c.createdAt,
-      })),
-    };
+    return { data: rawData, total, page: p, limit: l, pages: Math.ceil(total / l) };
   }
 
   async findOne(id: string) {
