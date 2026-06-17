@@ -34,6 +34,12 @@ export class BillingController {
     return this.billingService.getSummary(companyId);
   }
 
+  @Get('account-status')
+  @ApiOperation({ summary: 'Estado de cuenta: comisiones impagas y mora' })
+  getAccountStatus(@CurrentUser('companyId') companyId: string) {
+    return this.billingService.getAccountStatus(companyId);
+  }
+
   @Get('invoice/:id')
   @ApiOperation({ summary: 'Detalle de factura' })
   getInvoice(@Param('id') id: string, @CurrentUser('companyId') companyId: string) {

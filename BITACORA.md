@@ -195,6 +195,15 @@
 
 ---
 
+### ✅ NUEVO — Bloqueo por mora (asegurar el cobro de comisiones, Nivel 2)
+- **Qué**: si una empresa tiene comisiones impagas **vencidas** (más de 15 días de generadas, `DUNNING_GRACE_DAYS`), se le **bloquea la operación** hasta que regularice: no puede publicar cargas (dador), cotizar (transportista) ni aceptar cotizaciones/cerrar viajes (dador).
+- **Backend**: `BillingService.getAccountStatus()` y `assertNotDelinquent()`. El chequeo se llama en `cargo.create`, `quotes.create` y `quotes.accept`. Nuevo endpoint `GET /billing/account-status`.
+- **Frontend**: `BillingAlertBanner` en el layout del dashboard. Rojo (bloqueo) si hay deuda vencida; ámbar (aviso) si hay comisiones pendientes dentro del plazo de gracia. Linkea a `/facturacion`.
+- **Sin migración** (usa las facturas COMISION existentes).
+- **Archivos**: `apps/api/src/modules/billing/billing.service.ts`, `billing.controller.ts`, `apps/api/src/modules/cargo/cargo.{service,module}.ts`, `apps/api/src/modules/quotes/quotes.{service,module}.ts`, `apps/web/src/components/ui/BillingAlertBanner.tsx`, `apps/web/src/app/[locale]/(dashboard)/layout.tsx`
+
+---
+
 ## Pendientes
 
 | # | Tema | Estado |

@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { EmailService } from '../../common/email/email.service';
+import { BillingService } from '../billing/billing.service';
 import { CreateQuoteDto } from './dto/quote.dto';
 
 @Injectable()
@@ -14,6 +15,7 @@ export class QuotesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly email: EmailService,
+    private readonly billing: BillingService,
   ) {}
 
   async create(dto: CreateQuoteDto & { transportCompanyId: string }) {
@@ -22,6 +24,10 @@ export class QuotesService {
         'Necesitás registrar tu empresa antes de cotizar. Andá a Mi Perfil para crearla.',
       );
     }
+
+    // Bloqueo por mora: el transportista con comisiones impagas vencidas no
+    // puede cotizar nuevas cargas hasta regularizar.
+    await this.billing.assertNotDelinquent(dto.transportCompanyId);
 
     const cargo = await this.prisma.cargo.findUnique({ where: { id: dto.cargoId } });
     if (!cargo) throw new NotFoundException('Carga no encontrada');
@@ -161,6 +167,10 @@ export class QuotesService {
     if (!['PUBLICADO', 'COTIZANDO'].includes(quote.cargo.status)) {
       throw new BadRequestException('La carga ya no está disponible');
     }
+
+    // Bloqueo por mora: el dador con comisiones impagas vencidas no puede
+    // cerrar nuevos viajes (aceptar cotizaciones) hasta regularizar.
+    await this.billing.assertNotDelinquent(companyId);
 
     return this.prisma.$transaction(async (tx) => {
       const accepted = await tx.quote.update({

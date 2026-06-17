@@ -7,6 +7,7 @@ import { Sidebar } from '@/components/ui/Sidebar';
 import { Navbar } from '@/components/ui/Navbar';
 import { HelpPanel } from '@/components/ui/HelpPanel';
 import { OnboardingModal } from '@/components/ui/OnboardingModal';
+import { BillingAlertBanner } from '@/components/ui/BillingAlertBanner';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -35,6 +36,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <Sidebar onLogout={logout} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex-1 flex flex-col min-w-0">
         <Navbar user={user} onMenuClick={() => setSidebarOpen(true)} />
+        <BillingAlertBanner />
         <main className="flex-1 overflow-y-auto p-4 lg:p-6">{children}</main>
       </div>
       <HelpPanel />

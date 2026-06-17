@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { InvoiceType, InvoiceStatus } from '@prisma/client';
 
@@ -9,9 +14,68 @@ interface InvoiceFilters {
   limit?: number;
 }
 
+// Días de gracia desde que se genera una comisión hasta que se considera
+// vencida. Pasado ese plazo sin pagar, la empresa queda en mora y se le
+// bloquea la operación (publicar, cotizar, tomar viajes).
+const DUNNING_GRACE_DAYS = 15;
+
 @Injectable()
 export class BillingService {
   constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * Estado de cuenta de una empresa respecto a las comisiones de plataforma.
+   * Una empresa está en mora si tiene comisiones PENDIENTE con más de
+   * DUNNING_GRACE_DAYS días de antigüedad.
+   */
+  async getAccountStatus(companyId: string) {
+    const cutoff = new Date(Date.now() - DUNNING_GRACE_DAYS * 24 * 60 * 60 * 1000);
+
+    const [overdue, pendingAll] = await Promise.all([
+      this.prisma.invoice.findMany({
+        where: {
+          companyId,
+          type: 'COMISION',
+          status: 'PENDIENTE',
+          createdAt: { lt: cutoff },
+        },
+        orderBy: { createdAt: 'asc' },
+        select: { id: true, amount: true, createdAt: true, concept: true },
+      }),
+      this.prisma.invoice.aggregate({
+        where: { companyId, type: 'COMISION', status: 'PENDIENTE' },
+        _sum: { amount: true },
+        _count: true,
+      }),
+    ]);
+
+    const overdueAmount = overdue.reduce((sum, i) => sum + i.amount, 0);
+
+    return {
+      delinquent: overdue.length > 0,
+      overdueCount: overdue.length,
+      overdueAmount,
+      oldestOverdueDate: overdue[0]?.createdAt ?? null,
+      pendingCount: pendingAll._count,
+      pendingAmount: pendingAll._sum.amount ?? 0,
+      graceDays: DUNNING_GRACE_DAYS,
+    };
+  }
+
+  /**
+   * Lanza ForbiddenException si la empresa está en mora. Se usa para
+   * bloquear acciones operativas (publicar carga, cotizar, tomar viajes).
+   */
+  async assertNotDelinquent(companyId: string) {
+    if (!companyId) return;
+    const status = await this.getAccountStatus(companyId);
+    if (status.delinquent) {
+      throw new ForbiddenException(
+        `Tu cuenta tiene comisiones impagas vencidas por $${Math.round(status.overdueAmount).toLocaleString('es-AR')}. ` +
+          'Regularizá el pago en Facturación para volver a operar.',
+      );
+    }
+  }
 
   async getInvoices(companyId: string, filters: InvoiceFilters = {}) {
     const { type, status, page = 1, limit = 20 } = filters;

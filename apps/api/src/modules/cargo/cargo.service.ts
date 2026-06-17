@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import { BillingService } from '../billing/billing.service';
 import { EmailService } from '../../common/email/email.service';
 import { CreateCargoDto, UpdateCargoDto, MarketplaceFilterDto } from './dto/cargo.dto';
 import { Prisma } from '@prisma/client';
@@ -23,6 +24,7 @@ export class CargoService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly subscriptions: SubscriptionsService,
+    private readonly billing: BillingService,
     private readonly email: EmailService,
   ) {}
 
@@ -37,6 +39,10 @@ export class CargoService {
       }
       companyId = await this.ensureUserCompany(dto.userId);
     }
+
+    // Bloqueo por mora: si el dador tiene comisiones impagas vencidas, no
+    // puede publicar nuevas cargas hasta regularizar.
+    await this.billing.assertNotDelinquent(companyId);
 
     const startOfMonth = new Date();
     startOfMonth.setDate(1);
