@@ -52,7 +52,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/mi-viaje',    label: 'Mi Viaje',           icon: Navigation,   roles: ['CHOFER'] },
   { href: '/retorno',     label: 'Retorno',            icon: ArrowLeftRight, roles: ['TRANSPORTISTA'] },
   { href: '/finanzas',    label: 'Mis Finanzas',       icon: LineChart,    roles: ['TRANSPORTISTA'] },
-  { href: '/turnos',      label: 'Turnos',             icon: Calendar,     roles: ['TRANSPORTISTA', 'ADMIN'] },
+  { href: '/turnos',      label: 'Turnos',             icon: Calendar,     roles: ['DADOR', 'TRANSPORTISTA', 'ADMIN'] },
   { href: '/camiones-disponibles', label: 'Camiones',  icon: TruckIcon,    roles: ['DADOR', 'ADMIN'] },
 ];
 
