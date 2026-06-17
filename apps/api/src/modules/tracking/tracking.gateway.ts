@@ -131,10 +131,20 @@ export class TrackingGateway implements OnGatewayConnection, OnGatewayDisconnect
 
     const position = await this.trackingService.processPosition(data);
 
-    this.server.to(`vehicle:${data.vehicleId}`).emit('position', {
-      vehicleId: data.vehicleId,
-      ...position,
+    const payload = { vehicleId: data.vehicleId, ...position };
+
+    // Emitir al room del vehículo (suscripción individual)
+    this.server.to(`vehicle:${data.vehicleId}`).emit('position', payload);
+
+    // Emitir también al room de la empresa dueña del vehículo, así el mapa
+    // de la web (suscrito por empresa) recibe la posición en tiempo real.
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: data.vehicleId },
+      select: { companyId: true },
     });
+    if (vehicle?.companyId) {
+      this.server.to(`company:${vehicle.companyId}`).emit('position', payload);
+    }
 
     return { received: true, timestamp: position.timestamp };
   }
