@@ -156,4 +156,19 @@ export class AdminService {
     await this.prisma.user.update({ where: { id }, data: { password: hashedPassword } });
     return { success: true };
   }
+
+  // ── App Settings ──────────────────────────────────────────────────────────
+
+  async getSettings() {
+    const rows = await this.prisma.appSetting.findMany();
+    return Object.fromEntries(rows.map((r) => [r.key, r.value]));
+  }
+
+  async upsertSetting(key: string, value: string) {
+    return this.prisma.appSetting.upsert({
+      where: { key },
+      update: { value },
+      create: { key, value },
+    });
+  }
 }

@@ -572,3 +572,11 @@ model AuditLog {
 
   @@map("audit_logs")
 }
+
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+
+  @@map("app_settings")
+}

@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Param, Body, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Patch, Param, Body, Query, UseGuards, Put } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { AdminService } from './admin.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -91,5 +91,19 @@ export class AdminController {
   @ApiOperation({ summary: 'Resetear contraseña de un usuario' })
   resetUserPassword(@Param('id') id: string, @Body() body: { password: string }) {
     return this.adminService.resetUserPassword(id, body?.password);
+  }
+
+  // ── App Settings ──────────────────────────────────────────────────────────
+
+  @Get('settings')
+  @ApiOperation({ summary: 'Obtener todos los settings de la plataforma' })
+  getSettings() {
+    return this.adminService.getSettings();
+  }
+
+  @Put('settings/:key')
+  @ApiOperation({ summary: 'Crear o actualizar un setting' })
+  upsertSetting(@Param('key') key: string, @Body() body: { value: string }) {
+    return this.adminService.upsertSetting(key, String(body?.value));
   }
 }

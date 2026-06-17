@@ -1,10 +1,11 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Alert, StatusBar,
+  ActivityIndicator, Alert, StatusBar, Linking,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useQuery } from '@tanstack/react-query';
 import api from '../../src/lib/api';
 import { useVehicleTracking } from '../../src/lib/useVehicleTracking';
 import { T } from '../../src/lib/theme';
@@ -80,6 +81,13 @@ export default function TripDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [advancing, setAdvancing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const { data: settings = {} } = useQuery<Record<string, string>>({
+    queryKey: ['app-settings'],
+    queryFn: () => api.get('/settings').then((r) => r.data),
+    staleTime: 5 * 60_000,
+  });
+  const navEnabled = settings['feature_navigation_button'] !== 'false';
 
   const fetchTrip = useCallback(async () => {
     if (!id) return;
@@ -252,6 +260,25 @@ export default function TripDetailScreen() {
           </Section>
         )}
 
+        {/* Abrir ruta en Maps */}
+        {navEnabled && trip.cargo && !isFinished && (
+          <TouchableOpacity
+            style={styles.navBtn}
+            activeOpacity={0.8}
+            onPress={() => {
+              const origin = encodeURIComponent(trip.cargo!.originAddress);
+              const dest = encodeURIComponent(trip.cargo!.destinationAddress);
+              const url = `https://maps.google.com/?saddr=${origin}&daddr=${dest}&dirflg=d`;
+              Linking.openURL(url).catch(() =>
+                Alert.alert('Error', 'No se pudo abrir el mapa.')
+              );
+            }}
+          >
+            <Ionicons name="navigate-outline" size={18} color={T.accent} />
+            <Text style={styles.navBtnText}>Abrir ruta en Maps</Text>
+          </TouchableOpacity>
+        )}
+
         {/* Acción */}
         {canAdvance && !isFinished && (
           <TouchableOpacity
@@ -359,6 +386,13 @@ const styles = StyleSheet.create({
   routeItemLabel: { fontSize: 9, fontWeight: '700', color: T.textMuted, letterSpacing: 0.8, marginBottom: 2 },
   routeItemValue: { fontSize: T.fontSizeSm, color: T.textPrimary, fontWeight: '500', flex: 1 },
   routeLine: { width: 1, height: 14, backgroundColor: T.border, marginLeft: 5, marginVertical: 3 },
+
+  navBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    borderWidth: 1, borderColor: T.accent, borderRadius: T.radius,
+    paddingVertical: 13, marginTop: 4, backgroundColor: T.accentLight,
+  },
+  navBtnText: { color: T.accent, fontSize: T.fontSizeMd, fontWeight: '700' },
 
   advanceBtn: {
     backgroundColor: T.textPrimary, borderRadius: T.radius,

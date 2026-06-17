@@ -1,10 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Settings, ShieldAlert, CheckCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Settings, ShieldAlert, CheckCircle, Navigation } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/hooks/useAuth';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import api from '@/lib/api';
 
 interface GeneralSettings {
   platformName: string;
@@ -12,39 +14,47 @@ interface GeneralSettings {
   defaultLanguage: 'es' | 'en' | 'pt';
 }
 
-interface NotificationSettings {
-  emailAlerts: boolean;
-  pushAlerts: boolean;
+function Toggle({ enabled, onChange }: { enabled: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!enabled)}
+      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${
+        enabled ? 'bg-blue-600' : 'bg-gray-200'
+      }`}
+    >
+      <span
+        className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transition-transform duration-200 ${
+          enabled ? 'translate-x-5' : 'translate-x-0'
+        }`}
+      />
+    </button>
+  );
 }
-
-interface MaintenanceSettings {
-  maintenanceMode: boolean;
-  maintenanceMessage: string;
-}
-
-type SavedSection = 'general' | 'notificaciones' | 'mantenimiento' | null;
 
 export default function AdminConfiguracionPage() {
   const { user } = useAuth();
+  const qc = useQueryClient();
 
   const [general, setGeneral] = useState<GeneralSettings>({
     platformName: 'LOGIGUAY',
     defaultCurrency: 'ARS',
     defaultLanguage: 'es',
   });
+  const [generalSaved, setGeneralSaved] = useState(false);
 
-  const [notifications, setNotifications] = useState<NotificationSettings>({
-    emailAlerts: true,
-    pushAlerts: false,
+  const { data: settings = {} } = useQuery<Record<string, string>>({
+    queryKey: ['app-settings'],
+    queryFn: () => api.get('/settings').then((r) => r.data),
   });
 
-  const [maintenance, setMaintenance] = useState<MaintenanceSettings>({
-    maintenanceMode: false,
-    maintenanceMessage: 'El sistema se encuentra en mantenimiento. Volvemos pronto.',
+  const saveSetting = useMutation({
+    mutationFn: ({ key, value }: { key: string; value: string }) =>
+      api.put(`/admin/settings/${key}`, { value }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['app-settings'] }),
   });
 
-  const [savingSection, setSavingSection] = useState<SavedSection>(null);
-  const [savedSection, setSavedSection] = useState<SavedSection>(null);
+  const navEnabled = settings['feature_navigation_button'] !== 'false';
 
   if (user && user.role !== 'ADMIN') {
     return (
@@ -56,33 +66,12 @@ export default function AdminConfiguracionPage() {
     );
   }
 
-  const handleSave = async (section: NonNullable<SavedSection>) => {
-    setSavingSection(section);
-    setSavedSection(null);
-    await new Promise((r) => setTimeout(r, 600));
-    setSavingSection(null);
-    setSavedSection(section);
-    setTimeout(() => setSavedSection(null), 3000);
+  const handleSaveGeneral = async () => {
+    setGeneralSaved(false);
+    await new Promise((r) => setTimeout(r, 400));
+    setGeneralSaved(true);
+    setTimeout(() => setGeneralSaved(false), 3000);
   };
-
-  const SaveFeedback = ({ section }: { section: NonNullable<SavedSection> }) => (
-    <div className="flex items-center gap-3">
-      {savedSection === section && (
-        <span className="flex items-center gap-1.5 text-sm text-green-600 font-medium">
-          <CheckCircle className="h-4 w-4" />
-          Guardado
-        </span>
-      )}
-      <Button
-        variant="primary"
-        size="sm"
-        loading={savingSection === section}
-        onClick={() => handleSave(section)}
-      >
-        Guardar
-      </Button>
-    </div>
-  );
 
   return (
     <div className="space-y-6">
@@ -94,19 +83,67 @@ export default function AdminConfiguracionPage() {
         </div>
       </div>
 
+      {/* Funcionalidades (feature flags reales) */}
+      <Card>
+        <div className="space-y-5">
+          <div>
+            <h2 className="text-base font-semibold text-gray-800">Funcionalidades</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Activá o desactivá funciones para todos los usuarios</p>
+          </div>
+
+          <div className="divide-y divide-gray-100">
+            <div className="flex items-center justify-between py-4">
+              <div className="flex items-start gap-3">
+                <Navigation className="h-5 w-5 text-gray-400 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-gray-800">Botón "Abrir ruta"</p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    Permite al chofer abrir Google Maps / Waze con la ruta del viaje desde la app mobile.
+                    Desactivalo si necesitás controlar las rutas disponibles.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 ml-4 shrink-0">
+                {saveSetting.isPending && (
+                  <span className="text-xs text-gray-400">Guardando…</span>
+                )}
+                {saveSetting.isSuccess && !saveSetting.isPending && (
+                  <span className="flex items-center gap-1 text-xs text-green-600 font-medium">
+                    <CheckCircle className="h-3.5 w-3.5" /> Guardado
+                  </span>
+                )}
+                <Toggle
+                  enabled={navEnabled}
+                  onChange={(v) =>
+                    saveSetting.mutate({ key: 'feature_navigation_button', value: String(v) })
+                  }
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </Card>
+
       {/* General */}
       <Card>
         <div className="space-y-5">
           <div className="flex items-center justify-between">
             <h2 className="text-base font-semibold text-gray-800">General</h2>
-            <SaveFeedback section="general" />
+            <div className="flex items-center gap-3">
+              {generalSaved && (
+                <span className="flex items-center gap-1.5 text-sm text-green-600 font-medium">
+                  <CheckCircle className="h-4 w-4" /> Guardado
+                </span>
+              )}
+              <Button variant="primary" size="sm" onClick={handleSaveGeneral}>
+                Guardar
+              </Button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <div className="space-y-1.5">
-              <label className="block text-sm font-medium text-gray-700">
-                Nombre de la plataforma
-              </label>
+              <label className="block text-sm font-medium text-gray-700">Nombre de la plataforma</label>
               <input
                 type="text"
                 value={general.platformName}
@@ -114,16 +151,11 @@ export default function AdminConfiguracionPage() {
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
-
             <div className="space-y-1.5">
-              <label className="block text-sm font-medium text-gray-700">
-                Moneda por defecto
-              </label>
+              <label className="block text-sm font-medium text-gray-700">Moneda por defecto</label>
               <select
                 value={general.defaultCurrency}
-                onChange={(e) =>
-                  setGeneral({ ...general, defaultCurrency: e.target.value as GeneralSettings['defaultCurrency'] })
-                }
+                onChange={(e) => setGeneral({ ...general, defaultCurrency: e.target.value as any })}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="ARS">ARS — Peso argentino</option>
@@ -131,16 +163,11 @@ export default function AdminConfiguracionPage() {
                 <option value="UYU">UYU — Peso uruguayo</option>
               </select>
             </div>
-
             <div className="space-y-1.5">
-              <label className="block text-sm font-medium text-gray-700">
-                Idioma por defecto
-              </label>
+              <label className="block text-sm font-medium text-gray-700">Idioma por defecto</label>
               <select
                 value={general.defaultLanguage}
-                onChange={(e) =>
-                  setGeneral({ ...general, defaultLanguage: e.target.value as GeneralSettings['defaultLanguage'] })
-                }
+                onChange={(e) => setGeneral({ ...general, defaultLanguage: e.target.value as any })}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="es">Español</option>
@@ -148,83 +175,6 @@ export default function AdminConfiguracionPage() {
                 <option value="pt">Português</option>
               </select>
             </div>
-          </div>
-        </div>
-      </Card>
-
-      {/* Notificaciones */}
-      <Card>
-        <div className="space-y-5">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-gray-800">Notificaciones</h2>
-            <SaveFeedback section="notificaciones" />
-          </div>
-
-          <div className="space-y-4">
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={notifications.emailAlerts}
-                onChange={(e) => setNotifications({ ...notifications, emailAlerts: e.target.checked })}
-                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-              <div>
-                <span className="text-sm font-medium text-gray-700">Alertas por email</span>
-                <p className="text-xs text-gray-400">Enviar notificaciones importantes por correo electrónico</p>
-              </div>
-            </label>
-
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={notifications.pushAlerts}
-                onChange={(e) => setNotifications({ ...notifications, pushAlerts: e.target.checked })}
-                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-              <div>
-                <span className="text-sm font-medium text-gray-700">Alertas push</span>
-                <p className="text-xs text-gray-400">Enviar notificaciones push al navegador</p>
-              </div>
-            </label>
-          </div>
-        </div>
-      </Card>
-
-      {/* Mantenimiento */}
-      <Card>
-        <div className="space-y-5">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-gray-800">Mantenimiento</h2>
-            <SaveFeedback section="mantenimiento" />
-          </div>
-
-          <div className="space-y-4">
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={maintenance.maintenanceMode}
-                onChange={(e) => setMaintenance({ ...maintenance, maintenanceMode: e.target.checked })}
-                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-              <div>
-                <span className="text-sm font-medium text-gray-700">Modo mantenimiento</span>
-                <p className="text-xs text-gray-400">Muestra un banner de mantenimiento a todos los usuarios</p>
-              </div>
-            </label>
-
-            {maintenance.maintenanceMode && (
-              <div className="space-y-1.5">
-                <label className="block text-sm font-medium text-gray-700">
-                  Mensaje de mantenimiento
-                </label>
-                <textarea
-                  rows={3}
-                  value={maintenance.maintenanceMessage}
-                  onChange={(e) => setMaintenance({ ...maintenance, maintenanceMessage: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                />
-              </div>
-            )}
           </div>
         </div>
       </Card>
