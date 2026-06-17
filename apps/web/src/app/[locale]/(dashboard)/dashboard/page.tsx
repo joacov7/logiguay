@@ -183,7 +183,43 @@ function WelcomeActions({ role, fleetTotal, activeTripsCount }: {
 export default function DashboardPage() {
   const { user } = useAuth();
   const companyId = (user as { companyId?: string } | null)?.companyId;
-  const { positions: positionsMap, connected } = useTracking();
+
+  // Traer todas las empresas del usuario para suscribirse a todas (igual que /tracking)
+  const { data: companiesData } = useQuery({
+    queryKey: ['my-companies'],
+    enabled: !!user,
+    queryFn: () => api.get('/auth/me').then((r) => r.data),
+  });
+  const companyIds: string[] = companiesData?.companyIds ??
+    (companyId ? [companyId] : []);
+
+  const { positions: livePositions, connected } = useTracking({ companyIds });
+
+  // Fallback robusto: polling de las posiciones guardadas (Redis/DB), igual que
+  // en la página de tracking. Así los camiones aparecen aunque el socket falle.
+  const { data: fleetData } = useQuery({
+    queryKey: ['tracking-fleet'],
+    enabled: companyIds.length > 0,
+    refetchInterval: 10_000,
+    queryFn: () => api.get('/tracking/fleet').then((r) => r.data),
+  });
+
+  const positionsMap: Record<string, any> = {};
+  (fleetData ?? []).forEach((v: any) => {
+    if (v.position?.lat != null && v.position?.lng != null) {
+      positionsMap[v.id] = {
+        vehicleId: v.id,
+        lat: v.position.lat,
+        lng: v.position.lng,
+        speed: v.position.speed,
+        heading: v.position.heading,
+        timestamp: v.position.timestamp,
+        connectionStatus: v.position.connectionStatus ?? 'CONNECTED',
+        plate: v.plate,
+      };
+    }
+  });
+  Object.assign(positionsMap, livePositions);
   const positions = Object.values(positionsMap);
 
   const today = new Date();
