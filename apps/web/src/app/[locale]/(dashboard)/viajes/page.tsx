@@ -336,6 +336,10 @@ export default function ViajesPage() {
               <div className="flex justify-center py-12">
                 <div className="animate-spin h-8 w-8 border-2 border-blue-600 border-t-transparent rounded-full" />
               </div>
+            ) : tripQuery.isError ? (
+              <div className="p-6 text-center text-sm text-red-600">
+                No se pudo cargar el detalle del viaje. Intentá de nuevo.
+              </div>
             ) : trip ? (
               <div className="p-6 space-y-6">
 
