@@ -120,6 +120,15 @@ export class TrackingGateway implements OnGatewayConnection, OnGatewayDisconnect
     const meta = this.clientMeta.get(client.id);
     if (!meta) throw new UnauthorizedException();
 
+    this.logger.log(
+      `position-update de user=${meta.userId} vehicle=${data?.vehicleId} lat=${data?.lat} lng=${data?.lng}`,
+    );
+
+    if (!data?.vehicleId || data.lat == null || data.lng == null) {
+      this.logger.warn(`position-update inválido (falta vehicleId/lat/lng): ${JSON.stringify(data)}`);
+      return { received: false, error: 'vehicleId, lat y lng son requeridos' };
+    }
+
     const position = await this.trackingService.processPosition(data);
 
     this.server.to(`vehicle:${data.vehicleId}`).emit('position', {
