@@ -4,7 +4,8 @@ import { AdminService } from './admin.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
-import { Role } from '@prisma/client';
+import { Role, PlanType } from '@prisma/client';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 
 @ApiTags('Admin')
 @ApiBearerAuth()
@@ -12,7 +13,10 @@ import { Role } from '@prisma/client';
 @Roles(Role.ADMIN)
 @Controller('admin')
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(
+    private readonly adminService: AdminService,
+    private readonly subscriptions: SubscriptionsService,
+  ) {}
 
   @Get('stats')
   @ApiOperation({ summary: 'Estadísticas generales de la plataforma' })
@@ -46,6 +50,27 @@ export class AdminController {
   @ApiOperation({ summary: 'Actualizar suscripción (renovar, cambiar plan, cancelar)' })
   updateSubscription(@Param('id') id: string, @Body() body: any) {
     return this.adminService.updateSubscription(id, body);
+  }
+
+  // ── Tasas de comisión ───────────────────────────────────────────────────────
+
+  @Get('commission-rates')
+  @ApiOperation({ summary: 'Listar tasas de comisión por plan (transportista y dador)' })
+  getCommissionRates() {
+    return this.subscriptions.getAllCommissionRates();
+  }
+
+  @Patch('commission-rates/:plan')
+  @ApiOperation({ summary: 'Actualizar tasas de comisión de un plan' })
+  updateCommissionRate(
+    @Param('plan') plan: PlanType,
+    @Body() body: { carrierRate: number; shipperRate: number },
+  ) {
+    return this.subscriptions.upsertCommissionRate(
+      plan,
+      Number(body?.carrierRate),
+      Number(body?.shipperRate),
+    );
   }
 
   // ── Users ──────────────────────────────────────────────────────────────────

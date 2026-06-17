@@ -6,7 +6,12 @@ export interface PlanLimits {
   canAccessMarketplace: boolean;
   canUsePremiumListings: boolean;
   canExportReports: boolean;
+  /** @deprecated usar carrierCommissionRate. Se mantiene por compatibilidad. */
   commissionRate: number;
+  /** % sobre el flete que paga el TRANSPORTISTA como comisión de plataforma. */
+  carrierCommissionRate: number;
+  /** % sobre el flete que paga el DADOR como comisión de plataforma. */
+  shipperCommissionRate: number;
 }
 
 export const PLAN_LIMITS: Record<string, PlanLimits> = {
@@ -18,7 +23,9 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     canAccessMarketplace: true,
     canUsePremiumListings: false,
     canExportReports: false,
-    commissionRate: 3.5,
+    commissionRate: 5,
+    carrierCommissionRate: 5,
+    shipperCommissionRate: 2,
   },
   PRO: {
     maxVehicles: 15,
@@ -28,7 +35,9 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     canAccessMarketplace: true,
     canUsePremiumListings: true,
     canExportReports: true,
-    commissionRate: 2.5,
+    commissionRate: 4,
+    carrierCommissionRate: 4,
+    shipperCommissionRate: 1.5,
   },
   EMPRESA: {
     maxVehicles: 50,
@@ -38,7 +47,9 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     canAccessMarketplace: true,
     canUsePremiumListings: true,
     canExportReports: true,
-    commissionRate: 1.5,
+    commissionRate: 3,
+    carrierCommissionRate: 3,
+    shipperCommissionRate: 1,
   },
   FLOTA: {
     maxVehicles: 999999,
@@ -48,6 +59,8 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     canAccessMarketplace: true,
     canUsePremiumListings: true,
     canExportReports: true,
-    commissionRate: 1.0,
+    commissionRate: 2,
+    carrierCommissionRate: 2,
+    shipperCommissionRate: 0.5,
   },
 };

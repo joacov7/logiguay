@@ -183,6 +183,18 @@
 
 ---
 
+### ✅ NUEVO — Motor de comisiones de plataforma (cobro a transportista + dador)
+- **Modelo de negocio**: Logiguay cobra comisión sobre el flete de cada viaje finalizado. Paga **el transportista** (% mayor, es quien factura el flete) **y el dador** (% menor). El plan de suscripción **reduce** la comisión (mejor plan → menos %).
+- **Tasas por defecto** (editables por admin): FREE 5%/2%, PRO 4%/1.5%, EMPRESA 3%/1%, FLOTA 2%/0.5% (transportista/dador).
+- **Generación automática**: al pasar un viaje a `FINALIZADO`, `handleTripFinalized` crea facturas `COMISION` PENDIENTE para el transportista (según su plan) y para el dador (según el plan del dador), más la factura `VIAJE` del flete. Cada factura lleva `payerRole` y `concept` legible.
+- **Cobro**: por ahora **solo se registra** la deuda (PENDIENTE). El cobro automático por MercadoPago de las comisiones se conectará después (MP ya cobra suscripciones).
+- **Admin editable**: nueva tabla `CommissionRate` (una fila por plan). Endpoints `GET /admin/commission-rates` y `PATCH /admin/commission-rates/:plan`. La página admin/comisiones (antes era un stub que no guardaba nada) ahora gestiona las tasas por plan conectada al backend.
+- **Schema**: `Invoice` ahora tiene `concept` y `payerRole` (enum `PayerRole`). Nuevo modelo `CommissionRate`. Migración `20260617_platform_commissions` (idempotente, con semilla de tasas).
+- **Archivos**: `apps/api/prisma/schema.prisma`, `apps/api/prisma/migrations/20260617_platform_commissions/`, `apps/api/src/common/config/plan-limits.config.ts`, `apps/api/src/modules/subscriptions/subscriptions.service.ts`, `apps/api/src/modules/trips/trips.service.ts`, `apps/api/src/modules/admin/admin.controller.ts`, `admin.module.ts`, `apps/web/src/app/[locale]/(dashboard)/admin/comisiones/page.tsx`
+- **⚠️ Pendiente de deploy**: aplicar la migración en producción y rebuildear api + web.
+
+---
+
 ## Pendientes
 
 | # | Tema | Estado |

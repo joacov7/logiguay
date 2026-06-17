@@ -254,52 +254,74 @@ export class TripsService {
   private async handleTripFinalized(trip: any) {
     if (!trip.agreedRate || !trip.transportCompanyId) return;
 
-    // Commission agreed between dador and transportista
-    const commissionAmount = this.calculateCommission(
-      trip.agreedRate,
-      trip.commission,
-      trip.commissionType,
-    );
+    const rate = trip.agreedRate;
 
-    if (commissionAmount > 0) {
-      await this.prisma.invoice.create({
-        data: {
-          companyId: trip.transportCompanyId,
-          tripId: trip.id,
-          type: 'COMISION',
-          amount: commissionAmount,
-          status: 'PENDIENTE',
-        },
-      });
-      this.logger.log(`Invoice created for trip ${trip.id}: commission $${commissionAmount}`);
-    }
+    // Empresa dadora (dueña de la carga) para cobrarle su comisión.
+    const cargo = await this.prisma.cargo.findUnique({
+      where: { id: trip.cargoId },
+      select: { companyId: true },
+    });
+    const shipperCompanyId = cargo?.companyId ?? null;
 
-    // Platform fee based on subscription plan of the transport company
+    // ── Comisión de plataforma al TRANSPORTISTA (según su plan) ──
     try {
-      const limits = await this.subscriptions.getPlanLimits(trip.transportCompanyId);
-      const platformFee = Math.round(trip.agreedRate * (limits.commissionRate / 100));
-      if (platformFee > 0) {
+      const { carrierRate } = await this.subscriptions.getCommissionRatesForCompany(
+        trip.transportCompanyId,
+      );
+      const carrierFee = Math.round(rate * (carrierRate / 100));
+      if (carrierFee > 0) {
         await this.prisma.invoice.create({
           data: {
             companyId: trip.transportCompanyId,
             tripId: trip.id,
             type: 'COMISION',
-            amount: platformFee,
+            payerRole: 'TRANSPORTISTA',
+            concept: `Comisión Logiguay — transportista (${carrierRate}%)`,
+            amount: carrierFee,
             status: 'PENDIENTE',
           },
         });
-        this.logger.log(`Platform fee for trip ${trip.id}: $${platformFee} (${limits.commissionRate}%)`);
+        this.logger.log(`Comisión transportista viaje ${trip.id}: $${carrierFee} (${carrierRate}%)`);
       }
     } catch (e) {
-      this.logger.warn(`Could not calculate platform fee for trip ${trip.id}: ${(e as Error).message}`);
+      this.logger.warn(`No se pudo calcular comisión del transportista (viaje ${trip.id}): ${(e as Error).message}`);
     }
 
+    // ── Comisión de plataforma al DADOR (según su plan) ──
+    if (shipperCompanyId) {
+      try {
+        const { shipperRate } = await this.subscriptions.getCommissionRatesForCompany(
+          shipperCompanyId,
+        );
+        const shipperFee = Math.round(rate * (shipperRate / 100));
+        if (shipperFee > 0) {
+          await this.prisma.invoice.create({
+            data: {
+              companyId: shipperCompanyId,
+              tripId: trip.id,
+              type: 'COMISION',
+              payerRole: 'DADOR',
+              concept: `Comisión Logiguay — dador (${shipperRate}%)`,
+              amount: shipperFee,
+              status: 'PENDIENTE',
+            },
+          });
+          this.logger.log(`Comisión dador viaje ${trip.id}: $${shipperFee} (${shipperRate}%)`);
+        }
+      } catch (e) {
+        this.logger.warn(`No se pudo calcular comisión del dador (viaje ${trip.id}): ${(e as Error).message}`);
+      }
+    }
+
+    // ── Factura del flete (ingreso del transportista) ──
     await this.prisma.invoice.create({
       data: {
         companyId: trip.transportCompanyId,
         tripId: trip.id,
         type: 'VIAJE',
-        amount: trip.agreedRate,
+        payerRole: 'DADOR',
+        concept: 'Flete acordado',
+        amount: rate,
         status: 'PENDIENTE',
       },
     });

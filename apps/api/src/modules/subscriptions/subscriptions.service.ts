@@ -38,6 +38,56 @@ export class SubscriptionsService {
     return PLAN_LIMITS[plan] ?? PLAN_LIMITS['FREE'];
   }
 
+  /**
+   * Tasas de comisión de la plataforma para un plan. Prioriza la
+   * configuración editable en DB (tabla CommissionRate); si no existe,
+   * usa los valores por defecto del config.
+   */
+  async getCommissionRatesForPlan(
+    plan: PlanType,
+  ): Promise<{ carrierRate: number; shipperRate: number }> {
+    const override = await this.prisma.commissionRate.findUnique({ where: { plan } });
+    if (override) {
+      return { carrierRate: override.carrierRate, shipperRate: override.shipperRate };
+    }
+    const limits = PLAN_LIMITS[plan] ?? PLAN_LIMITS['FREE'];
+    return {
+      carrierRate: limits.carrierCommissionRate,
+      shipperRate: limits.shipperCommissionRate,
+    };
+  }
+
+  /** Tasas de comisión según el plan de una empresa. */
+  async getCommissionRatesForCompany(
+    companyId: string,
+  ): Promise<{ carrierRate: number; shipperRate: number }> {
+    const plan = await this.getCompanyPlan(companyId);
+    return this.getCommissionRatesForPlan(plan);
+  }
+
+  /** Lista todas las tasas por plan (DB con fallback a config) para el admin. */
+  async getAllCommissionRates() {
+    const plans: PlanType[] = ['FREE', 'PRO', 'EMPRESA', 'FLOTA'];
+    return Promise.all(
+      plans.map(async (plan) => {
+        const { carrierRate, shipperRate } = await this.getCommissionRatesForPlan(plan);
+        return { plan, carrierRate, shipperRate };
+      }),
+    );
+  }
+
+  /** Admin: actualiza (o crea) las tasas de un plan. */
+  async upsertCommissionRate(plan: PlanType, carrierRate: number, shipperRate: number) {
+    if (carrierRate < 0 || carrierRate > 100 || shipperRate < 0 || shipperRate > 100) {
+      throw new ForbiddenException('Las tasas deben estar entre 0 y 100.');
+    }
+    return this.prisma.commissionRate.upsert({
+      where: { plan },
+      create: { plan, carrierRate, shipperRate },
+      update: { carrierRate, shipperRate },
+    });
+  }
+
   async getUsage(companyId: string) {
     const limits = await this.getPlanLimits(companyId);
     const startOfMonth = new Date();
