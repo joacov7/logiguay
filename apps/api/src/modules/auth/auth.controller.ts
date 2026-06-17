@@ -15,11 +15,15 @@ import { LoginDto, RegisterDto, RefreshTokenDto } from './dto/auth.dto';
 import { Public } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { PrismaService } from '../../common/prisma/prisma.service';
 
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   @Public()
   @Post('register')
@@ -67,8 +71,15 @@ export class AuthController {
 
   @Get('me')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Obtener perfil del usuario autenticado' })
+  @ApiOperation({ summary: 'Obtener perfil del usuario autenticado con todas sus empresas' })
   async me(@CurrentUser() user: any) {
-    return user;
+    const memberships = await this.prisma.companyUser.findMany({
+      where: { userId: user.id },
+      select: { companyId: true },
+    });
+    return {
+      ...user,
+      companyIds: memberships.map((m) => m.companyId),
+    };
   }
 }

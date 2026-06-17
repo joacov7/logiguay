@@ -21,6 +21,7 @@ export interface TripStatusUpdate {
 interface UseTrackingOptions {
   vehicleIds?: string[];
   companyId?: string;
+  companyIds?: string[];
   tripId?: string;
   onPosition?: (pos: VehiclePositionWS) => void;
   onTripStatus?: (update: TripStatusUpdate) => void;
@@ -53,9 +54,11 @@ export function useTracking(options: UseTrackingOptions = {}) {
     socket.on('connect', () => {
       setConnected(true);
       setError(null);
-      const { vehicleIds, companyId, tripId } = optionsRef.current;
+      const { vehicleIds, companyId, companyIds, tripId } = optionsRef.current;
       vehicleIds?.forEach((id) => socket.emit('subscribe-vehicle', id));
-      if (companyId) socket.emit('subscribe-company', companyId);
+      // Suscribirse a todas las empresas del usuario
+      const allCompanies = companyIds ?? (companyId ? [companyId] : []);
+      allCompanies.forEach((id) => socket.emit('subscribe-company', id));
       if (tripId) socket.emit('subscribe-trip', tripId);
     });
 

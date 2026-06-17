@@ -17,18 +17,25 @@ const ACTIVE_STATUSES = ['EN_CAMINO_ORIGEN', 'EN_CARGA', 'EN_TRANSITO', 'EN_DESC
 
 export default function TrackingPage() {
   const { user } = useAuth();
-  const companyId = (user as any)?.companyId;
 
-  const { positions, connected, alerts, error } = useTracking({ companyId });
+  // Traer todas las empresas del usuario para suscribirse a todas
+  const { data: companiesData } = useQuery({
+    queryKey: ['my-companies'],
+    enabled: !!user,
+    queryFn: () => api.get('/auth/me').then((r) => r.data),
+  });
+  const companyIds: string[] = companiesData?.companyIds ??
+    ((user as any)?.companyId ? [(user as any).companyId] : []);
+
+  const { positions, connected, alerts, error } = useTracking({ companyIds });
   const [selectedVehicle, setSelectedVehicle] = useState<string | null>(null);
 
   const { data: tripsData } = useQuery({
-    queryKey: ['tracking-trips', companyId],
-    enabled: !!companyId,
+    queryKey: ['tracking-trips', companyIds.join(',')],
+    enabled: companyIds.length > 0,
     refetchInterval: 30000,
     queryFn: async () => {
-      const params = new URLSearchParams({ limit: '50', companyId });
-      const res = await api.get(`/trips?${params}`);
+      const res = await api.get('/trips', { params: { limit: 50 } });
       return res.data;
     },
   });
