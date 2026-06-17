@@ -113,6 +113,76 @@
 
 ---
 
+---
+
+## 2026-06-17
+
+### ✅ RESUELTO — Logo/imagen del camión no se veía en la landing page (producción)
+- **Causa**: `output: 'standalone'` de Next.js no copia la carpeta `public/` automáticamente. En producción el servidor standalone no encontraba los archivos estáticos.
+- **Fix**: Agregar `COPY --from=builder --chown=nextjs:nodejs /app/public ./public` en la etapa runner del Dockerfile.
+- **Archivo**: `apps/web/Dockerfile`
+
+---
+
+### ✅ RESUELTO — App móvil daba "Error de credenciales" en dispositivo físico
+- **Causa**: La URL por defecto era `http://10.0.2.2:3001` (dirección especial del emulador Android). En un teléfono físico esa IP no existe.
+- **Fix**: Cambiada la URL por defecto a `https://api.logiguay.com.ar`.
+- **Archivo**: `apps/mobile/src/lib/api.ts`
+
+---
+
+### ✅ RESUELTO — App móvil crasheaba (Cannot read property 'type' of undefined)
+- **Causa**: `trip.cargo` puede ser `null` cuando la API devuelve el viaje sin relaciones populadas. El render intentaba acceder a `trip.cargo.type` directamente.
+- **Fix**: Todas las secciones que usan `trip.cargo` se envuelven con `{trip.cargo && ...}`.
+- **Archivos**: `apps/mobile/app/trip/[id].tsx`, `apps/mobile/app/(chofer)/index.tsx`
+
+---
+
+### ✅ RESUELTO — App móvil crasheaba al avanzar estado del viaje
+- **Causa**: `PATCH /trips/:id/status` devuelve el viaje sin relaciones. El código hacía `setTrip(res.data)` con el objeto incompleto, causando crash en el render.
+- **Fix**: Reemplazado `setTrip(res.data)` por `await fetchTrip()` para re-obtener el viaje completo desde la API.
+- **Archivo**: `apps/mobile/app/trip/[id].tsx`
+
+---
+
+### ✅ RESUELTO — Camiones no aparecían en el mapa de tracking (GPS móvil)
+- **Causa raíz**: 5 bugs en cadena en `useVehicleTracking.ts`:
+  1. Conectaba al namespace `/` en vez de `/tracking`
+  2. No enviaba el token JWT en el handshake → el gateway rechazaba la conexión
+  3. Usaba el evento `location:update` en lugar de `position-update`
+  4. Enviaba `tripId` en el payload en lugar de `vehicleId`
+- **Causa adicional (gateway)**: Solo emitía posiciones al room `vehicle:<id>`, pero la web escucha en `company:<id>`.
+- **Causa adicional (web)**: El hook `useTracking` se suscribía solo al `companyId` del JWT (no determinístico en usuarios multi-empresa). Además, la web dependía 100% del WebSocket sin fallback.
+- **Fix en cadena**:
+  1. `useVehicleTracking.ts` corregido: namespace, auth, evento y payload
+  2. `tracking.gateway.ts`: después de guardar la posición, emite también a `company:<companyId>` del vehículo
+  3. `GET /auth/me` enriquecido para devolver `companyIds[]` (todas las membresías)
+  4. `useTracking.ts`: acepta `companyIds[]` y se suscribe a todos los rooms de empresa
+  5. `tracking/page.tsx`: polling fallback `GET /tracking/fleet` cada 10s (posiciones del socket sobreescriben las del polling)
+  6. `GET /tracking/fleet`: consulta todas las empresas del usuario vía tabla `companyUser`
+- **Lección**: El WebSocket puro no es suficiente — siempre agregar polling fallback para datos de posición.
+- **Archivos**: `apps/mobile/src/lib/useVehicleTracking.ts`, `apps/api/src/modules/tracking/tracking.gateway.ts`, `apps/api/src/modules/auth/auth.controller.ts`, `apps/api/src/modules/auth/auth.module.ts`, `apps/web/src/hooks/useTracking.ts`, `apps/web/src/app/[locale]/(dashboard)/tracking/page.tsx`, `apps/api/src/modules/tracking/tracking.service.ts`, `apps/api/src/modules/tracking/tracking.controller.ts`, `apps/api/src/modules/tracking/tracking.module.ts`
+
+---
+
+### ✅ RESUELTO — GPS West A10 (Traccar) no aparecía en el mapa web
+- **Causa**: El webhook de Traccar (`POST /tracking/traccar`) llamaba a `gateway.broadcastPosition()` que solo emite al room `vehicle:<id>`. La web escucha en rooms `company:<id>`, por lo que las posiciones del hardware GPS nunca llegaban al mapa.
+- **Es el mismo bug** que el GPS móvil pero en el lado del webhook Traccar.
+- **Fix**: 
+  - `processTraccarPosition` ahora devuelve también `companyId`
+  - Nuevo método `broadcastPositionToCompany(companyId, vehicleId, position)` en el gateway
+  - El webhook llama a ambos métodos después de procesar la posición
+- **Nota**: El dispositivo también se beneficia del polling fallback (`GET /tracking/fleet`) — aparece en el mapa aunque el WebSocket no funcione, siempre que esté vinculado por `trackerDeviceId` (IMEI) en la tabla `Vehicle`.
+- **Archivos**: `apps/api/src/modules/tracking/traccar-webhook.controller.ts`, `apps/api/src/modules/tracking/tracking.gateway.ts`, `apps/api/src/modules/tracking/tracking.service.ts`
+
+---
+
+### ✅ NUEVO — Pantalla Mapa de flota en app móvil (TRANSPORTISTA)
+- **Qué**: Nueva pestaña "Mapa" en la app del transportista. Muestra todos los vehículos de la flota con su última posición GPS. Pin verde = en viaje activo, gris = sin viaje. Tap en callout → detalle del viaje. Refresco automático cada 15s.
+- **Archivos**: `apps/mobile/app/(transportista)/mapa.tsx` (nuevo), `apps/mobile/app/(transportista)/_layout.tsx`
+
+---
+
 ## Pendientes
 
 | # | Tema | Estado |
@@ -121,6 +191,5 @@
 | 2 | Verificar panel admin tras rebuild | 🔄 Pendiente de prueba en prod |
 | 3 | Cambiar contraseña admin (fue expuesta en URL) | 🔄 Ahora posible desde panel admin tras rebuild |
 | 4 | Integración Resend (emails transaccionales) | ❌ Sin API key |
-| 5 | GPS West A10 no conecta a Traccar | ❌ Sin resolver |
-| 6 | Password reset no envía email (solo loguea en consola) | ❌ Depende de Resend |
-| 7 | Aplicar migraciones en producción (`./scripts/apply-migrations.sh`) | 🔄 Pendiente |
+| 5 | Password reset no envía email (solo loguea en consola) | ❌ Depende de Resend |
+| 6 | Aplicar migraciones en producción (`./scripts/apply-migrations.sh`) | 🔄 Pendiente |
