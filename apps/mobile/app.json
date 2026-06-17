@@ -4,13 +4,48 @@
     "slug": "logiguay",
     "version": "1.0.0",
     "orientation": "portrait",
-    "splash": { "resizeMode": "contain", "backgroundColor": "#1e3a8a" },
-    "ios": { "supportsTablet": false, "bundleIdentifier": "com.logiguay.app" },
-    "android": { "adaptiveIcon": { "backgroundColor": "#1e3a8a" }, "package": "com.logiguay.app" },
+    "userInterfaceStyle": "light",
+    "scheme": "logiguay",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#F0F0F0"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.logiguay.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "LOGIGUAY usa tu ubicación para el seguimiento de viajes en tiempo real.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "LOGIGUAY usa tu ubicación en segundo plano para seguir el viaje aunque la app esté minimizada.",
+        "UIBackgroundModes": ["location"]
+      }
+    },
+    "android": {
+      "package": "com.logiguay.app",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "backgroundColor": "#15A66A"
+      },
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_LOCATION"
+      ]
+    },
     "plugins": [
-      ["expo-location", { "locationAlwaysAndWhenInUsePermission": "LOGIGUAY necesita tu ubicación para el seguimiento de viajes." }],
+      "expo-router",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "LOGIGUAY usa tu ubicación para el seguimiento de viajes en tiempo real.",
+          "locationWhenInUsePermission": "LOGIGUAY usa tu ubicación para el seguimiento de viajes en tiempo real.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
+        }
+      ],
       ["expo-notifications", { "sounds": [] }]
-    ],
-    "scheme": "logiguay"
+    ]
   }
 }
