@@ -5,12 +5,37 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
+import { Ionicons } from '@expo/vector-icons';
 import api from '../../src/lib/api';
 import { getUser } from '../../src/lib/auth';
-import { KpiCard } from '../../src/components/ui';
+import { T } from '../../src/lib/theme';
 import { User } from '../../src/lib/types';
 
 const ACTIVE_TRIP_STATUSES = 'ASIGNADO,EN_CAMINO_ORIGEN,EN_CARGA,EN_TRANSITO,EN_DESCARGA';
+
+function StatBlock({ label, value, accent }: { label: string; value: string | number; accent?: boolean }) {
+  return (
+    <View style={[st.statBlock, accent && st.statBlockAccent]}>
+      <Text style={[st.statValue, accent && st.statValueAccent]}>{value}</Text>
+      <Text style={[st.statLabel, accent && st.statLabelAccent]}>{label}</Text>
+    </View>
+  );
+}
+
+function QuickAction({ icon, label, onPress, secondary }: {
+  icon: string; label: string; onPress: () => void; secondary?: boolean;
+}) {
+  return (
+    <TouchableOpacity
+      style={[st.quickBtn, secondary && st.quickBtnSecondary]}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
+      <Ionicons name={icon as any} size={22} color={secondary ? T.textSecondary : '#fff'} />
+      <Text style={[st.quickLabel, secondary && st.quickLabelSecondary]}>{label}</Text>
+    </TouchableOpacity>
+  );
+}
 
 export default function TransportistaDashboard() {
   const router = useRouter();
@@ -18,20 +43,16 @@ export default function TransportistaDashboard() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    getUser().then(setUser);
-  }, []);
+  useEffect(() => { getUser().then(setUser); }, []);
 
   const { data: tripsData, isLoading: loadingTrips, refetch: refetchTrips } = useQuery({
     queryKey: ['transportista-trips', refreshKey],
-    queryFn: () =>
-      api.get('/trips', { params: { status: ACTIVE_TRIP_STATUSES, limit: 100 } }).then((r) => r.data),
+    queryFn: () => api.get('/trips', { params: { status: ACTIVE_TRIP_STATUSES, limit: 100 } }).then((r) => r.data),
   });
 
   const { data: vehiclesData, isLoading: loadingVehicles, refetch: refetchVehicles } = useQuery({
     queryKey: ['transportista-vehicles', refreshKey],
-    queryFn: () =>
-      api.get('/vehicles', { params: { status: 'ACTIVO', limit: 100 } }).then((r) => r.data),
+    queryFn: () => api.get('/vehicles', { params: { limit: 100 } }).then((r) => r.data),
   });
 
   const trips: any[] = tripsData?.data ?? tripsData ?? [];
@@ -39,7 +60,7 @@ export default function TransportistaDashboard() {
 
   const activeTrips = trips.length;
   const inTransit = trips.filter((t: any) => t.status === 'EN_TRANSITO').length;
-  const availableTrucks = vehicles.length;
+  const availableVehicles = vehicles.length;
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -51,125 +72,141 @@ export default function TransportistaDashboard() {
 
   if (loading && !refreshing) {
     return (
-      <View style={s.centered}>
-        <ActivityIndicator size="large" color="#15A66A" />
+      <View style={st.centered}>
+        <ActivityIndicator size="large" color={T.accent} />
       </View>
     );
   }
 
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Buenos días' : hour < 18 ? 'Buenas tardes' : 'Buenas noches';
+
   return (
-    <View style={s.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+    <View style={st.container}>
+      <StatusBar barStyle="dark-content" backgroundColor={T.bgHeader} />
+
+      {/* Header */}
+      <View style={st.header}>
+        <View>
+          <Text style={st.greeting}>{greeting}{user?.firstName ? `, ${user.firstName}` : ''}</Text>
+          <Text style={st.subGreeting}>Panel del transportista</Text>
+        </View>
+      </View>
+
       <ScrollView
-        contentContainerStyle={s.scroll}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#15A66A" />
-        }
+        style={st.scroll}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={T.accent} />}
       >
-        {/* Header */}
-        <View style={s.header}>
-          <Text style={s.greeting}>
-            Buenos días{user?.firstName ? `, ${user.firstName}` : ''}
-          </Text>
-          {user?.companyId && (
-            <Text style={s.company}>Tu empresa transportista</Text>
-          )}
+
+        {/* Stats */}
+        <View style={st.statsRow}>
+          <StatBlock label="Viajes activos" value={activeTrips} accent />
+          <StatBlock label="En tránsito" value={inTransit} />
+          <StatBlock label="Vehículos" value={availableVehicles} />
         </View>
 
-        {/* KPI Grid */}
-        <Text style={s.sectionTitle}>Resumen</Text>
-        <View style={s.kpiGrid}>
-          <KpiCard title="Viajes activos" value={activeTrips} icon="🚛" />
-          <KpiCard title="En tránsito" value={inTransit} icon="🛣️" color="#3B82F6" />
-        </View>
-        <View style={s.kpiGrid}>
-          <KpiCard title="Camiones disp." value={availableTrucks} icon="🚚" color="#F59E0B" />
-          <KpiCard title="Cargas disp." value="Ver bolsa" icon="📦" color="#8B5CF6" />
+        {/* Acciones rápidas */}
+        <View style={st.section}>
+          <Text style={st.sectionTitle}>ACCIONES RÁPIDAS</Text>
+          <View style={st.quickGrid}>
+            <QuickAction icon="car-outline" label="Ver viajes" onPress={() => router.push('/(transportista)/viajes')} />
+            <QuickAction icon="cube-outline" label="Buscar cargas" onPress={() => router.push('/(transportista)/bolsa')} secondary />
+          </View>
+          <View style={st.quickGrid}>
+            <QuickAction icon="map-outline" label="Mapa de flota" onPress={() => router.push('/(transportista)/mapa')} secondary />
+            <QuickAction icon="bus-outline" label="Mi flota" onPress={() => router.push('/(transportista)/flota')} secondary />
+          </View>
         </View>
 
-        {/* Quick actions */}
-        <Text style={s.sectionTitle}>Acciones rápidas</Text>
-        <View style={s.actionsRow}>
-          <TouchableOpacity
-            style={s.actionBtn}
-            activeOpacity={0.7}
-            onPress={() => router.push('/(transportista)/viajes')}
-          >
-            <Text style={s.actionIcon}>🚛</Text>
-            <Text style={s.actionText}>Ver viajes</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[s.actionBtn, s.actionBtnSecondary]}
-            activeOpacity={0.7}
-            onPress={() => router.push('/(transportista)/bolsa')}
-          >
-            <Text style={s.actionIcon}>📦</Text>
-            <Text style={[s.actionText, s.actionTextSecondary]}>Buscar cargas</Text>
-          </TouchableOpacity>
-        </View>
+        {/* Viajes recientes */}
+        {trips.length > 0 && (
+          <View style={st.section}>
+            <Text style={st.sectionTitle}>VIAJES EN CURSO</Text>
+            <View style={st.card}>
+              {trips.slice(0, 5).map((trip: any, i: number) => (
+                <TouchableOpacity
+                  key={trip.id}
+                  style={[st.tripRow, i < Math.min(trips.length, 5) - 1 && st.tripRowBorder]}
+                  onPress={() => router.push(`/trip/${trip.id}`)}
+                  activeOpacity={0.7}
+                >
+                  <View style={st.tripLeft}>
+                    <Text style={st.tripPlate}>{trip.vehicle?.plate ?? '—'}</Text>
+                    <Text style={st.tripRoute} numberOfLines={1}>
+                      {trip.cargo?.originAddress?.split(',')[0] ?? '—'} → {trip.cargo?.destinationAddress?.split(',')[0] ?? '—'}
+                    </Text>
+                  </View>
+                  <View style={st.tripRight}>
+                    <Text style={st.tripStatus}>{trip.status.replace(/_/g, ' ')}</Text>
+                    <Ionicons name="chevron-forward" size={14} color={T.textMuted} />
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
+
       </ScrollView>
     </View>
   );
 }
 
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F9FAFB' },
+const st = StyleSheet.create({
+  container: { flex: 1, backgroundColor: T.bgApp },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  scroll: { paddingBottom: 32 },
+  scroll: { flex: 1 },
+
   header: {
-    backgroundColor: '#fff',
-    paddingHorizontal: 20,
-    paddingTop: 56,
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-    marginBottom: 20,
+    backgroundColor: T.bgHeader, paddingHorizontal: T.spaceMd,
+    paddingTop: 52, paddingBottom: 16,
+    borderBottomWidth: 1, borderBottomColor: T.border,
   },
-  greeting: { fontSize: 24, fontWeight: '800', color: '#111827' },
-  company: { fontSize: 14, color: '#6B7280', marginTop: 2 },
+  greeting: { fontSize: T.fontSizeXl, fontWeight: '800', color: T.textPrimary, letterSpacing: -0.5 },
+  subGreeting: { fontSize: T.fontSizeSm, color: T.textMuted, marginTop: 2 },
+
+  statsRow: {
+    flexDirection: 'row', gap: 1, marginBottom: 1,
+    backgroundColor: T.border,
+  },
+  statBlock: {
+    flex: 1, backgroundColor: T.bgCard, alignItems: 'center',
+    paddingVertical: 18, paddingHorizontal: 8,
+  },
+  statBlockAccent: { backgroundColor: T.textPrimary },
+  statValue: { fontSize: 28, fontWeight: '800', color: T.textPrimary, letterSpacing: -0.5 },
+  statValueAccent: { color: '#fff' },
+  statLabel: { fontSize: 10, color: T.textMuted, fontWeight: '600', letterSpacing: 0.5, marginTop: 2 },
+  statLabelAccent: { color: 'rgba(255,255,255,0.6)' },
+
+  section: { paddingHorizontal: T.spaceMd, marginTop: T.spaceLg },
   sectionTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#6B7280',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-    paddingHorizontal: 16,
-    marginBottom: 10,
-    marginTop: 4,
+    fontSize: 10, fontWeight: '700', color: T.textMuted,
+    letterSpacing: 1.5, marginBottom: 10,
   },
-  kpiGrid: {
-    flexDirection: 'row',
-    gap: 12,
-    paddingHorizontal: 16,
-    marginBottom: 12,
+
+  quickGrid: { flexDirection: 'row', gap: 8, marginBottom: 8 },
+  quickBtn: {
+    flex: 1, backgroundColor: T.textPrimary, borderRadius: T.radius,
+    paddingVertical: 16, alignItems: 'center', gap: 6,
   },
-  actionsRow: {
-    flexDirection: 'row',
-    gap: 12,
-    paddingHorizontal: 16,
-    marginTop: 4,
+  quickBtnSecondary: {
+    backgroundColor: T.bgCard, borderWidth: 1, borderColor: T.border,
   },
-  actionBtn: {
-    flex: 1,
-    backgroundColor: '#15A66A',
-    borderRadius: 14,
-    paddingVertical: 16,
-    alignItems: 'center',
-    gap: 6,
-    minHeight: 80,
-    justifyContent: 'center',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 6,
+  quickLabel: { fontSize: T.fontSizeSm, fontWeight: '700', color: '#fff' },
+  quickLabelSecondary: { color: T.textSecondary },
+
+  card: {
+    backgroundColor: T.bgCard, borderWidth: 1, borderColor: T.border,
+    borderRadius: T.radius, overflow: 'hidden',
   },
-  actionBtnSecondary: {
-    backgroundColor: '#fff',
-    borderWidth: 1.5,
-    borderColor: '#15A66A',
+  tripRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: T.spaceMd, paddingVertical: 14,
   },
-  actionIcon: { fontSize: 24 },
-  actionText: { fontSize: 14, fontWeight: '700', color: '#fff' },
-  actionTextSecondary: { color: '#15A66A' },
+  tripRowBorder: { borderBottomWidth: 1, borderBottomColor: T.border },
+  tripLeft: { flex: 1, marginRight: 12 },
+  tripPlate: { fontSize: T.fontSizeSm, fontWeight: '700', color: T.textPrimary, letterSpacing: 0.5 },
+  tripRoute: { fontSize: 12, color: T.textMuted, marginTop: 2 },
+  tripRight: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  tripStatus: { fontSize: 11, color: T.textSecondary, fontWeight: '600' },
 });

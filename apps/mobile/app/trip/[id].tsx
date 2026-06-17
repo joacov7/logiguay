@@ -1,20 +1,14 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  StyleSheet,
-  ActivityIndicator,
-  Alert,
-  StatusBar,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet,
+  ActivityIndicator, Alert, StatusBar,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import api from '../../src/lib/api';
 import { useVehicleTracking } from '../../src/lib/useVehicleTracking';
+import { T } from '../../src/lib/theme';
 import { Trip, TripStatus } from '../../src/lib/types';
-
-// ─── Status helpers ──────────────────────────────────────────────────────────
 
 const STATUS_LABEL: Record<TripStatus, string> = {
   [TripStatus.ASIGNADO]: 'Asignado',
@@ -24,16 +18,6 @@ const STATUS_LABEL: Record<TripStatus, string> = {
   [TripStatus.EN_DESCARGA]: 'En descarga',
   [TripStatus.FINALIZADO]: 'Finalizado',
   [TripStatus.CANCELADO]: 'Cancelado',
-};
-
-const STATUS_COLOR: Record<TripStatus, { bg: string; text: string }> = {
-  [TripStatus.ASIGNADO]: { bg: '#dbeafe', text: '#1e40af' },
-  [TripStatus.EN_CAMINO_ORIGEN]: { bg: '#fef9c3', text: '#854d0e' },
-  [TripStatus.EN_CARGA]: { bg: '#fef9c3', text: '#854d0e' },
-  [TripStatus.EN_TRANSITO]: { bg: '#dcfce7', text: '#166534' },
-  [TripStatus.EN_DESCARGA]: { bg: '#fef9c3', text: '#854d0e' },
-  [TripStatus.FINALIZADO]: { bg: '#f3f4f6', text: '#6b7280' },
-  [TripStatus.CANCELADO]: { bg: '#fee2e2', text: '#991b1b' },
 };
 
 const NEXT_STATUS: Partial<Record<TripStatus, TripStatus>> = {
@@ -46,63 +30,56 @@ const NEXT_STATUS: Partial<Record<TripStatus, TripStatus>> = {
 
 const NEXT_STATUS_LABEL: Partial<Record<TripStatus, string>> = {
   [TripStatus.ASIGNADO]: 'Iniciar viaje al origen',
-  [TripStatus.EN_CAMINO_ORIGEN]: 'Llegar al origen',
-  [TripStatus.EN_CARGA]: 'Iniciar tránsito',
-  [TripStatus.EN_TRANSITO]: 'Iniciar descarga',
-  [TripStatus.EN_DESCARGA]: 'Finalizar viaje',
+  [TripStatus.EN_CAMINO_ORIGEN]: 'Llegué al origen',
+  [TripStatus.EN_CARGA]: 'Carga completa — salir',
+  [TripStatus.EN_TRANSITO]: 'Llegué al destino',
+  [TripStatus.EN_DESCARGA]: 'Descarga completa — finalizar',
 };
 
 const ACTIVE_STATUSES = new Set<TripStatus>([
-  TripStatus.ASIGNADO,
-  TripStatus.EN_CAMINO_ORIGEN,
-  TripStatus.EN_CARGA,
-  TripStatus.EN_TRANSITO,
-  TripStatus.EN_DESCARGA,
+  TripStatus.ASIGNADO, TripStatus.EN_CAMINO_ORIGEN,
+  TripStatus.EN_CARGA, TripStatus.EN_TRANSITO, TripStatus.EN_DESCARGA,
 ]);
 
-// ─── Sub-components ──────────────────────────────────────────────────────────
+const STAGES: TripStatus[] = [
+  TripStatus.ASIGNADO, TripStatus.EN_CAMINO_ORIGEN, TripStatus.EN_CARGA,
+  TripStatus.EN_TRANSITO, TripStatus.EN_DESCARGA, TripStatus.FINALIZADO,
+];
+const STAGE_SHORT: Record<TripStatus, string> = {
+  [TripStatus.ASIGNADO]: 'Asignado',
+  [TripStatus.EN_CAMINO_ORIGEN]: 'Al origen',
+  [TripStatus.EN_CARGA]: 'Cargando',
+  [TripStatus.EN_TRANSITO]: 'En ruta',
+  [TripStatus.EN_DESCARGA]: 'Descarga',
+  [TripStatus.FINALIZADO]: 'Listo',
+  [TripStatus.CANCELADO]: 'Cancelado',
+};
 
-function StatusBadge({ status }: { status: TripStatus }) {
-  const colors = STATUS_COLOR[status] ?? { bg: '#f3f4f6', text: '#6b7280' };
+function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
   return (
-    <View style={[styles.badge, { backgroundColor: colors.bg }]}>
-      <Text style={[styles.badgeText, { color: colors.text }]}>
-        {STATUS_LABEL[status] ?? status}
-      </Text>
+    <View style={styles.row}>
+      <Text style={styles.rowLabel}>{label}</Text>
+      <Text style={[styles.rowValue, bold && { fontWeight: '700', color: T.textPrimary }]}>{value}</Text>
     </View>
   );
 }
 
-function InfoRow({ label, value }: { label: string; value: string }) {
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <View style={styles.infoRow}>
-      <Text style={styles.infoLabel}>{label}</Text>
-      <Text style={styles.infoValue}>{value}</Text>
-    </View>
-  );
-}
-
-function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <View style={styles.sectionCard}>
+    <View style={styles.section}>
       <Text style={styles.sectionTitle}>{title}</Text>
       {children}
     </View>
   );
 }
 
-// ─── Main screen ─────────────────────────────────────────────────────────────
-
 export default function TripDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-
   const [trip, setTrip] = useState<Trip | null>(null);
   const [loading, setLoading] = useState(true);
   const [advancing, setAdvancing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // ── Fetch trip ──────────────────────────────────────────────────────────────
 
   const fetchTrip = useCallback(async () => {
     if (!id) return;
@@ -115,56 +92,39 @@ export default function TripDetailScreen() {
     }
   }, [id]);
 
-  useEffect(() => {
-    fetchTrip().finally(() => setLoading(false));
-  }, [fetchTrip]);
+  useEffect(() => { fetchTrip().finally(() => setLoading(false)); }, [fetchTrip]);
 
-  // ── GPS tracking (envía posición mientras el viaje esté activo) ───────────────
   const trackingActive = trip ? ACTIVE_STATUSES.has(trip.status) : false;
   const { isTracking, locationError } = useVehicleTracking(trip?.vehicle?.id, trackingActive);
-
-  // ── Advance status ──────────────────────────────────────────────────────────
 
   async function handleAdvanceStatus() {
     if (!trip) return;
     const next = NEXT_STATUS[trip.status];
     if (!next) return;
-
     const label = NEXT_STATUS_LABEL[trip.status] ?? 'Avanzar estado';
-
-    Alert.alert(
-      label,
-      `¿Confirmás cambiar el estado a "${STATUS_LABEL[next]}"?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Confirmar',
-          style: 'default',
-          onPress: async () => {
-            setAdvancing(true);
-            try {
-              await api.patch(`/trips/${trip.id}/status`, { status: next });
-              await fetchTrip();
-            } catch (e: any) {
-              Alert.alert(
-                'Error',
-                e?.response?.data?.message ?? 'No se pudo actualizar el estado.',
-              );
-            } finally {
-              setAdvancing(false);
-            }
-          },
+    Alert.alert(label, `¿Confirmás el cambio a "${STATUS_LABEL[next]}"?`, [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Confirmar',
+        onPress: async () => {
+          setAdvancing(true);
+          try {
+            await api.patch(`/trips/${trip.id}/status`, { status: next });
+            await fetchTrip();
+          } catch (e: any) {
+            Alert.alert('Error', e?.response?.data?.message ?? 'No se pudo actualizar el estado.');
+          } finally {
+            setAdvancing(false);
+          }
         },
-      ],
-    );
+      },
+    ]);
   }
-
-  // ── Render ──────────────────────────────────────────────────────────────────
 
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#1e3a8a" />
+        <ActivityIndicator size="large" color={T.accent} />
       </View>
     );
   }
@@ -172,150 +132,145 @@ export default function TripDetailScreen() {
   if (error || !trip) {
     return (
       <View style={styles.centered}>
-        <Text style={styles.errorTitle}>No se pudo cargar el viaje</Text>
-        <Text style={styles.errorSub}>{error ?? 'Viaje no encontrado.'}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={() => fetchTrip()}>
+        <Text style={styles.errTitle}>No se pudo cargar el viaje</Text>
+        <Text style={styles.errSub}>{error ?? 'Viaje no encontrado.'}</Text>
+        <TouchableOpacity style={styles.retryBtn} onPress={fetchTrip}>
           <Text style={styles.retryText}>Reintentar</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
-  const nextStatus = NEXT_STATUS[trip.status];
-  const canAdvance = !!nextStatus;
-  const isFinished =
-    trip.status === TripStatus.FINALIZADO ||
-    trip.status === TripStatus.CANCELADO;
+  const stageIndex = STAGES.indexOf(trip.status);
+  const canAdvance = !!NEXT_STATUS[trip.status];
+  const isFinished = trip.status === TripStatus.FINALIZADO || trip.status === TripStatus.CANCELADO;
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+      <StatusBar barStyle="dark-content" backgroundColor={T.bgHeader} />
 
-      {/* GPS tracking indicator */}
+      {/* Barra de herramientas */}
+      <View style={styles.toolbar}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <Ionicons name="arrow-back" size={20} color={T.textPrimary} />
+        </TouchableOpacity>
+        <Text style={styles.toolbarTitle}>Viaje #{trip.id.slice(0, 8).toUpperCase()}</Text>
+        <View style={{ width: 36 }} />
+      </View>
+
+      {/* GPS banner */}
       {isTracking && (
-        <View style={styles.trackingBanner}>
-          <View style={styles.trackingDot} />
-          <Text style={styles.trackingText}>Enviando ubicacion</Text>
+        <View style={styles.gpsBanner}>
+          <View style={styles.gpsDot} />
+          <Text style={styles.gpsText}>GPS activo — enviando ubicación</Text>
         </View>
       )}
-
-      {/* Location permission error */}
       {locationError && (
-        <View style={styles.locationErrorBanner}>
-          <Text style={styles.locationErrorText}>{locationError}</Text>
+        <View style={styles.locationErrBanner}>
+          <Text style={styles.locationErrText}>{locationError}</Text>
         </View>
       )}
 
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Status header */}
-        <View style={styles.statusHeader}>
-          <StatusBadge status={trip.status} />
-          <Text style={styles.tripId}>Viaje #{trip.id.slice(0, 8).toUpperCase()}</Text>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+
+        {/* Estado actual */}
+        <View style={styles.statusBlock}>
+          <Text style={styles.statusLabel}>ESTADO</Text>
+          <Text style={styles.statusValue}>{STATUS_LABEL[trip.status]}</Text>
         </View>
 
-        {/* Cargo */}
+        {/* Progreso de etapas */}
+        <View style={styles.stagesCard}>
+          {STAGES.slice(0, -1).map((stage, i) => {
+            const done = stageIndex > i;
+            const active = stageIndex === i;
+            return (
+              <View key={stage} style={styles.stageItem}>
+                <View style={[styles.stageDot, done && styles.stageDotDone, active && styles.stageDotActive]} />
+                {i < STAGES.length - 2 && (
+                  <View style={[styles.stageConnector, done && styles.stageConnectorDone]} />
+                )}
+                <Text style={[styles.stageText, active && styles.stageTextActive]}>
+                  {STAGE_SHORT[stage]}
+                </Text>
+              </View>
+            );
+          })}
+        </View>
+
+        {/* Carga */}
         {trip.cargo && (
-          <SectionCard title="Carga">
-            <InfoRow label="Tipo de carga" value={trip.cargo.type} />
-            <InfoRow label="Peso" value={`${trip.cargo.weightTons} toneladas`} />
-          </SectionCard>
+          <Section title="CARGA">
+            <Row label="Tipo" value={trip.cargo.type} />
+            <Row label="Peso" value={`${trip.cargo.weightTons} toneladas`} />
+          </Section>
         )}
 
-        {/* Route */}
+        {/* Ruta */}
         {trip.cargo && (
-          <SectionCard title="Ruta">
-            <View style={styles.routeContainer}>
+          <Section title="RUTA">
+            <View style={styles.routeWrap}>
               <View style={styles.routeItem}>
-                <View style={[styles.routeDot, { backgroundColor: '#22c55e' }]} />
-                <View style={styles.routeTextWrapper}>
-                  <Text style={styles.routeItemLabel}>Origen</Text>
-                  <Text style={styles.routeItemValue}>
-                    {trip.cargo.originAddress}
-                  </Text>
+                <View style={[styles.routeDot, { backgroundColor: T.accent }]} />
+                <View>
+                  <Text style={styles.routeItemLabel}>ORIGEN</Text>
+                  <Text style={styles.routeItemValue}>{trip.cargo.originAddress}</Text>
                 </View>
               </View>
-              <View style={styles.routeConnector} />
+              <View style={styles.routeLine} />
               <View style={styles.routeItem}>
-                <View style={[styles.routeDot, { backgroundColor: '#ef4444' }]} />
-                <View style={styles.routeTextWrapper}>
-                  <Text style={styles.routeItemLabel}>Destino</Text>
-                  <Text style={styles.routeItemValue}>
-                    {trip.cargo.destinationAddress}
-                  </Text>
+                <View style={[styles.routeDot, { backgroundColor: T.statusDanger }]} />
+                <View>
+                  <Text style={styles.routeItemLabel}>DESTINO</Text>
+                  <Text style={styles.routeItemValue}>{trip.cargo.destinationAddress}</Text>
                 </View>
               </View>
             </View>
-          </SectionCard>
+          </Section>
         )}
 
-        {/* Financial */}
-        <SectionCard title="Finanzas">
-          <InfoRow
-            label="Tarifa acordada"
-            value={`$${trip.agreedRate.toLocaleString('es-UY')}`}
-          />
-        </SectionCard>
+        {/* Finanzas */}
+        <Section title="FINANZAS">
+          <Row label="Tarifa acordada" value={`$${trip.agreedRate?.toLocaleString('es-AR')}`} bold />
+        </Section>
 
-        {/* Vehicle & driver */}
+        {/* Vehículo y conductor */}
         {(trip.vehicle || trip.driver) && (
-          <SectionCard title="Vehiculo y conductor">
-            {trip.vehicle && (
-              <InfoRow label="Patente" value={trip.vehicle.plate} />
-            )}
+          <Section title="VEHÍCULO Y CONDUCTOR">
+            {trip.vehicle && <Row label="Patente" value={trip.vehicle.plate} bold />}
             {trip.driver && (
-              <InfoRow
-                label="Conductor"
-                value={`${trip.driver.user.firstName} ${trip.driver.user.lastName}`}
-              />
+              <Row label="Conductor" value={`${trip.driver.user.firstName} ${trip.driver.user.lastName}`} />
             )}
-          </SectionCard>
+          </Section>
         )}
 
-        {/* Timestamps */}
+        {/* Tiempos */}
         {(trip.startedAt || trip.finishedAt) && (
-          <SectionCard title="Tiempos">
-            {trip.startedAt && (
-              <InfoRow
-                label="Inicio"
-                value={new Date(trip.startedAt).toLocaleString('es-UY')}
-              />
-            )}
-            {trip.finishedAt && (
-              <InfoRow
-                label="Finalización"
-                value={new Date(trip.finishedAt).toLocaleString('es-UY')}
-              />
-            )}
-          </SectionCard>
+          <Section title="TIEMPOS">
+            {trip.startedAt && <Row label="Inicio" value={new Date(trip.startedAt).toLocaleString('es-AR')} />}
+            {trip.finishedAt && <Row label="Finalización" value={new Date(trip.finishedAt).toLocaleString('es-AR')} />}
+          </Section>
         )}
 
-        {/* Advance status button */}
+        {/* Acción */}
         {canAdvance && !isFinished && (
           <TouchableOpacity
-            style={[styles.advanceButton, advancing && styles.advanceButtonDisabled]}
+            style={[styles.advanceBtn, advancing && styles.advanceBtnDisabled]}
             onPress={handleAdvanceStatus}
             disabled={advancing}
             activeOpacity={0.8}
           >
-            {advancing ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.advanceButtonText}>
-                {NEXT_STATUS_LABEL[trip.status] ?? 'Avanzar estado'}
-              </Text>
-            )}
+            {advancing
+              ? <ActivityIndicator color="#fff" />
+              : <Text style={styles.advanceBtnText}>{NEXT_STATUS_LABEL[trip.status] ?? 'Avanzar estado'}</Text>
+            }
           </TouchableOpacity>
         )}
 
         {isFinished && (
-          <View style={styles.finishedBanner}>
-            <Text style={styles.finishedText}>
-              {trip.status === TripStatus.FINALIZADO
-                ? 'Este viaje ha finalizado.'
-                : 'Este viaje fue cancelado.'}
+          <View style={styles.finishedNote}>
+            <Text style={styles.finishedNoteText}>
+              {trip.status === TripStatus.FINALIZADO ? 'Este viaje ha finalizado.' : 'Este viaje fue cancelado.'}
             </Text>
           </View>
         )}
@@ -324,161 +279,105 @@ export default function TripDetailScreen() {
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
-
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f1f5f9' },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  scrollContent: { padding: 16, paddingBottom: 40, gap: 12 },
+  container: { flex: 1, backgroundColor: T.bgApp },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
+  scroll: { flex: 1 },
+  scrollContent: { padding: T.spaceMd, paddingBottom: 40, gap: 10 },
 
-  // Tracking banner
-  trackingBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#166534',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    gap: 8,
+  toolbar: {
+    backgroundColor: T.bgHeader, flexDirection: 'row',
+    alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: T.spaceMd, paddingTop: 52, paddingBottom: 14,
+    borderBottomWidth: 1, borderBottomColor: T.border,
   },
-  trackingDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#4ade80',
+  backBtn: {
+    width: 36, height: 36, borderRadius: T.radiusSm,
+    borderWidth: 1, borderColor: T.border,
+    alignItems: 'center', justifyContent: 'center',
   },
-  trackingText: {
-    color: '#dcfce7',
-    fontSize: 13,
-    fontWeight: '600',
-  },
+  toolbarTitle: { fontSize: T.fontSizeMd, fontWeight: '700', color: T.textPrimary },
 
-  // Location error banner
-  locationErrorBanner: {
-    backgroundColor: '#fef2f2',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#fecaca',
+  gpsBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: T.accentLight, paddingHorizontal: T.spaceMd, paddingVertical: 8,
+    borderBottomWidth: 1, borderBottomColor: T.border,
   },
-  locationErrorText: { color: '#dc2626', fontSize: 13 },
-
-  // Status header
-  statusHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 6,
-    elevation: 2,
+  gpsDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: T.accent },
+  gpsText: { fontSize: 12, fontWeight: '600', color: T.accent },
+  locationErrBanner: {
+    backgroundColor: '#FEF2F2', paddingHorizontal: T.spaceMd, paddingVertical: 8,
+    borderBottomWidth: 1, borderBottomColor: '#FECACA',
   },
-  tripId: { fontSize: 13, color: '#9ca3af', fontWeight: '500' },
-  badge: { borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 },
-  badgeText: { fontSize: 13, fontWeight: '700' },
+  locationErrText: { fontSize: 12, color: T.statusDanger },
 
-  // Section card
-  sectionCard: {
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 6,
-    elevation: 2,
+  statusBlock: {
+    backgroundColor: T.bgCard, borderWidth: 1, borderColor: T.border,
+    borderRadius: T.radius, padding: T.spaceMd,
+    borderLeftWidth: 3, borderLeftColor: T.textPrimary,
+  },
+  statusLabel: { fontSize: 10, fontWeight: '700', color: T.textMuted, letterSpacing: 1, marginBottom: 4 },
+  statusValue: { fontSize: T.fontSizeLg, fontWeight: '800', color: T.textPrimary },
+
+  stagesCard: {
+    backgroundColor: T.bgCard, borderWidth: 1, borderColor: T.border,
+    borderRadius: T.radius, padding: T.spaceMd,
+    flexDirection: 'row', alignItems: 'flex-start',
+  },
+  stageItem: { flex: 1, alignItems: 'center' },
+  stageDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: T.border, marginBottom: 4 },
+  stageDotDone: { backgroundColor: T.accent },
+  stageDotActive: { backgroundColor: T.textPrimary, width: 10, height: 10, borderRadius: 5 },
+  stageConnector: {
+    position: 'absolute', top: 3.5, left: '55%',
+    width: '90%', height: 1, backgroundColor: T.border,
+  },
+  stageConnectorDone: { backgroundColor: T.accent },
+  stageText: { fontSize: 9, color: T.textMuted, textAlign: 'center' },
+  stageTextActive: { color: T.textPrimary, fontWeight: '700' },
+
+  section: {
+    backgroundColor: T.bgCard, borderWidth: 1, borderColor: T.border,
+    borderRadius: T.radius, overflow: 'hidden',
   },
   sectionTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#9ca3af',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    fontSize: 10, fontWeight: '700', color: T.textMuted, letterSpacing: 1.2,
+    paddingHorizontal: T.spaceMd, paddingVertical: 10,
+    borderBottomWidth: 1, borderBottomColor: T.border, backgroundColor: T.bgMuted,
   },
 
-  // Info row
-  infoRow: {
-    paddingHorizontal: 16,
-    paddingVertical: 13,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+  row: {
+    paddingHorizontal: T.spaceMd, paddingVertical: 13,
+    borderBottomWidth: 1, borderBottomColor: T.border,
   },
-  infoLabel: { fontSize: 12, color: '#9ca3af', marginBottom: 2 },
-  infoValue: { fontSize: 15, color: '#111827', fontWeight: '500' },
+  rowLabel: { fontSize: 11, color: T.textMuted, marginBottom: 2 },
+  rowValue: { fontSize: T.fontSizeMd, color: T.textSecondary, fontWeight: '500' },
 
-  // Route
-  routeContainer: { padding: 16, gap: 0 },
+  routeWrap: { padding: T.spaceMd, gap: 0 },
   routeItem: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  routeDot: { width: 12, height: 12, borderRadius: 6, marginTop: 3 },
-  routeTextWrapper: { flex: 1 },
-  routeItemLabel: { fontSize: 11, color: '#9ca3af', marginBottom: 2 },
-  routeItemValue: { fontSize: 14, color: '#111827', fontWeight: '500' },
-  routeConnector: {
-    width: 1,
-    height: 20,
-    backgroundColor: '#d1d5db',
-    marginLeft: 5.5,
-    marginVertical: 4,
-  },
+  routeDot: { width: 10, height: 10, borderRadius: 5, marginTop: 3 },
+  routeItemLabel: { fontSize: 9, fontWeight: '700', color: T.textMuted, letterSpacing: 0.8, marginBottom: 2 },
+  routeItemValue: { fontSize: T.fontSizeSm, color: T.textPrimary, fontWeight: '500', flex: 1 },
+  routeLine: { width: 1, height: 14, backgroundColor: T.border, marginLeft: 5, marginVertical: 3 },
 
-  // Advance button
-  advanceButton: {
-    backgroundColor: '#1e3a8a',
-    borderRadius: 14,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginTop: 4,
-    shadowColor: '#1e3a8a',
-    shadowOpacity: 0.35,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 8,
-    elevation: 4,
+  advanceBtn: {
+    backgroundColor: T.textPrimary, borderRadius: T.radius,
+    paddingVertical: 16, alignItems: 'center', marginTop: 4,
   },
-  advanceButtonDisabled: { opacity: 0.6 },
-  advanceButtonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  advanceBtnDisabled: { opacity: 0.5 },
+  advanceBtnText: { color: '#fff', fontSize: T.fontSizeMd, fontWeight: '700' },
 
-  // Finished banner
-  finishedBanner: {
-    backgroundColor: '#f3f4f6',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    marginTop: 4,
+  finishedNote: {
+    borderWidth: 1, borderColor: T.border, borderRadius: T.radius,
+    padding: T.spaceMd, alignItems: 'center', marginTop: 4,
   },
-  finishedText: { color: '#6b7280', fontSize: 15, fontWeight: '500' },
+  finishedNoteText: { color: T.textMuted, fontSize: T.fontSizeSm, fontWeight: '500' },
 
-  // Error state
-  errorTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 8,
-    textAlign: 'center',
+  errTitle: { fontSize: T.fontSizeLg, fontWeight: '700', color: T.textPrimary, marginBottom: 8 },
+  errSub: { fontSize: T.fontSizeSm, color: T.textMuted, marginBottom: 24, textAlign: 'center' },
+  retryBtn: {
+    backgroundColor: T.textPrimary, borderRadius: T.radius,
+    paddingHorizontal: 32, paddingVertical: 12,
   },
-  errorSub: {
-    fontSize: 14,
-    color: '#6b7280',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  retryButton: {
-    backgroundColor: '#1e3a8a',
-    borderRadius: 10,
-    paddingHorizontal: 32,
-    paddingVertical: 12,
-  },
-  retryText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  retryText: { color: '#fff', fontSize: T.fontSizeSm, fontWeight: '700' },
 });
