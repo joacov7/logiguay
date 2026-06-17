@@ -6,7 +6,12 @@ import {
 import { MapPin, Navigation, Package, ChevronRight } from 'lucide-react-native';
 import { getUser } from '../../src/lib/auth';
 import api from '../../src/lib/api';
+import { useVehicleTracking } from '../../src/lib/useVehicleTracking';
 import { User, Trip, TripStatus } from '../../src/lib/types';
+
+const ACTIVE_STATUSES = new Set([
+  'ASIGNADO', 'EN_CAMINO_ORIGEN', 'EN_CARGA', 'EN_TRANSITO', 'EN_DESCARGA',
+]);
 
 const STATUS_LABEL: Record<string, string> = {
   ASIGNADO: 'Asignado',
@@ -34,6 +39,10 @@ export default function ChoferTripScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [updating, setUpdating] = useState(false);
+
+  // GPS: envía la posición del chofer mientras tenga un viaje activo con vehículo
+  const trackingActive = trip ? ACTIVE_STATUSES.has(trip.status) : false;
+  const { isTracking } = useVehicleTracking(trip?.vehicle?.id, trackingActive);
 
   async function fetchTrip(u?: User | null) {
     const currentUser = u ?? user;
@@ -102,6 +111,12 @@ export default function ChoferTripScreen() {
       <View style={s.header}>
         <Text style={s.headerTitle}>Mi Viaje</Text>
         {user && <Text style={s.headerSub}>Hola, {user.firstName}</Text>}
+        {isTracking && (
+          <View style={s.trackingRow}>
+            <View style={s.trackingDot} />
+            <Text style={s.trackingText}>Enviando ubicación</Text>
+          </View>
+        )}
       </View>
 
       {!trip ? (
@@ -199,6 +214,9 @@ const s = StyleSheet.create({
   },
   headerTitle: { fontSize: 24, fontWeight: '800', color: '#1e3a8a' },
   headerSub: { fontSize: 14, color: '#6b7280', marginTop: 2 },
+  trackingRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
+  trackingDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#16a34a' },
+  trackingText: { fontSize: 12, color: '#16a34a', fontWeight: '600' },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 100 },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: '#374151', marginTop: 16, marginBottom: 8 },
   emptySub: { fontSize: 14, color: '#9ca3af', textAlign: 'center', paddingHorizontal: 32 },

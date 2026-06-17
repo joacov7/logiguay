@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,9 +10,8 @@ import {
   StatusBar,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import * as Location from 'expo-location';
-import { io, Socket } from 'socket.io-client';
 import api from '../../src/lib/api';
+import { useVehicleTracking } from '../../src/lib/useVehicleTracking';
 import { Trip, TripStatus } from '../../src/lib/types';
 
 // ─── Status helpers ──────────────────────────────────────────────────────────
@@ -61,14 +60,6 @@ const ACTIVE_STATUSES = new Set<TripStatus>([
   TripStatus.EN_DESCARGA,
 ]);
 
-// ─── Derive WebSocket URL from api baseURL ────────────────────────────────────
-
-function getSocketUrl(): string {
-  // api.defaults.baseURL is e.g. "http://192.168.1.10:3001/api/v1"
-  const base: string = (api.defaults.baseURL as string) ?? '';
-  return base.replace('/api/v1', '');
-}
-
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: TripStatus }) {
@@ -110,11 +101,6 @@ export default function TripDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [advancing, setAdvancing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isTracking, setIsTracking] = useState(false);
-  const [locationError, setLocationError] = useState<string | null>(null);
-
-  const socketRef = useRef<Socket | null>(null);
-  const trackingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // ── Fetch trip ──────────────────────────────────────────────────────────────
 
@@ -133,92 +119,9 @@ export default function TripDetailScreen() {
     fetchTrip().finally(() => setLoading(false));
   }, [fetchTrip]);
 
-  // ── GPS tracking ────────────────────────────────────────────────────────────
-
-  const stopTracking = useCallback(() => {
-    if (trackingIntervalRef.current) {
-      clearInterval(trackingIntervalRef.current);
-      trackingIntervalRef.current = null;
-    }
-    if (socketRef.current) {
-      socketRef.current.disconnect();
-      socketRef.current = null;
-    }
-    setIsTracking(false);
-  }, []);
-
-  const sendLocation = useCallback(async (socket: Socket, tripId: string) => {
-    try {
-      const position = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High,
-      });
-      const { latitude, longitude, speed, heading } = position.coords;
-      socket.emit('location:update', {
-        tripId,
-        lat: latitude,
-        lng: longitude,
-        speed: speed ?? 0,
-        heading: heading ?? 0,
-        timestamp: new Date().toISOString(),
-      });
-    } catch {
-      // Silent — next tick will retry
-    }
-  }, []);
-
-  const startTracking = useCallback(
-    async (tripId: string) => {
-      // Request foreground location permission
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        setLocationError(
-          'Sin permiso de ubicación. Activalo en Configuración para enviar tu posición.',
-        );
-        return;
-      }
-
-      setLocationError(null);
-
-      // Connect socket
-      const socketUrl = getSocketUrl();
-      const socket = io(socketUrl, {
-        transports: ['websocket'],
-        reconnection: true,
-        reconnectionAttempts: 10,
-        reconnectionDelay: 2000,
-      });
-      socketRef.current = socket;
-
-      // Send immediately, then every 15 seconds
-      await sendLocation(socket, tripId);
-      trackingIntervalRef.current = setInterval(() => {
-        sendLocation(socket, tripId);
-      }, 15_000);
-
-      setIsTracking(true);
-    },
-    [sendLocation],
-  );
-
-  // Start / stop tracking whenever trip status changes
-  useEffect(() => {
-    if (!trip) return;
-
-    const active = ACTIVE_STATUSES.has(trip.status);
-
-    if (active && !isTracking) {
-      startTracking(trip.id);
-    } else if (!active && isTracking) {
-      stopTracking();
-    }
-  }, [trip?.status]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      stopTracking();
-    };
-  }, [stopTracking]);
+  // ── GPS tracking (envía posición mientras el viaje esté activo) ───────────────
+  const trackingActive = trip ? ACTIVE_STATUSES.has(trip.status) : false;
+  const { isTracking, locationError } = useVehicleTracking(trip?.vehicle?.id, trackingActive);
 
   // ── Advance status ──────────────────────────────────────────────────────────
 
