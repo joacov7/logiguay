@@ -2,6 +2,38 @@
 
 ---
 
+## 2026-06-18
+
+### ✅ RESUELTO — Errores de CORS en producción (el API estaba caído, no era CORS)
+- **Síntoma**: El navegador mostraba `No 'Access-Control-Allow-Origin' header is present` en login y otros endpoints. El container del API aparecía como `Up Less than a second` (crash-loop).
+- **Causa real**: El API crasheaba al arrancar, por eso las respuestas llegaban sin headers CORS. NO era un problema de configuración de CORS. Hubo dos causas encadenadas (ver abajo).
+- **Lección**: Un "error de CORS" en el navegador casi siempre significa que el backend devolvió un error/no respondió, no que falte configurar CORS. Revisar primero si el API está arriba (`docker compose ps` / `logs`).
+
+### ✅ RESUELTO — Crash al arrancar: `@sentry/profiling-node` no funciona en Alpine
+- **Causa**: `nodeProfilingIntegration()` usa binarios nativos compilados para glibc; el container corre Alpine Linux (musl libc), así que el proceso crasheaba en el import antes de que NestJS levantara.
+- **Fix**: Eliminado `@sentry/profiling-node` y `nodeProfilingIntegration()`. El resto de Sentry (errores + tracing HTTP) sigue funcionando.
+- **Archivos**: `apps/api/src/main.ts`, `apps/api/package.json`
+- **Commit**: `b551a22`
+
+### ✅ RESUELTO — Migración rota bloqueaba todo el deploy (cadena P3005 → P3018 → P3009)
+- **Contexto**: La base de producción nunca había sido "baselined" — tenía schema pero la tabla `_prisma_migrations` estaba vacía. Al activar `prisma migrate deploy` en el arranque del container, Prisma intentó aplicar las 6 migraciones desde cero.
+- **Causa**: La migración `20260614_rating_categories` usaba `ADD CONSTRAINT IF NOT EXISTS`, sintaxis **que PostgreSQL no soporta** (error `42601`). Eso dejó la migración en estado `failed`, que bloqueó todos los deploys siguientes (`P3009`).
+- **Fix del SQL**: Reemplazado `ADD CONSTRAINT IF NOT EXISTS` por un bloque `DO $$ ... IF NOT EXISTS (SELECT FROM pg_constraint) ... END $$` idempotente.
+- **Recuperación en prod** (secuencia que funcionó):
+  1. `git pull` + `docker compose build --no-cache api` (la imagen tenía el SQL viejo embebido — el build con cache no lo actualizaba).
+  2. El registro `failed` de `_prisma_migrations` ya se había limpiado en intentos previos (`migrate resolve --rolled-back`).
+  3. `docker compose run --rm api npx prisma migrate deploy` → **"No pending migrations to apply"**.
+  4. `docker compose up -d --force-recreate api`.
+- **Verificación**: Las 5 migraciones restantes (`fiscal_and_gps`, `app_settings`, `platform_commissions`, `turnos_queue`, además de `rating_categories`) ya eran idempotentes (`IF NOT EXISTS`, `DO blocks`, `ON CONFLICT DO NOTHING`), así que re-aplicarlas sobre la base existente fue seguro.
+- **Archivos**: `apps/api/prisma/migrations/20260614_rating_categories/migration.sql`
+- **Commit**: `663479b`
+- **Reglas para futuras migraciones** (importante, evita repetir esto):
+  - PostgreSQL NO soporta `ADD CONSTRAINT IF NOT EXISTS` ni `CREATE TYPE IF NOT EXISTS`. Usar bloques `DO $$ ... EXCEPTION WHEN duplicate_object THEN null; END $$` o chequeo contra `pg_constraint`/`pg_type`.
+  - Toda migración debe ser idempotente (`IF NOT EXISTS` en columnas/tablas, `ON CONFLICT DO NOTHING` en seeds) porque la base de prod no fue baselined desde cero.
+  - Si una migración queda `failed`: borrar su registro de `_prisma_migrations` (o `migrate resolve --rolled-back <nombre>`) y re-correr `migrate deploy` con el SQL ya corregido. Recordar `build --no-cache` si el SQL viejo quedó en la imagen.
+
+---
+
 ## 2026-06-16
 
 ### ✅ RESUELTO — Login quedaba en blanco / pantalla vacía
