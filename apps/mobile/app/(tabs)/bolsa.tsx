@@ -5,7 +5,7 @@ import {
   TextInput, Alert, KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
 import { MapPin, Weight, DollarSign, X, Send } from 'lucide-react-native';
-import api from '../../src/lib/api';
+import api, { getApiErrorMessage } from '../../src/lib/api';
 
 interface Cargo {
   id: string;
@@ -44,7 +44,7 @@ function QuoteModal({ cargo, onClose, onSuccess }: QuoteModalProps) {
         { text: 'OK', onPress: onSuccess },
       ]);
     } catch (e: any) {
-      Alert.alert('Error', e?.response?.data?.message || 'No se pudo enviar la cotización.');
+      Alert.alert('Error', getApiErrorMessage(e, 'No se pudo enviar la cotización.'));
     } finally {
       setLoading(false);
     }
@@ -182,7 +182,7 @@ export default function BolsaScreen() {
       setCargos(data);
       setError(null);
     } catch (e: any) {
-      setError(e?.response?.data?.message || 'Error al cargar la bolsa.');
+      setError(getApiErrorMessage(e, 'Error al cargar la bolsa.'));
     }
   }
 

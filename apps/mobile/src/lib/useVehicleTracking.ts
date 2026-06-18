@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { AppState, AppStateStatus } from 'react-native';
 import * as Location from 'expo-location';
 import { io, Socket } from 'socket.io-client';
 import api from './api';
@@ -16,8 +17,14 @@ function getSocketUrl(): string {
  * Usa watchPositionAsync para recibir actualizaciones en tiempo real a medida
  * que el dispositivo se mueve (más preciso que polling con getCurrentPositionAsync,
  * que puede devolver una posición cacheada del SO).
- * Emite 'position-update' al namespace /tracking cada vez que hay un cambio
- * significativo de posición (distanceInterval: 20m) o cada 10s como máximo.
+ *
+ * Robustez:
+ *  - Guarda de montaje (`mountedRef`): si el componente se desmonta mientras se
+ *    está resolviendo `watchPositionAsync`/`requestPermissions`, el watcher y el
+ *    socket se cierran inmediatamente en lugar de quedar huérfanos (memory leak
+ *    + consumo de GPS/batería en background).
+ *  - El socket emite solo si está conectado, evitando encolar eventos infinitos
+ *    cuando la red está caída.
  */
 export function useVehicleTracking(vehicleId: string | undefined, active: boolean) {
   const [isTracking, setIsTracking] = useState(false);
@@ -25,6 +32,8 @@ export function useVehicleTracking(vehicleId: string | undefined, active: boolea
 
   const socketRef = useRef<Socket | null>(null);
   const watcherRef = useRef<Location.LocationSubscription | null>(null);
+  const mountedRef = useRef(true);
+  const startingRef = useRef(false); // evita arranques concurrentes
 
   const stopTracking = useCallback(() => {
     if (watcherRef.current) {
@@ -35,61 +44,104 @@ export function useVehicleTracking(vehicleId: string | undefined, active: boolea
       socketRef.current.disconnect();
       socketRef.current = null;
     }
-    setIsTracking(false);
+    if (mountedRef.current) setIsTracking(false);
   }, []);
 
   const startTracking = useCallback(async (vid: string) => {
-    const { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== 'granted') {
-      setLocationError('Sin permiso de ubicación. Activalo en Configuración para enviar tu posición.');
-      return;
+    if (startingRef.current || watcherRef.current) return;
+    startingRef.current = true;
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      // El componente pudo desmontarse mientras pedíamos permiso.
+      if (!mountedRef.current) return;
+      if (status !== 'granted') {
+        setLocationError('Sin permiso de ubicación. Activalo en Configuración para enviar tu posición.');
+        return;
+      }
+      setLocationError(null);
+
+      const token = await getAccessToken();
+      if (!mountedRef.current) return;
+
+      const socket = io(`${getSocketUrl()}/tracking`, {
+        transports: ['websocket'],
+        auth: { token },
+        reconnection: true,
+        reconnectionAttempts: 10,
+        reconnectionDelay: 2000,
+      });
+      socketRef.current = socket;
+
+      const watcher = await Location.watchPositionAsync(
+        {
+          accuracy: Location.Accuracy.High,
+          distanceInterval: 20,
+          timeInterval: 10_000,
+        },
+        (location) => {
+          const sock = socketRef.current;
+          // Solo emitimos si el socket sigue conectado: evita encolar eventos
+          // indefinidamente cuando la red está caída (consumo de memoria).
+          if (!sock || !sock.connected) return;
+          const { latitude, longitude, speed, heading } = location.coords;
+          sock.emit('position-update', {
+            vehicleId: vid,
+            lat: latitude,
+            lng: longitude,
+            speed: speed ?? 0,
+            heading: heading ?? 0,
+          });
+        },
+      );
+
+      // Carrera: si nos desmontamos mientras watchPositionAsync resolvía, el
+      // watcher recién creado quedaría huérfano. Lo cerramos en el acto.
+      if (!mountedRef.current) {
+        watcher.remove();
+        socket.disconnect();
+        socketRef.current = null;
+        return;
+      }
+
+      watcherRef.current = watcher;
+      setIsTracking(true);
+    } finally {
+      startingRef.current = false;
     }
-    setLocationError(null);
-
-    const token = await getAccessToken();
-    const socket = io(`${getSocketUrl()}/tracking`, {
-      transports: ['websocket'],
-      auth: { token },
-      reconnection: true,
-      reconnectionAttempts: 10,
-      reconnectionDelay: 2000,
-    });
-    socketRef.current = socket;
-
-    // watchPositionAsync entrega la posición real del GPS cada vez que el
-    // dispositivo se mueve >20m o pasa más de 10s, lo que ocurra primero.
-    // A diferencia de getCurrentPositionAsync, nunca devuelve una posición cacheada.
-    const watcher = await Location.watchPositionAsync(
-      {
-        accuracy: Location.Accuracy.High,
-        distanceInterval: 20,   // metros mínimos de movimiento para emitir
-        timeInterval: 10_000,   // máximo 10s entre actualizaciones
-      },
-      (location) => {
-        const { latitude, longitude, speed, heading } = location.coords;
-        socket.emit('position-update', {
-          vehicleId: vid,
-          lat: latitude,
-          lng: longitude,
-          speed: speed ?? 0,
-          heading: heading ?? 0,
-        });
-      },
-    );
-    watcherRef.current = watcher;
-    setIsTracking(true);
   }, []);
 
+  // Arranque/parada según `active` y disponibilidad de vehicleId
   useEffect(() => {
-    if (active && vehicleId && !isTracking) {
+    if (active && vehicleId) {
       startTracking(vehicleId);
-    } else if ((!active || !vehicleId) && isTracking) {
+    } else {
       stopTracking();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, vehicleId]);
 
-  useEffect(() => () => { stopTracking(); }, [stopTracking]);
+  // Pausar el GPS cuando la app va a background: ahorra batería y evita enviar
+  // posiciones mientras el chofer no tiene la app abierta. Reanuda al volver.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (next: AppStateStatus) => {
+      if (next === 'active' && active && vehicleId && !watcherRef.current) {
+        startTracking(vehicleId);
+      } else if (next.match(/inactive|background/) && watcherRef.current) {
+        stopTracking();
+      }
+    });
+    return () => sub.remove();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, vehicleId]);
+
+  // Limpieza definitiva al desmontar
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      stopTracking();
+    };
+  }, [stopTracking]);
 
   return { isTracking, locationError };
 }

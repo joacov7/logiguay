@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { ChevronRight } from 'lucide-react-native';
 import { getUser } from '../../src/lib/auth';
-import api from '../../src/lib/api';
+import api, { getApiErrorMessage } from '../../src/lib/api';
 import { useVehicleTracking } from '../../src/lib/useVehicleTracking';
 import { T } from '../../src/lib/theme';
 import { User, Trip } from '../../src/lib/types';
@@ -51,6 +51,7 @@ export default function ChoferTripScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [updating, setUpdating] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const trackingActive = trip ? ACTIVE_STATUSES.has(trip.status) : false;
   const { isTracking } = useVehicleTracking(trip?.vehicle?.id, trackingActive);
@@ -64,17 +65,23 @@ export default function ChoferTripScreen() {
       });
       const trips = res.data?.data ?? res.data ?? [];
       setTrip(trips[0] ?? null);
-    } catch {
-      setTrip(null);
+      setLoadError(null);
+    } catch (e: unknown) {
+      // No pisamos el viaje ya cargado: si fue un fallo de red puntual durante
+      // un refresh, el chofer conserva la info que ya tenía en pantalla.
+      setLoadError(getApiErrorMessage(e, 'No se pudo cargar tu viaje.'));
     }
   }
 
   useEffect(() => {
+    let mounted = true;
     getUser().then(async (u) => {
+      if (!mounted) return;
       setUser(u);
       await fetchTrip(u);
-      setLoading(false);
+      if (mounted) setLoading(false);
     });
+    return () => { mounted = false; };
   }, []);
 
   const onRefresh = useCallback(async () => {
@@ -97,7 +104,7 @@ export default function ChoferTripScreen() {
             await api.patch(`/trips/${trip.id}/status`, { status: next.status });
             await fetchTrip(user);
           } catch (e: any) {
-            Alert.alert('Error', e?.response?.data?.message || 'No se pudo actualizar el estado');
+            Alert.alert('Error', getApiErrorMessage(e, 'No se pudo actualizar el estado.'));
           } finally {
             setUpdating(false);
           }
@@ -138,7 +145,20 @@ export default function ChoferTripScreen() {
         style={s.scroll}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={T.accent} />}
       >
-        {!trip ? (
+        {!trip && loadError ? (
+          <View style={s.empty}>
+            <Text style={s.emptyIcon}>📡</Text>
+            <Text style={s.emptyTitle}>No pudimos cargar tu viaje</Text>
+            <Text style={s.emptySub}>{loadError}</Text>
+            <TouchableOpacity
+              style={s.retryBtn}
+              onPress={() => fetchTrip()}
+              activeOpacity={0.85}
+            >
+              <Text style={s.retryText}>Reintentar</Text>
+            </TouchableOpacity>
+          </View>
+        ) : !trip ? (
           <View style={s.empty}>
             <Text style={s.emptyIcon}>📦</Text>
             <Text style={s.emptyTitle}>Sin viaje activo</Text>
@@ -286,6 +306,11 @@ const s = StyleSheet.create({
   emptyIcon: { fontSize: 48, marginBottom: 16 },
   emptyTitle: { fontSize: T.fontSizeLg, fontWeight: '700', color: T.textPrimary, marginBottom: 8 },
   emptySub: { fontSize: T.fontSizeSm, color: T.textMuted, textAlign: 'center', paddingHorizontal: 32 },
+  retryBtn: {
+    marginTop: 20, backgroundColor: T.textPrimary, borderRadius: T.radius,
+    paddingHorizontal: 32, paddingVertical: 12,
+  },
+  retryText: { color: '#fff', fontSize: T.fontSizeSm, fontWeight: '700' },
 
   content: { padding: T.spaceMd, gap: 10, paddingBottom: 40 },
 

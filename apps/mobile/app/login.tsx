@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { login } from '../src/lib/auth';
+import { getApiErrorMessage, isNetworkError } from '../src/lib/api';
 import { T } from '../src/lib/theme';
 
 export default function LoginScreen() {
@@ -25,8 +26,13 @@ export default function LoginScreen() {
         user.role === 'DADOR' ? '/(dador)/' :
         user.role === 'CHOFER' ? '/(chofer)/' : '/(transportista)/'
       );
-    } catch (e: any) {
-      setError(e?.response?.data?.message || 'Credenciales incorrectas. Revisá tu email y contraseña.');
+    } catch (e: unknown) {
+      // Si es un fallo de red, no acusamos al usuario de credenciales malas.
+      setError(
+        isNetworkError(e)
+          ? getApiErrorMessage(e)
+          : getApiErrorMessage(e, 'Credenciales incorrectas. Revisá tu email y contraseña.'),
+      );
     } finally {
       setLoading(false);
     }

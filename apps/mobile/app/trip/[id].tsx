@@ -6,7 +6,7 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
-import api from '../../src/lib/api';
+import api, { getApiErrorMessage } from '../../src/lib/api';
 import { useVehicleTracking } from '../../src/lib/useVehicleTracking';
 import { T } from '../../src/lib/theme';
 import { Trip, TripStatus } from '../../src/lib/types';
@@ -96,7 +96,7 @@ export default function TripDetailScreen() {
       setTrip(res.data);
       setError(null);
     } catch (e: any) {
-      setError(e?.response?.data?.message ?? 'Error al cargar el viaje.');
+      setError(getApiErrorMessage(e, 'Error al cargar el viaje.'));
     }
   }, [id]);
 
@@ -120,7 +120,7 @@ export default function TripDetailScreen() {
             await api.patch(`/trips/${trip.id}/status`, { status: next });
             await fetchTrip();
           } catch (e: any) {
-            Alert.alert('Error', e?.response?.data?.message ?? 'No se pudo actualizar el estado.');
+            Alert.alert('Error', getApiErrorMessage(e, 'No se pudo actualizar el estado.'));
           } finally {
             setAdvancing(false);
           }

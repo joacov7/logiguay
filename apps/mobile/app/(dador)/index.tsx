@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Package } from 'lucide-react-native';
-import api from '../../src/lib/api';
+import api, { getApiErrorMessage } from '../../src/lib/api';
 import { getUser } from '../../src/lib/auth';
 import { User } from '../../src/lib/types';
 
@@ -52,7 +52,7 @@ export default function DadorCargasScreen() {
       setCargas(res.data?.data ?? res.data ?? []);
       setError(null);
     } catch (e: any) {
-      setError(e?.response?.data?.message ?? 'Error al cargar las cargas.');
+      setError(getApiErrorMessage(e, 'Error al cargar las cargas.'));
     }
   }
 

@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { getUser } from '../../src/lib/auth';
-import api from '../../src/lib/api';
+import api, { getApiErrorMessage } from '../../src/lib/api';
 import { Trip, TripStatus, User } from '../../src/lib/types';
 
 const STATUS_LABEL: Record<TripStatus, string> = {
@@ -95,10 +95,8 @@ export default function TripsScreen() {
       const res = await api.get('/trips', { params });
       setTrips((res.data?.data ?? res.data) as Trip[]);
       setError(null);
-    } catch (e: any) {
-      setError(
-        e?.response?.data?.message || 'Error al cargar los viajes.',
-      );
+    } catch (e: unknown) {
+      setError(getApiErrorMessage(e, 'Error al cargar los viajes.'));
     }
   }
 

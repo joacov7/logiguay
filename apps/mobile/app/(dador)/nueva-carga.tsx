@@ -4,7 +4,9 @@ import {
   StyleSheet, ActivityIndicator, Alert, StatusBar, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import api from '../../src/lib/api';
+import api, { getApiErrorMessage } from '../../src/lib/api';
+import { useDraftForm } from '../../src/lib/useDraftForm';
+import { useNetwork } from '../../src/lib/network';
 
 const CARGO_TYPES = ['Cereal', 'Granos', 'Fertilizante', 'Combustible', 'Maquinaria', 'Refrigerados', 'General', 'Otro'];
 
@@ -34,7 +36,10 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 export default function NuevaCargaScreen() {
   const router = useRouter();
-  const [form, setForm] = useState<FormState>(EMPTY);
+  const { isConnected } = useNetwork();
+  // El borrador se persiste en disco: si el SO mata la app por memoria, el
+  // dador recupera todo lo que escribió al volver.
+  const { form, setForm, clearDraft } = useDraftForm<FormState>('draft:nueva-carga', EMPTY);
   const [saving, setSaving] = useState(false);
 
   function set(key: keyof FormState, value: string) {
@@ -44,6 +49,13 @@ export default function NuevaCargaScreen() {
   async function handlePublish(publish: boolean) {
     if (!form.type || !form.originAddress || !form.destinationAddress) {
       Alert.alert('Campos requeridos', 'Completá tipo, origen y destino.');
+      return;
+    }
+    if (!isConnected) {
+      Alert.alert(
+        'Sin conexión',
+        'No tenés internet en este momento. Tu carga quedó guardada como borrador y podés publicarla cuando vuelva la señal.',
+      );
       return;
     }
     setSaving(true);
@@ -66,10 +78,10 @@ export default function NuevaCargaScreen() {
         publish
           ? 'Tu carga ya está visible para los transportistas.'
           : 'Podés publicarla desde la lista de cargas.',
-        [{ text: 'OK', onPress: () => { setForm(EMPTY); router.replace('/(dador)/'); } }],
+        [{ text: 'OK', onPress: () => { clearDraft(); router.replace('/(dador)/'); } }],
       );
-    } catch (e: any) {
-      Alert.alert('Error', e?.response?.data?.message ?? 'No se pudo guardar la carga.');
+    } catch (e: unknown) {
+      Alert.alert('No se pudo guardar', getApiErrorMessage(e, 'No se pudo guardar la carga.'));
     } finally {
       setSaving(false);
     }

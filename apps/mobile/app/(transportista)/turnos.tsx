@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
-import api from '../../src/lib/api';
+import api, { getApiErrorMessage } from '../../src/lib/api';
 import { T } from '../../src/lib/theme';
 
 type BookingStatus = 'CONFIRMADO' | 'EN_ESPERA' | 'EN_ATENCION' | 'DEMORADO' | 'COMPLETADO' | 'CANCELADO';
@@ -77,13 +77,13 @@ export default function TurnosScreen() {
       qc.invalidateQueries({ queryKey: ['turnos-my-bookings'] });
       Alert.alert('Reservado', 'Tu turno fue reservado correctamente.');
     },
-    onError: (e: any) => Alert.alert('Error', e?.response?.data?.message ?? 'No se pudo reservar'),
+    onError: (e: unknown) => Alert.alert('Error', getApiErrorMessage(e, 'No se pudo reservar.')),
   });
 
   const checkInMutation = useMutation({
     mutationFn: (id: string) => api.patch(`/turnos/bookings/${id}/checkin`, {}),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['turnos-my-bookings'] }),
-    onError: (e: any) => Alert.alert('Error', e?.response?.data?.message ?? 'Error'),
+    onError: (e: unknown) => Alert.alert('Error', getApiErrorMessage(e)),
   });
 
   const cancelMutation = useMutation({
@@ -92,7 +92,7 @@ export default function TurnosScreen() {
       qc.invalidateQueries({ queryKey: ['turnos-my-bookings'] });
       qc.invalidateQueries({ queryKey: ['turnos-slots'] });
     },
-    onError: (e: any) => Alert.alert('Error', e?.response?.data?.message ?? 'Error'),
+    onError: (e: unknown) => Alert.alert('Error', getApiErrorMessage(e)),
   });
 
   const delayMutation = useMutation({
@@ -102,7 +102,7 @@ export default function TurnosScreen() {
       setDelayModal(null);
       qc.invalidateQueries({ queryKey: ['turnos-my-bookings'] });
     },
-    onError: (e: any) => Alert.alert('Error', e?.response?.data?.message ?? 'Error'),
+    onError: (e: unknown) => Alert.alert('Error', getApiErrorMessage(e)),
   });
 
   const renderSlot = useCallback(({ item }: any) => {

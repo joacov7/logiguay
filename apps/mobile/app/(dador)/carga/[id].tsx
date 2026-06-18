@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { Building2, Check, X } from 'lucide-react-native';
-import api from '../../../src/lib/api';
+import api, { getApiErrorMessage } from '../../../src/lib/api';
 
 interface Quote {
   id: string;
@@ -43,7 +43,7 @@ export default function CargoQuotesScreen() {
       setQuotes(res.data?.data ?? []);
       setError(null);
     } catch (e: any) {
-      setError(e?.response?.data?.message ?? 'Error al cargar cotizaciones.');
+      setError(getApiErrorMessage(e, 'Error al cargar cotizaciones.'));
     }
   }
 
@@ -73,7 +73,7 @@ export default function CargoQuotesScreen() {
                 { text: 'OK', onPress: () => router.back() },
               ]);
             } catch (e: any) {
-              Alert.alert('Error', e?.response?.data?.message ?? 'No se pudo aceptar.');
+              Alert.alert('Error', getApiErrorMessage(e, 'No se pudo aceptar.'));
             } finally {
               setActing(null);
             }
@@ -89,7 +89,7 @@ export default function CargoQuotesScreen() {
       await api.patch(`/quotes/${quote.id}/reject`);
       await fetchQuotes();
     } catch (e: any) {
-      Alert.alert('Error', e?.response?.data?.message ?? 'No se pudo rechazar.');
+      Alert.alert('Error', getApiErrorMessage(e, 'No se pudo rechazar.'));
     } finally {
       setActing(null);
     }

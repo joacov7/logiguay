@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Truck, Package, User as UserIcon, Eye, EyeOff } from 'lucide-react-native';
-import api from '../src/lib/api';
+import api, { getApiErrorMessage } from '../src/lib/api';
 import { saveTokens } from '../src/lib/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -63,7 +63,7 @@ export default function RegisterScreen() {
         '/(transportista)/'
       );
     } catch (e: any) {
-      setError(e?.response?.data?.message || 'Error al registrarse. Intentá de nuevo.');
+      setError(getApiErrorMessage(e, 'Error al registrarse. Intentá de nuevo.'));
     } finally {
       setLoading(false);
     }
