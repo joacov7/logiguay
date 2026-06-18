@@ -4,6 +4,8 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  Logger,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { EmailService } from '../../common/email/email.service';
@@ -12,6 +14,8 @@ import { CreateQuoteDto } from './dto/quote.dto';
 
 @Injectable()
 export class QuotesService {
+  private readonly logger = new Logger(QuotesService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly email: EmailService,
@@ -27,7 +31,13 @@ export class QuotesService {
 
     // Bloqueo por mora: el transportista con comisiones impagas vencidas no
     // puede cotizar nuevas cargas hasta regularizar.
-    await this.billing.assertNotDelinquent(dto.transportCompanyId);
+    try {
+      await this.billing.assertNotDelinquent(dto.transportCompanyId);
+    } catch (e: any) {
+      if (e?.status) throw e; // re-throw HttpExceptions (ForbiddenException, etc.)
+      this.logger.error('Error en assertNotDelinquent', e?.stack ?? e);
+      throw new InternalServerErrorException('Error al verificar estado de cuenta');
+    }
 
     const cargo = await this.prisma.cargo.findUnique({ where: { id: dto.cargoId } });
     if (!cargo) throw new NotFoundException('Carga no encontrada');
