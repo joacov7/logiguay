@@ -13,7 +13,16 @@ ALTER TABLE ratings
   ADD COLUMN IF NOT EXISTS "pagoTiempo"       INTEGER,
   ADD COLUMN IF NOT EXISTS "tratoPersonal"    INTEGER;
 
--- Foreign key to companies (optional, nullable)
-ALTER TABLE ratings
-  ADD CONSTRAINT IF NOT EXISTS "ratings_toCompanyId_fkey"
-  FOREIGN KEY ("toCompanyId") REFERENCES companies(id) ON DELETE SET NULL;
+-- Foreign key to companies (optional, nullable) — idempotente via DO block
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'ratings_toCompanyId_fkey'
+      AND conrelid = 'ratings'::regclass
+  ) THEN
+    ALTER TABLE ratings
+      ADD CONSTRAINT "ratings_toCompanyId_fkey"
+      FOREIGN KEY ("toCompanyId") REFERENCES companies(id) ON DELETE SET NULL;
+  END IF;
+END $$;
