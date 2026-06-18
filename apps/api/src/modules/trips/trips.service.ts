@@ -168,7 +168,6 @@ export class TripsService {
         transportCompany: true,
         events: { orderBy: { timestamp: 'asc' } },
         alerts: { orderBy: { createdAt: 'desc' }, take: 10 },
-        invoices: true,
       },
     });
     if (!trip) throw new NotFoundException('Viaje no encontrado');
