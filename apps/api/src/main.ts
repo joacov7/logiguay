@@ -1,5 +1,4 @@
 import * as Sentry from '@sentry/node';
-import { nodeProfilingIntegration } from '@sentry/profiling-node';
 import { HttpException } from '@nestjs/common';
 
 Sentry.init({
@@ -9,12 +8,10 @@ Sentry.init({
   release: process.env.npm_package_version,
 
   integrations: [
-    nodeProfilingIntegration(),
     Sentry.httpIntegration(),
   ],
 
   tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 0,
-  profilesSampleRate: 0,
 
   // beforeSend único: limpia datos sensibles Y filtra errores de negocio esperados
   beforeSend(event, hint) {
