@@ -102,7 +102,9 @@ export class QuotesService {
           cargoId: dto.cargoId,
         });
       }
-    } catch (_) {}
+    } catch (e) {
+      this.logger.warn(`Email de cotización recibida no enviado (cargo ${dto.cargoId}): ${(e as Error).message}`);
+    }
 
     return quote;
   }

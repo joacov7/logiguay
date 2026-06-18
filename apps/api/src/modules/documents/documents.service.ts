@@ -123,6 +123,9 @@ export class DocumentsService {
     porVencer: number;
     vigentes: number;
   }> {
+    const now = new Date();
+    const soon = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
     const documents = await this.prisma.document.findMany({
       where: {
         expiresAt: { not: null },
@@ -131,29 +134,30 @@ export class DocumentsService {
           { driver: { companyId } },
         ],
       },
+      select: { id: true, expiresAt: true, status: true },
     });
 
-    let recalculated = 0;
-    let vencidos = 0;
-    let porVencer = 0;
-    let vigentes = 0;
+    // Agrupar ids por nuevo status para hacer 3 updateMany en lugar de N updates
+    const toVencido: string[] = [];
+    const toPorVencer: string[] = [];
+    const toVigente: string[] = [];
+    let vencidos = 0, porVencer = 0, vigentes = 0;
 
     for (const doc of documents) {
       const newStatus = computeStatus(doc.expiresAt as Date);
-
-      if (newStatus === 'VENCIDO') vencidos++;
-      else if (newStatus === 'POR_VENCER') porVencer++;
-      else vigentes++;
-
-      if ((doc.status as string) !== newStatus) {
-        await this.prisma.document.update({
-          where: { id: doc.id },
-          data: { status: newStatus as any },
-        });
-        recalculated++;
-      }
+      if (newStatus === 'VENCIDO') { vencidos++; if (doc.status !== 'VENCIDO') toVencido.push(doc.id); }
+      else if (newStatus === 'POR_VENCER') { porVencer++; if (doc.status !== 'POR_VENCER') toPorVencer.push(doc.id); }
+      else { vigentes++; if (doc.status !== 'VIGENTE') toVigente.push(doc.id); }
     }
 
+    // 3 queries en paralelo reemplazan N queries secuenciales
+    await Promise.all([
+      toVencido.length && this.prisma.document.updateMany({ where: { id: { in: toVencido } }, data: { status: 'VENCIDO' as any } }),
+      toPorVencer.length && this.prisma.document.updateMany({ where: { id: { in: toPorVencer } }, data: { status: 'POR_VENCER' as any } }),
+      toVigente.length && this.prisma.document.updateMany({ where: { id: { in: toVigente } }, data: { status: 'VIGENTE' as any } }),
+    ]);
+
+    const recalculated = toVencido.length + toPorVencer.length + toVigente.length;
     return { total: documents.length, recalculated, vencidos, porVencer, vigentes };
   }
 

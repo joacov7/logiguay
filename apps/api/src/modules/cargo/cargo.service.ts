@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { BillingService } from '../billing/billing.service';
@@ -21,6 +21,8 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
 
 @Injectable()
 export class CargoService {
+  private readonly logger = new Logger(CargoService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly subscriptions: SubscriptionsService,
@@ -136,11 +138,15 @@ export class CargoService {
     const hasRadius = Number.isFinite(radiusKm as any);
     const geoActive = Number.isFinite(lat as any) && Number.isFinite(lng as any);
 
+    // En modo geo cargamos hasta 2000 registros para filtrar por distancia.
+    // Evita un fetch ilimitado (DoS) manteniendo cobertura práctica.
+    const GEO_FETCH_LIMIT = 2000;
+
     const [rawData, total] = await Promise.all([
       this.prisma.cargo.findMany({
         where,
         skip: geoActive ? 0 : skip,
-        take: geoActive ? undefined : l,
+        take: geoActive ? GEO_FETCH_LIMIT : l,
         orderBy: { createdAt: 'desc' },
         include: {
           company: { select: { id: true, name: true } },
@@ -313,12 +319,13 @@ export class CargoService {
         ? { requiredDate: orderDir }
         : { createdAt: orderDir };
 
+    const GEO_FETCH_LIMIT = 2000;
+
     const [rawData, total] = await Promise.all([
       this.prisma.cargo.findMany({
         where,
-        // When geo-filtering we fetch all matching records to sort/filter by distance
         skip: geoActive ? 0 : skip,
-        take: geoActive ? undefined : l,
+        take: geoActive ? GEO_FETCH_LIMIT : l,
         orderBy: orderByClause,
         include: {
           company: { select: { id: true, name: true, country: true } },
@@ -460,7 +467,9 @@ export class CargoService {
           tripId: '',
         });
       }
-    } catch (_) {}
+    } catch (e) {
+      this.logger.warn(`Email de cotización aceptada no enviado (cargo ${cargoId}): ${(e as Error).message}`);
+    }
 
     return this.getCargoWithQuotes(cargoId);
   }

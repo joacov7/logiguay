@@ -279,14 +279,41 @@ export class TrackingService {
   async getFleetPositionsMulti(companyIds: string[]) {
     const vehicles = await this.prisma.vehicle.findMany({
       where: { companyId: { in: companyIds } },
-      select: { id: true, plate: true, type: true, brand: true, model: true },
+      select: { id: true, plate: true, type: true, brand: true, model: true, companyId: true },
     });
+
+    if (vehicles.length === 0) return [];
+
+    const vehicleIds = vehicles.map((v) => v.id);
+
+    // 1 query para todos los viajes activos de la flota (en lugar de 1 por vehículo)
+    const ACTIVE_STATUSES = [
+      TripStatus.ASIGNADO, TripStatus.EN_CAMINO_ORIGEN,
+      TripStatus.EN_CARGA, TripStatus.EN_TRANSITO, TripStatus.EN_DESCARGA,
+    ];
+    const [activeTrips, dbPositions] = await Promise.all([
+      this.prisma.trip.findMany({
+        where: { vehicleId: { in: vehicleIds }, status: { in: ACTIVE_STATUSES } },
+        select: { id: true, vehicleId: true, status: true },
+      }),
+      // 1 query para las últimas posiciones en DB de todos los vehículos
+      this.prisma.vehiclePosition.findMany({
+        where: { vehicleId: { in: vehicleIds } },
+        orderBy: { timestamp: 'desc' },
+        distinct: ['vehicleId'],
+      }),
+    ]);
+
+    const tripByVehicle = new Map(activeTrips.map((t) => [t.vehicleId, t]));
+    const dbPosByVehicle = new Map(dbPositions.map((p) => [p.vehicleId, p]));
 
     return Promise.all(
       vehicles.map(async (v) => {
-        const position = await this.getVehiclePosition(v.id);
-        const activeTrip = await this.getActiveTrip(v.id);
-        return { ...v, position, activeTrip: activeTrip ? { id: activeTrip.id, status: activeTrip.status } : null };
+        // Redis primero, fallback a DB (ya precargada)
+        const cached = await this.redis.getJson<any>(`vehicle:${v.id}:position`);
+        const position = cached ?? dbPosByVehicle.get(v.id) ?? null;
+        const trip = tripByVehicle.get(v.id);
+        return { ...v, position, activeTrip: trip ? { id: trip.id, status: trip.status } : null };
       }),
     );
   }

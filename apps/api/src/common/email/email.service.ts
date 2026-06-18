@@ -266,4 +266,16 @@ export class EmailService {
     `);
     await this.send(p.to, `${p.dadoName} quiere contratarte — Logiguay`, html);
   }
+
+  // ── 7. Reset de contraseña ────────────────────────────────────────────────
+  async sendPasswordReset(p: { to: string; name: string; resetUrl: string }) {
+    const html = base(`
+      ${h1('Restablecé tu contraseña')}
+      ${para(`Hola <strong>${p.name}</strong>, recibimos una solicitud para restablecer la contraseña de tu cuenta.`)}
+      ${para('Hacé clic en el botón de abajo. El enlace expira en <strong>1 hora</strong>.')}
+      ${btn('Restablecer contraseña', p.resetUrl)}
+      ${para('Si no solicitaste este cambio, podés ignorar este email. Tu contraseña no se modificará.')}
+    `);
+    await this.send(p.to, 'Restablecé tu contraseña — Logiguay', html);
+  }
 }

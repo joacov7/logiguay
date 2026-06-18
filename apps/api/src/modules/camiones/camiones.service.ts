@@ -1,10 +1,12 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AlertsService } from '../alerts/alerts.service';
 import { EmailService } from '../../common/email/email.service';
 
 @Injectable()
 export class CamionesService {
+  private readonly logger = new Logger(CamionesService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly alerts: AlertsService,
@@ -128,7 +130,9 @@ export class CamionesService {
           tarifaOfrecida: dto.tarifaOfrecida,
         });
       }
-    } catch (_) {}
+    } catch (e) {
+      this.logger.warn(`Email de contacto no enviado: ${(e as Error).message}`);
+    }
 
     return { ok: true };
   }

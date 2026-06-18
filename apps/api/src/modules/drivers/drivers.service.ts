@@ -132,15 +132,23 @@ export class DriversService {
     const driver = await this.prisma.driver.findUnique({
       where: { id },
       include: {
-        user: true,
+        // Excluir password del usuario — nunca debe exponerse en la API
+        user: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            phone: true,
+            role: true,
+            isActive: true,
+          },
+        },
         company: true,
         documents: true,
         trips: {
-          where: {
-            status: {
-              notIn: ['FINALIZADO', 'CANCELADO'],
-            },
-          },
+          where: { status: { notIn: ['FINALIZADO', 'CANCELADO'] } },
+          select: { id: true, status: true, createdAt: true },
         },
       },
     });

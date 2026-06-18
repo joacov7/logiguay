@@ -9,7 +9,9 @@ import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { RedisService } from '../../common/redis/redis.service';
+import { EmailService } from '../../common/email/email.service';
 import { LoginDto, RegisterDto } from './dto/auth.dto';
+import { randomBytes } from 'crypto';
 
 @Injectable()
 export class AuthService {
@@ -20,6 +22,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly redis: RedisService,
+    private readonly email: EmailService,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -166,23 +169,31 @@ export class AuthService {
   }
 
   async forgotPassword(email: string): Promise<{ ok: boolean }> {
-    // Always return ok to prevent email enumeration
-    const user = await this.prisma.user.findUnique({ where: { email } });
+    // Siempre devuelve ok para evitar enumeración de emails
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+      select: { id: true, firstName: true },
+    });
     if (!user) return { ok: true };
 
-    // Generate a short-lived token stored in Redis
-    const token = require('crypto').randomBytes(32).toString('hex');
-    await this.redis.set(`pwd_reset:${token}`, user.id, 60 * 60); // 1 hour TTL
+    const token = randomBytes(32).toString('hex');
+    await this.redis.set(`pwd_reset:${token}`, user.id, 60 * 60); // 1 hora TTL
 
-    const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://logiguay.com.ar'}/reset-password?token=${token}`;
-    this.logger.log(`Password reset requested for ${email}. URL: ${resetUrl}`);
+    const appUrl = this.configService.get<string>('NEXT_PUBLIC_APP_URL') ?? 'https://logiguay.com.ar';
+    const resetUrl = `${appUrl}/reset-password?token=${token}`;
 
-    // Send email if EmailService available — import lazily to avoid circular deps
+    // Log sin el token — el token es un secreto, no debe aparecer en logs
+    this.logger.log(`Password reset solicitado para ${email}`);
+
     try {
-      const { EmailService } = await import('../../common/email/email.service');
-      // EmailService is @Global so we'd normally inject it, but here we log the URL
-      // In production, wire EmailService injection in the constructor
-    } catch (_) {}
+      await this.email.sendPasswordReset({
+        to: email,
+        name: user.firstName ?? 'Usuario',
+        resetUrl,
+      });
+    } catch (e) {
+      this.logger.error(`No se pudo enviar email de reset a ${email}: ${(e as Error).message}`);
+    }
 
     return { ok: true };
   }

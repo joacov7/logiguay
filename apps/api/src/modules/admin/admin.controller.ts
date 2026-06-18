@@ -6,6 +6,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role, PlanType } from '@prisma/client';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import { UpdateAdminCompanyDto, UpdateAdminSubscriptionDto, UpdateAdminUserDto, ResetPasswordDto } from './dto/admin.dto';
 
 @ApiTags('Admin')
 @ApiBearerAuth()
@@ -34,7 +35,7 @@ export class AdminController {
 
   @Patch('companies/:id')
   @ApiOperation({ summary: 'Actualizar empresa' })
-  updateCompany(@Param('id') id: string, @Body() body: any) {
+  updateCompany(@Param('id') id: string, @Body() body: UpdateAdminCompanyDto) {
     return this.adminService.updateCompany(id, body);
   }
 
@@ -48,7 +49,7 @@ export class AdminController {
 
   @Patch('subscriptions/:id')
   @ApiOperation({ summary: 'Actualizar suscripción (renovar, cambiar plan, cancelar)' })
-  updateSubscription(@Param('id') id: string, @Body() body: any) {
+  updateSubscription(@Param('id') id: string, @Body() body: UpdateAdminSubscriptionDto) {
     return this.adminService.updateSubscription(id, body);
   }
 
@@ -83,14 +84,14 @@ export class AdminController {
 
   @Patch('users/:id')
   @ApiOperation({ summary: 'Actualizar usuario (rol, estado activo)' })
-  updateUser(@Param('id') id: string, @Body() body: any) {
+  updateUser(@Param('id') id: string, @Body() body: UpdateAdminUserDto) {
     return this.adminService.updateUser(id, body);
   }
 
   @Patch('users/:id/reset-password')
   @ApiOperation({ summary: 'Resetear contraseña de un usuario' })
-  resetUserPassword(@Param('id') id: string, @Body() body: { password: string }) {
-    return this.adminService.resetUserPassword(id, body?.password);
+  resetUserPassword(@Param('id') id: string, @Body() body: ResetPasswordDto) {
+    return this.adminService.resetUserPassword(id, body.password);
   }
 
   // ── App Settings ──────────────────────────────────────────────────────────
