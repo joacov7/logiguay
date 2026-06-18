@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  RefreshControl, ActivityIndicator, StatusBar, Alert, TextInput, Modal,
+  RefreshControl, ActivityIndicator, StatusBar, Alert, Modal, ScrollView,
 } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
@@ -48,11 +48,26 @@ export default function TurnosScreen() {
   const qc = useQueryClient();
   const [tab, setTab] = useState<'disponibles' | 'misreservas'>('disponibles');
   const [bookModal, setBookModal] = useState<any>(null);
-  const [driverName, setDriverName] = useState('');
-  const [vehiclePlate, setVehiclePlate] = useState('');
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
+  const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
   const [delayModal, setDelayModal] = useState<any>(null);
   const [delayMinutes, setDelayMinutes] = useState('30');
   const [delayNote, setDelayNote] = useState('');
+
+  // Flota y choferes: se cargan al abrir el modal de reserva
+  const { data: vehicles = [], isLoading: loadingVehicles } = useQuery<any[]>({
+    queryKey: ['my-vehicles'],
+    queryFn: () => api.get('/vehicles?limit=100').then(r => r.data?.data ?? r.data ?? []),
+    enabled: !!bookModal,
+    staleTime: 60_000,
+  });
+
+  const { data: drivers = [], isLoading: loadingDrivers } = useQuery<any[]>({
+    queryKey: ['my-drivers'],
+    queryFn: () => api.get('/drivers?limit=100').then(r => r.data?.data ?? r.data ?? []),
+    enabled: !!bookModal,
+    staleTime: 60_000,
+  });
 
   const { data: slots = [], isLoading: loadingSlots, refetch: refetchSlots, isRefetching: refetchingSlots } = useQuery({
     queryKey: ['turnos-slots'],
@@ -67,12 +82,19 @@ export default function TurnosScreen() {
   });
 
   const bookMutation = useMutation({
-    mutationFn: (slotId: string) =>
-      api.post(`/turnos/slots/${slotId}/book`, { driverName, vehiclePlate }),
+    mutationFn: (slotId: string) => {
+      const vehicle = vehicles.find(v => v.id === selectedVehicleId);
+      const driver = drivers.find(d => d.id === selectedDriverId);
+      const vehiclePlate = vehicle?.plate ?? '';
+      const driverName = driver
+        ? `${driver.user?.firstName ?? ''} ${driver.user?.lastName ?? ''}`.trim()
+        : '';
+      return api.post(`/turnos/slots/${slotId}/book`, { driverName, vehiclePlate });
+    },
     onSuccess: () => {
       setBookModal(null);
-      setDriverName('');
-      setVehiclePlate('');
+      setSelectedVehicleId(null);
+      setSelectedDriverId(null);
       qc.invalidateQueries({ queryKey: ['turnos-slots'] });
       qc.invalidateQueries({ queryKey: ['turnos-my-bookings'] });
       Alert.alert('Reservado', 'Tu turno fue reservado correctamente.');
@@ -132,7 +154,7 @@ export default function TurnosScreen() {
           style={[s.bookBtn, full && s.bookBtnDisabled]}
           disabled={full}
           activeOpacity={0.8}
-          onPress={() => { setBookModal(item); setDriverName(''); setVehiclePlate(''); }}
+          onPress={() => { setBookModal(item); setSelectedVehicleId(null); setSelectedDriverId(null); }}
         >
           <Text style={s.bookBtnText}>{full ? 'Sin lugares' : 'Reservar turno'}</Text>
         </TouchableOpacity>
@@ -272,39 +294,100 @@ export default function TurnosScreen() {
       <Modal visible={!!bookModal} transparent animationType="slide" onRequestClose={() => setBookModal(null)}>
         <View style={s.modalOverlay}>
           <View style={s.modalBox}>
-            <Text style={s.modalTitle}>Reservar turno</Text>
-            {bookModal && (
-              <Text style={s.modalSub}>{bookModal.plantName} · {bookModal.startTime} – {bookModal.endTime}</Text>
-            )}
-            <Text style={s.fieldLabel}>Conductor</Text>
-            <TextInput
-              style={s.input}
-              value={driverName}
-              onChangeText={setDriverName}
-              placeholder="Nombre del conductor"
-              placeholderTextColor={T.textMuted}
-            />
-            <Text style={s.fieldLabel}>Patente</Text>
-            <TextInput
-              style={s.input}
-              value={vehiclePlate}
-              onChangeText={setVehiclePlate}
-              placeholder="Ej: ABC123"
-              autoCapitalize="characters"
-              placeholderTextColor={T.textMuted}
-            />
+            <View style={s.modalHeader}>
+              <View>
+                <Text style={s.modalTitle}>Reservar turno</Text>
+                {bookModal && (
+                  <Text style={s.modalSub}>{bookModal.plantName} · {bookModal.startTime} – {bookModal.endTime}</Text>
+                )}
+              </View>
+              <TouchableOpacity onPress={() => setBookModal(null)} hitSlop={10}>
+                <Ionicons name="close" size={22} color={T.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={s.modalScroll}>
+              {/* Selector de vehículo */}
+              <Text style={s.fieldLabel}>Vehículo</Text>
+              {loadingVehicles ? (
+                <ActivityIndicator color={T.accent} style={{ marginVertical: 12 }} />
+              ) : vehicles.length === 0 ? (
+                <Text style={s.emptyPickerText}>No tenés vehículos cargados en tu flota.</Text>
+              ) : (
+                <View style={s.pickerList}>
+                  {vehicles.map(v => {
+                    const selected = v.id === selectedVehicleId;
+                    return (
+                      <TouchableOpacity
+                        key={v.id}
+                        style={[s.pickerItem, selected && s.pickerItemSelected]}
+                        onPress={() => setSelectedVehicleId(selected ? null : v.id)}
+                        activeOpacity={0.7}
+                      >
+                        <View style={s.pickerItemLeft}>
+                          <Text style={[s.pickerPlate, selected && s.pickerTextSelected]}>
+                            {v.plate}
+                          </Text>
+                          <Text style={[s.pickerSub, selected && { color: T.bgCard }]}>
+                            {[v.brand, v.model, v.year].filter(Boolean).join(' · ')}
+                          </Text>
+                        </View>
+                        {selected && <Ionicons name="checkmark-circle" size={20} color={T.bgCard} />}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              )}
+
+              {/* Selector de conductor */}
+              <Text style={[s.fieldLabel, { marginTop: 14 }]}>Conductor</Text>
+              {loadingDrivers ? (
+                <ActivityIndicator color={T.accent} style={{ marginVertical: 12 }} />
+              ) : drivers.length === 0 ? (
+                <Text style={s.emptyPickerText}>No tenés conductores cargados.</Text>
+              ) : (
+                <View style={s.pickerList}>
+                  {drivers.map(d => {
+                    const name = `${d.user?.firstName ?? ''} ${d.user?.lastName ?? ''}`.trim() || 'Sin nombre';
+                    const selected = d.id === selectedDriverId;
+                    return (
+                      <TouchableOpacity
+                        key={d.id}
+                        style={[s.pickerItem, selected && s.pickerItemSelected]}
+                        onPress={() => setSelectedDriverId(selected ? null : d.id)}
+                        activeOpacity={0.7}
+                      >
+                        <View style={s.pickerItemLeft}>
+                          <Text style={[s.pickerName, selected && s.pickerTextSelected]}>{name}</Text>
+                          {d.licenseNumber && (
+                            <Text style={[s.pickerSub, selected && { color: T.bgCard }]}>
+                              Lic: {d.licenseNumber}
+                            </Text>
+                          )}
+                        </View>
+                        {selected && <Ionicons name="checkmark-circle" size={20} color={T.bgCard} />}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              )}
+            </ScrollView>
+
             <View style={s.modalActions}>
               <TouchableOpacity style={s.modalCancelBtn} onPress={() => setBookModal(null)}>
                 <Text style={s.modalCancelText}>Cancelar</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[s.modalConfirmBtn, bookMutation.isPending && { opacity: 0.6 }]}
-                disabled={bookMutation.isPending}
+                style={[
+                  s.modalConfirmBtn,
+                  (!selectedVehicleId || bookMutation.isPending) && { opacity: 0.5 },
+                ]}
+                disabled={!selectedVehicleId || bookMutation.isPending}
                 onPress={() => bookModal && bookMutation.mutate(bookModal.id)}
               >
                 {bookMutation.isPending
                   ? <ActivityIndicator color="#fff" size="small" />
-                  : <Text style={s.modalConfirmText}>Confirmar</Text>}
+                  : <Text style={s.modalConfirmText}>Confirmar reserva</Text>}
               </TouchableOpacity>
             </View>
           </View>
@@ -413,11 +496,32 @@ const s = StyleSheet.create({
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   modalBox: {
     backgroundColor: T.bgCard, borderTopLeftRadius: 16, borderTopRightRadius: 16,
-    padding: T.spaceMd, paddingBottom: 36, gap: 4,
+    padding: T.spaceMd, paddingBottom: 36, maxHeight: '85%',
   },
-  modalTitle: { fontSize: T.fontSizeLg, fontWeight: '800', color: T.textPrimary, marginBottom: 2 },
-  modalSub: { fontSize: T.fontSizeSm, color: T.textMuted, marginBottom: 6 },
-  fieldLabel: { fontSize: 12, fontWeight: '600', color: T.textMuted, marginTop: 10 },
+  modalHeader: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10,
+  },
+  modalTitle: { fontSize: T.fontSizeLg, fontWeight: '800', color: T.textPrimary },
+  modalSub: { fontSize: T.fontSizeSm, color: T.textMuted, marginTop: 2 },
+  modalScroll: { maxHeight: 340 },
+  fieldLabel: { fontSize: 11, fontWeight: '700', color: T.textMuted, letterSpacing: 0.8, marginBottom: 6 },
+  // Picker de flota
+  pickerList: { gap: 6, marginBottom: 4 },
+  pickerItem: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    borderWidth: 1, borderColor: T.border, borderRadius: T.radiusSm,
+    paddingHorizontal: 12, paddingVertical: 10, backgroundColor: T.bgMuted,
+  },
+  pickerItemSelected: { backgroundColor: T.textPrimary, borderColor: T.textPrimary },
+  pickerItemLeft: { flex: 1, gap: 2 },
+  pickerPlate: { fontSize: T.fontSizeMd, fontWeight: '800', color: T.textPrimary, letterSpacing: 1 },
+  pickerName: { fontSize: T.fontSizeSm, fontWeight: '600', color: T.textPrimary },
+  pickerSub: { fontSize: T.fontSizeXs, color: T.textMuted },
+  pickerTextSelected: { color: T.bgCard },
+  emptyPickerText: {
+    fontSize: T.fontSizeXs, color: T.textMuted, fontStyle: 'italic',
+    paddingVertical: 10, textAlign: 'center',
+  },
   input: {
     borderWidth: 1, borderColor: T.border, borderRadius: T.radiusSm,
     paddingHorizontal: 12, paddingVertical: 10, fontSize: T.fontSizeMd,
