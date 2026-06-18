@@ -63,8 +63,29 @@ export default function TurnosPage() {
     notes: '',
   });
 
-  // Booking form
-  const [bookForm, setBookForm] = useState({ driverName: '', vehiclePlate: '', notes: '' });
+  // Booking form: el transportista elige vehículo (requerido) y chofer (opcional)
+  // desde su flota en lugar de tipear a mano.
+  const [bookForm, setBookForm] = useState({ vehicleId: '', driverId: '', notes: '' });
+
+  const { data: vehicles } = useQuery<any[]>({
+    queryKey: ['my-vehicles'],
+    queryFn: async () => {
+      const res = await api.get('/vehicles', { params: { limit: 100 } });
+      return res.data?.data ?? res.data ?? [];
+    },
+    enabled: isTransportista && !!bookingSlot,
+    staleTime: 60_000,
+  });
+
+  const { data: drivers } = useQuery<any[]>({
+    queryKey: ['my-drivers'],
+    queryFn: async () => {
+      const res = await api.get('/drivers', { params: { limit: 100 } });
+      return res.data?.data ?? res.data ?? [];
+    },
+    enabled: isTransportista && !!bookingSlot,
+    staleTime: 60_000,
+  });
 
   const { data: slots, isLoading: slotsLoading } = useQuery<TurnSlot[]>({
     queryKey: ['turnos-slots', isDador ? (user as any)?.companyId : null, filterDate],
@@ -100,14 +121,23 @@ export default function TurnosPage() {
 
   const bookMutation = useMutation({
     mutationFn: async ({ slotId, data }: { slotId: string; data: typeof bookForm }) => {
-      const res = await api.post(`/turnos/slots/${slotId}/book`, data);
+      const vehicle = vehicles?.find((v) => v.id === data.vehicleId);
+      const driver = drivers?.find((d) => d.id === data.driverId);
+      const payload = {
+        vehiclePlate: vehicle?.plate ?? '',
+        driverName: driver
+          ? `${driver.user?.firstName ?? ''} ${driver.user?.lastName ?? ''}`.trim()
+          : '',
+        notes: data.notes,
+      };
+      const res = await api.post(`/turnos/slots/${slotId}/book`, payload);
       return res.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['turnos-slots'] });
       queryClient.invalidateQueries({ queryKey: ['turnos-bookings'] });
       setBookingSlot(null);
-      setBookForm({ driverName: '', vehiclePlate: '', notes: '' });
+      setBookForm({ vehicleId: '', driverId: '', notes: '' });
     },
   });
 
@@ -230,12 +260,52 @@ export default function TurnosPage() {
                 <strong>{bookingSlot.plantName}</strong> · {bookingSlot.startTime} - {bookingSlot.endTime} · {format(new Date(bookingSlot.date), 'dd MMM yyyy', { locale: es })}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre del chofer</label>
-                <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={bookForm.driverName} onChange={(e) => setBookForm((f) => ({ ...f, driverName: e.target.value }))} placeholder="Opcional" />
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Vehículo <span className="text-red-500">*</span>
+                </label>
+                {!vehicles ? (
+                  <div className="text-sm text-gray-400 py-2">Cargando flota…</div>
+                ) : vehicles.length === 0 ? (
+                  <div className="text-sm text-amber-600 py-2">
+                    No tenés vehículos cargados.{' '}
+                    <Link href="/flota" className="underline font-medium">Agregá uno</Link>.
+                  </div>
+                ) : (
+                  <select
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"
+                    value={bookForm.vehicleId}
+                    onChange={(e) => setBookForm((f) => ({ ...f, vehicleId: e.target.value }))}
+                  >
+                    <option value="">Seleccioná un vehículo…</option>
+                    {vehicles.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.plate}{[v.brand, v.model].filter(Boolean).length ? ` — ${[v.brand, v.model].filter(Boolean).join(' ')}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Patente del camión</label>
-                <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={bookForm.vehiclePlate} onChange={(e) => setBookForm((f) => ({ ...f, vehiclePlate: e.target.value }))} placeholder="Ej: ABC123" />
+                <label className="block text-sm font-medium text-gray-700 mb-1">Chofer</label>
+                {!drivers ? (
+                  <div className="text-sm text-gray-400 py-2">Cargando choferes…</div>
+                ) : drivers.length === 0 ? (
+                  <div className="text-sm text-gray-400 py-2">No tenés choferes cargados (opcional).</div>
+                ) : (
+                  <select
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"
+                    value={bookForm.driverId}
+                    onChange={(e) => setBookForm((f) => ({ ...f, driverId: e.target.value }))}
+                  >
+                    <option value="">Sin asignar</option>
+                    {drivers.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {`${d.user?.firstName ?? ''} ${d.user?.lastName ?? ''}`.trim() || 'Sin nombre'}
+                        {d.licenseNumber ? ` — Lic: ${d.licenseNumber}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Notas</label>
@@ -243,7 +313,13 @@ export default function TurnosPage() {
               </div>
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setBookingSlot(null)}>Cancelar</Button>
-                <Button loading={bookMutation.isPending} onClick={() => bookMutation.mutate({ slotId: bookingSlot.id, data: bookForm })}>Confirmar reserva</Button>
+                <Button
+                  loading={bookMutation.isPending}
+                  disabled={!bookForm.vehicleId}
+                  onClick={() => bookMutation.mutate({ slotId: bookingSlot.id, data: bookForm })}
+                >
+                  Confirmar reserva
+                </Button>
               </div>
             </div>
           </div>
