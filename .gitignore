@@ -33,8 +33,7 @@ pnpm-debug.log*
 # TypeScript
 *.tsbuildinfo
 
-# Prisma
-apps/api/prisma/migrations/
+# Prisma - NO ignorar migrations: son necesarias para migrate deploy en producción
 
 # OS
 .DS_Store
