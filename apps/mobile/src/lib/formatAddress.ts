@@ -34,6 +34,7 @@ const PROVINCE_ABBR: Record<string, string> = {
 };
 
 function abbreviateProvince(raw: string): string {
+  if (!raw) return raw;
   const key = raw.trim().toLowerCase();
   return PROVINCE_ABBR[key] ?? raw.trim();
 }
@@ -58,7 +59,8 @@ function abbreviateProvince(raw: string): string {
  *     "Ruta", "RN", "RP", número) = ciudad.
  *   - Si solo hay 1 segmento: truncar a 22 caracteres.
  */
-export function formatAddressShort(address: string): string {
+export function formatAddressShort(address: string | null | undefined): string {
+  if (!address) return '—';
   const parts = address.split(',').map((p) => p.trim()).filter(Boolean);
   if (parts.length === 0) return address;
   if (parts.length === 1) {
@@ -90,6 +92,6 @@ export function formatAddressShort(address: string): string {
  * Usada en la tarjeta de la bolsa para reemplazar las direcciones largas
  * y mejorar la legibilidad a primera vista.
  */
-export function formatRouteShort(origin: string, destination: string): string {
+export function formatRouteShort(origin: string | null | undefined, destination: string | null | undefined): string {
   return `${formatAddressShort(origin)} → ${formatAddressShort(destination)}`;
 }

@@ -70,7 +70,7 @@ function TripCard({ trip, onPress }: { trip: Trip; onPress: () => void }) {
       <View style={styles.cardFooter}>
         <Text style={styles.weight}>{trip.cargo.weightTons} t</Text>
         <Text style={styles.rate}>
-          ${trip.agreedRate.toLocaleString('es-UY')}
+          {trip.agreedRate != null ? `$${trip.agreedRate.toLocaleString('es-AR')}` : '—'}
         </Text>
       </View>
     </TouchableOpacity>

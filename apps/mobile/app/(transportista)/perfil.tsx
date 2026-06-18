@@ -17,10 +17,9 @@ export default function PerfilScreen() {
   const router = useRouter();
   const user = getUser();
 
-  const fullName = user?.name ?? [user?.firstName, user?.lastName].filter(Boolean).join(' ') ?? 'Usuario';
+  const fullName = user?.name ?? [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'Usuario';
   const email = user?.email ?? '';
   const companyName = user?.company?.name ?? user?.companyName ?? '';
-  const initials = fullName.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase();
 
   const handleLogout = async () => {
     await logout();
@@ -30,7 +29,7 @@ export default function PerfilScreen() {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <Avatar initials={initials} size={72} />
+        <Avatar name={fullName} size={72} />
         <Text style={styles.name}>{fullName}</Text>
         <Text style={styles.email}>{email}</Text>
         <View style={styles.roleBadge}>

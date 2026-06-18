@@ -238,7 +238,7 @@ export default function ChoferTripScreen() {
               <View style={[s.infoRow, { borderBottomWidth: 0 }]}>
                 <Text style={s.infoLabel}>Tarifa acordada</Text>
                 <Text style={[s.infoValue, { color: T.accent, fontWeight: '700' }]}>
-                  ${trip.agreedRate?.toLocaleString('es-AR')}
+                  {trip.agreedRate != null ? `$${trip.agreedRate.toLocaleString('es-AR')}` : '—'}
                 </Text>
               </View>
             </View>

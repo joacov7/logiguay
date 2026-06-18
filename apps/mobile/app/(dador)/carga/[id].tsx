@@ -60,7 +60,7 @@ export default function CargoQuotesScreen() {
   function confirmAccept(quote: Quote) {
     Alert.alert(
       'Aceptar cotización',
-      `¿Asignar la carga a ${quote.transportCompany.name} por $${quote.amount.toLocaleString('es-AR')}? Las demás ofertas serán rechazadas.`,
+      `¿Asignar la carga a ${quote.transportCompany?.name ?? '—'} por $${quote.amount?.toLocaleString('es-AR') ?? '—'}? Las demás ofertas serán rechazadas.`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -133,7 +133,7 @@ export default function CargoQuotesScreen() {
                 </View>
               </View>
 
-              <Text style={s.amount}>${item.amount.toLocaleString('es-AR')}</Text>
+              <Text style={s.amount}>{item.amount != null ? `$${item.amount.toLocaleString('es-AR')}` : '—'}</Text>
               {item.notes ? <Text style={s.notes}>{item.notes}</Text> : null}
 
               {item.status === 'PENDIENTE' && (

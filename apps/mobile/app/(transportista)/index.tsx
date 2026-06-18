@@ -137,7 +137,7 @@ export default function TransportistaDashboard() {
                     </Text>
                   </View>
                   <View style={st.tripRight}>
-                    <Text style={st.tripStatus}>{trip.status.replace(/_/g, ' ')}</Text>
+                    <Text style={st.tripStatus}>{trip.status?.replace(/_/g, ' ') ?? '—'}</Text>
                     <Ionicons name="chevron-forward" size={14} color={T.textMuted} />
                   </View>
                 </TouchableOpacity>
