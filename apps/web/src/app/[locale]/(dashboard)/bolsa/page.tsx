@@ -6,7 +6,6 @@ import {
   ShoppingBag,
   MapPin,
   Weight,
-  DollarSign,
   Calendar,
   Search,
   ChevronDown,
@@ -24,6 +23,7 @@ import { es } from 'date-fns/locale';
 import api from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 import { Cargo, PaginatedResponse } from '@/types';
+import { formatAddressShort } from '@/lib/formatAddress';
 
 interface Filters {
   search: string;
@@ -565,58 +565,68 @@ export default function BolsaPage() {
             const distanceKm = (cargo as any).distanceKm as number | null | undefined;
             return (
               <Card key={cargo.id} className="hover:shadow-md transition-shadow flex flex-col">
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <p className="font-semibold text-gray-900">{cargo.type}</p>
-                    <p className="text-xs text-gray-500">{cargo.company?.name}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
+                {/* Tipo + distancia + estado */}
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-full">
+                      {cargo.type}
+                    </span>
                     {geoActive && distanceKm != null && (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full text-xs font-medium">
                         <MapPin className="h-3 w-3" />
                         {distanceKm} km
                       </span>
                     )}
-                    <StatusBadge status={cargo.status} />
                   </div>
+                  <StatusBadge status={cargo.status} />
                 </div>
 
-                <div className="space-y-2 mb-4">
-                  <div className="flex items-start gap-2 text-sm">
-                    <MapPin className="h-4 w-4 text-green-500 shrink-0 mt-0.5" />
-                    <span className="text-gray-600 line-clamp-1">{cargo.originAddress}</span>
-                  </div>
-                  <div className="flex items-start gap-2 text-sm">
-                    <MapPin className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
-                    <span className="text-gray-600 line-clamp-1">{cargo.destinationAddress}</span>
-                  </div>
+                {/* Ruta simplificada — jerarquía principal, legible de un vistazo */}
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="w-2.5 h-2.5 rounded-full bg-green-500 shrink-0" />
+                  <span className="font-semibold text-gray-900 text-sm">
+                    {formatAddressShort(cargo.originAddress)}
+                  </span>
+                </div>
+                <div className="w-0.5 h-3 bg-gray-300 ml-[5px] mb-1" />
+                <div className="flex items-center gap-2 mb-3">
+                  <MapPin className="h-2.5 w-2.5 text-red-500 shrink-0" />
+                  <span className="font-semibold text-gray-900 text-sm">
+                    {formatAddressShort(cargo.destinationAddress)}
+                  </span>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 mb-3">
+                {/* Valor del flete — dato crítico, máxima jerarquía visual */}
+                {cargo.estimatedValue != null && (
+                  <div className="flex items-baseline gap-2 bg-green-50 border border-green-100 rounded-xl px-3 py-2 mb-3">
+                    <span className="text-xs font-bold text-green-700 uppercase tracking-wide">Valor ref.</span>
+                    <span className="text-xl font-extrabold text-green-700 tracking-tight">
+                      ${cargo.estimatedValue.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                    </span>
+                  </div>
+                )}
+
+                {/* Meta secundaria: peso, fecha, empresa, cotizaciones */}
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-400 mb-3">
                   {cargo.weightTons != null && (
                     <span className="flex items-center gap-1">
                       <Weight className="h-3 w-3" />
-                      {cargo.weightTons}t
-                    </span>
-                  )}
-                  {cargo.estimatedValue != null && (
-                    <span className="flex items-center gap-1">
-                      <DollarSign className="h-3 w-3" />
-                      ${cargo.estimatedValue.toLocaleString('es-AR')}
+                      {cargo.weightTons} t
                     </span>
                   )}
                   {cargo.requiredDate && (
                     <span className="flex items-center gap-1">
                       <Calendar className="h-3 w-3" />
-                      {format(new Date(cargo.requiredDate), 'dd MMM yyyy', { locale: es })}
+                      {format(new Date(cargo.requiredDate), 'dd MMM', { locale: es })}
                     </span>
                   )}
+                  <span className="ml-auto text-gray-400">{cargo.company?.name}</span>
                 </div>
 
-                <div className="flex items-center justify-between text-xs mb-4">
+                <div className="text-xs mb-4">
                   <span className={`font-medium ${(cargo._count?.quotes ?? 0) > 0 ? 'text-blue-600' : 'text-gray-400'}`}>
                     {cargo._count?.quotes ?? 0}{' '}
-                    {cargo._count?.quotes === 1 ? 'cotización recibida' : 'cotizaciones recibidas'}
+                    {cargo._count?.quotes === 1 ? 'cotización' : 'cotizaciones'}
                   </span>
                 </div>
 

@@ -5,7 +5,9 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
+import { Weight, Calendar } from 'lucide-react-native';
 import api from '../../src/lib/api';
+import { formatRouteShort } from '../../src/lib/formatAddress';
 
 interface Cargo {
   id: string;
@@ -13,6 +15,7 @@ interface Cargo {
   originAddress: string;
   destinationAddress: string;
   weightTons: number | null;
+  estimatedValue: number | null;
   requiredDate: string | null;
   _count?: { quotes: number };
 }
@@ -65,39 +68,55 @@ export default function BolsaScreen() {
         }
         renderItem={({ item }) => {
           const offerCount = item._count?.quotes ?? 0;
+          const routeShort = formatRouteShort(item.originAddress, item.destinationAddress);
           return (
             <TouchableOpacity
               style={s.card}
               activeOpacity={0.7}
               onPress={() => router.push(`/(dador)/carga/${item.id}`)}
             >
+              {/* Tipo + ofertas */}
               <View style={s.cardTop}>
-                <Text style={s.cargoType}>{item.type}</Text>
+                <View style={s.typeBadge}>
+                  <Text style={s.typeText}>{item.type}</Text>
+                </View>
                 <View style={s.offerBadge}>
                   <Text style={s.offerText}>
                     {offerCount} oferta{offerCount !== 1 ? 's' : ''}
                   </Text>
                 </View>
               </View>
-              <View style={s.routeRow}>
-                <View style={[s.dot, { backgroundColor: '#15A66A' }]} />
-                <Text style={s.routeText} numberOfLines={1}>{item.originAddress}</Text>
-              </View>
-              <View style={s.routeRow}>
-                <View style={[s.dot, { backgroundColor: '#ef4444' }]} />
-                <Text style={s.routeText} numberOfLines={1}>{item.destinationAddress}</Text>
-              </View>
-              <View style={s.cardBottom}>
-                <Text style={s.meta}>
-                  {item.weightTons ? `${item.weightTons} t` : '—'}
-                </Text>
-                {item.requiredDate && (
-                  <Text style={s.date}>
-                    {new Date(item.requiredDate).toLocaleDateString('es-AR', {
-                      day: '2-digit',
-                      month: '2-digit',
-                    })}
+
+              {/* Ruta simplificada */}
+              <Text style={s.routeShort} numberOfLines={2}>{routeShort}</Text>
+
+              {/* Valor del flete: dato más crítico para el camionero */}
+              {item.estimatedValue ? (
+                <View style={s.valueRow}>
+                  <Text style={s.valueLabel}>VALOR REF.</Text>
+                  <Text style={s.valueAmount}>
+                    ${item.estimatedValue.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                   </Text>
+                </View>
+              ) : null}
+
+              {/* Meta secundaria */}
+              <View style={s.cardBottom}>
+                {item.weightTons ? (
+                  <View style={s.metaItem}>
+                    <Weight size={12} color="#9CA3AF" />
+                    <Text style={s.meta}>{item.weightTons} t</Text>
+                  </View>
+                ) : <View />}
+                {item.requiredDate && (
+                  <View style={s.metaItem}>
+                    <Calendar size={12} color="#9CA3AF" />
+                    <Text style={s.date}>
+                      {new Date(item.requiredDate).toLocaleDateString('es-AR', {
+                        day: '2-digit', month: '2-digit',
+                      })}
+                    </Text>
+                  </View>
                 )}
               </View>
             </TouchableOpacity>
@@ -112,12 +131,9 @@ const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F9FAFB' },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   header: {
-    backgroundColor: '#fff',
-    paddingHorizontal: 20,
-    paddingTop: 56,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    backgroundColor: '#fff', paddingHorizontal: 20,
+    paddingTop: 56, paddingBottom: 16,
+    borderBottomWidth: 1, borderBottomColor: '#e5e7eb',
   },
   headerTitle: { fontSize: 24, fontWeight: '800', color: '#111827' },
   headerSub: { fontSize: 14, color: '#6B7280', marginTop: 2 },
@@ -127,41 +143,42 @@ const s = StyleSheet.create({
   emptyIcon: { fontSize: 48, marginBottom: 16 },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: '#374151', marginBottom: 8 },
   emptySub: { fontSize: 14, color: '#9CA3AF', textAlign: 'center', paddingHorizontal: 32 },
+
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 6,
+    backgroundColor: '#fff', borderRadius: 16, padding: 16,
+    elevation: 2, shadowColor: '#000',
+    shadowOpacity: 0.06, shadowOffset: { width: 0, height: 2 }, shadowRadius: 6,
   },
   cardTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
+    flexDirection: 'row', justifyContent: 'space-between',
+    alignItems: 'center', marginBottom: 10,
   },
-  cargoType: { fontSize: 16, fontWeight: '700', color: '#111827', flex: 1, marginRight: 8 },
-  offerBadge: {
-    backgroundColor: '#DBEAFE',
-    borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-  },
+  typeBadge: { backgroundColor: '#eff6ff', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
+  typeText: { fontSize: 12, fontWeight: '700', color: '#1e40af' },
+  offerBadge: { backgroundColor: '#DBEAFE', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3 },
   offerText: { fontSize: 12, fontWeight: '600', color: '#1E40AF' },
-  routeRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
-  dot: { width: 8, height: 8, borderRadius: 4 },
-  routeText: { fontSize: 13, color: '#374151', flex: 1 },
-  cardBottom: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
+
+  // Ruta simplificada — jerarquía 2
+  routeShort: {
+    fontSize: 15, fontWeight: '700', color: '#111827',
+    marginBottom: 10, lineHeight: 21,
   },
-  meta: { fontSize: 13, color: '#6B7280' },
-  date: { fontSize: 13, fontWeight: '600', color: '#374151' },
+
+  // Valor del flete — jerarquía 1
+  valueRow: {
+    flexDirection: 'row', alignItems: 'baseline', gap: 8,
+    backgroundColor: '#f0fdf4', borderRadius: 10,
+    paddingHorizontal: 12, paddingVertical: 8, marginBottom: 10,
+  },
+  valueLabel: { fontSize: 10, fontWeight: '700', color: '#15803d', letterSpacing: 0.8 },
+  valueAmount: { fontSize: 20, fontWeight: '800', color: '#15803d', letterSpacing: -0.5 },
+
+  // Meta secundaria
+  cardBottom: {
+    flexDirection: 'row', justifyContent: 'space-between',
+    paddingTop: 10, borderTopWidth: 1, borderTopColor: '#F3F4F6',
+  },
+  metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  meta: { fontSize: 12, color: '#9CA3AF' },
+  date: { fontSize: 12, color: '#9CA3AF' },
 });

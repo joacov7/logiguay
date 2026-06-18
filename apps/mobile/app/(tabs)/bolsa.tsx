@@ -4,8 +4,9 @@ import {
   RefreshControl, ActivityIndicator, StatusBar, Modal,
   TextInput, Alert, KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
-import { MapPin, Weight, DollarSign, X, Send } from 'lucide-react-native';
+import { MapPin, Weight, Calendar, X, Send } from 'lucide-react-native';
 import api, { getApiErrorMessage } from '../../src/lib/api';
+import { formatRouteShort } from '../../src/lib/formatAddress';
 
 interface Cargo {
   id: string;
@@ -68,14 +69,12 @@ function QuoteModal({ cargo, onClose, onSuccess }: QuoteModalProps) {
 
           <View style={styles.modalCargo}>
             <Text style={styles.modalCargoType}>{cargo.type}</Text>
-            <Text style={styles.modalCargoRoute} numberOfLines={1}>
-              {cargo.originAddress} → {cargo.destinationAddress}
+            <Text style={styles.modalCargoRoute} numberOfLines={2}>
+              {formatRouteShort(cargo.originAddress, cargo.destinationAddress)}
             </Text>
-            {cargo.weightTons ? (
-              <Text style={styles.modalCargoDetail}>{cargo.weightTons} t · {cargo.company.name}</Text>
-            ) : (
-              <Text style={styles.modalCargoDetail}>{cargo.company.name}</Text>
-            )}
+            <Text style={styles.modalCargoDetail}>
+              {cargo.weightTons ? `${cargo.weightTons} t · ` : ''}{cargo.company.name}
+            </Text>
           </View>
 
           <Text style={styles.inputLabel}>Tu precio (ARS)</Text>
@@ -123,42 +122,45 @@ function CargoCard({ cargo, onQuote }: { cargo: Cargo; onQuote: () => void }) {
   const date = cargo.requiredDate
     ? new Date(cargo.requiredDate).toLocaleDateString('es-AR', { day: '2-digit', month: 'short' })
     : null;
+  const routeShort = formatRouteShort(cargo.originAddress, cargo.destinationAddress);
 
   return (
     <View style={styles.card}>
+      {/* Fila superior: tipo + fecha */}
       <View style={styles.cardTop}>
         <View style={styles.typeBadge}>
           <Text style={styles.typeText}>{cargo.type}</Text>
         </View>
-        {date && <Text style={styles.dateText}>{date}</Text>}
+        {date && (
+          <View style={styles.dateChip}>
+            <Calendar color="#6b7280" size={11} />
+            <Text style={styles.dateText}>{date}</Text>
+          </View>
+        )}
       </View>
 
-      <View style={styles.routeBlock}>
-        <View style={styles.routeRow}>
-          <View style={[styles.dot, { backgroundColor: '#22c55e' }]} />
-          <Text style={styles.routeText} numberOfLines={1}>{cargo.originAddress}</Text>
-        </View>
-        <View style={styles.routeLine} />
-        <View style={styles.routeRow}>
-          <View style={[styles.dot, { backgroundColor: '#ef4444' }]} />
-          <Text style={styles.routeText} numberOfLines={1}>{cargo.destinationAddress}</Text>
-        </View>
-      </View>
+      {/* Ruta simplificada — dato más visual y escaneable */}
+      <Text style={styles.routeShort} numberOfLines={2}>{routeShort}</Text>
 
+      {/* Valor del flete: dato crítico para el camionero, máxima jerarquía */}
+      {cargo.estimatedValue ? (
+        <View style={styles.valueRow}>
+          <Text style={styles.valueLabel}>VALOR REF.</Text>
+          <Text style={styles.valueAmount}>
+            ${cargo.estimatedValue.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+          </Text>
+        </View>
+      ) : null}
+
+      {/* Meta secundaria: peso + empresa */}
       <View style={styles.cardMeta}>
         {cargo.weightTons ? (
           <View style={styles.metaItem}>
-            <Weight color="#6b7280" size={13} />
+            <Weight color="#9ca3af" size={12} />
             <Text style={styles.metaText}>{cargo.weightTons} t</Text>
           </View>
         ) : null}
-        {cargo.estimatedValue ? (
-          <View style={styles.metaItem}>
-            <DollarSign color="#6b7280" size={13} />
-            <Text style={styles.metaText}>Ref: ${cargo.estimatedValue.toLocaleString('es-AR')}</Text>
-          </View>
-        ) : null}
-        <Text style={styles.companyText}>{cargo.company.name}</Text>
+        <Text style={styles.companyText} numberOfLines={1}>{cargo.company.name}</Text>
       </View>
 
       <TouchableOpacity style={styles.quoteBtn} onPress={onQuote} activeOpacity={0.8}>
@@ -264,19 +266,38 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOpacity: 0.06, shadowOffset: { width: 0, height: 2 },
     shadowRadius: 6, elevation: 3,
   },
-  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   typeBadge: { backgroundColor: '#eff6ff', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
   typeText: { fontSize: 12, fontWeight: '700', color: '#1e40af' },
+  dateChip: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   dateText: { fontSize: 12, color: '#6b7280' },
-  routeBlock: { marginBottom: 12 },
-  routeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  dot: { width: 8, height: 8, borderRadius: 4 },
-  routeText: { fontSize: 13, color: '#374151', flex: 1 },
-  routeLine: { width: 1, height: 10, backgroundColor: '#d1d5db', marginLeft: 3.5, marginVertical: 2 },
-  cardMeta: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14, flexWrap: 'wrap' },
-  metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  metaText: { fontSize: 12, color: '#6b7280' },
-  companyText: { fontSize: 12, color: '#6b7280', marginLeft: 'auto' },
+
+  // Ruta simplificada — jerarquía 2
+  routeShort: {
+    fontSize: 15, fontWeight: '700', color: '#111827',
+    marginBottom: 10, lineHeight: 21,
+  },
+
+  // Valor del flete — jerarquía 1: el dato más importante para el camionero
+  valueRow: {
+    flexDirection: 'row', alignItems: 'baseline', gap: 8,
+    backgroundColor: '#f0fdf4', borderRadius: 10,
+    paddingHorizontal: 12, paddingVertical: 8,
+    marginBottom: 10,
+  },
+  valueLabel: {
+    fontSize: 10, fontWeight: '700', color: '#15803d', letterSpacing: 0.8,
+  },
+  valueAmount: {
+    fontSize: 20, fontWeight: '800', color: '#15803d', letterSpacing: -0.5,
+  },
+
+  // Meta secundaria
+  cardMeta: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 },
+  metaItem: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  metaText: { fontSize: 12, color: '#9ca3af' },
+  companyText: { fontSize: 12, color: '#9ca3af', marginLeft: 'auto', flex: 1, textAlign: 'right' },
+
   quoteBtn: {
     backgroundColor: '#1e3a8a', borderRadius: 10,
     paddingVertical: 12, alignItems: 'center',
