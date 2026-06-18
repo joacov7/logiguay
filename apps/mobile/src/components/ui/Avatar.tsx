@@ -2,12 +2,13 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 
 interface Props {
-  name: string;
+  name?: string | null;
   size?: number;
 }
 
 export function Avatar({ name, size = 40 }: Props) {
-  const parts = name.trim().split(/\s+/);
+  const safeName = name?.trim() || '?';
+  const parts = safeName.split(/\s+/);
   const initials =
     parts.length >= 2
       ? `${parts[0][0]}${parts[1][0]}`.toUpperCase()
