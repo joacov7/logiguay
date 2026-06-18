@@ -36,6 +36,7 @@ export function useVehicleTracking(vehicleId: string | undefined, active: boolea
   const startingRef = useRef(false); // evita arranques concurrentes
 
   const stopTracking = useCallback(() => {
+    startingRef.current = false;
     if (watcherRef.current) {
       watcherRef.current.remove();
       watcherRef.current = null;
@@ -120,11 +121,12 @@ export function useVehicleTracking(vehicleId: string | undefined, active: boolea
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, vehicleId]);
 
-  // Pausar el GPS cuando la app va a background: ahorra batería y evita enviar
-  // posiciones mientras el chofer no tiene la app abierta. Reanuda al volver.
+  // Al volver al primer plano, siempre reiniciar: el watcher y el socket pueden
+  // haber quedado inválidos mientras el SO suspendía la app.
   useEffect(() => {
     const sub = AppState.addEventListener('change', (next: AppStateStatus) => {
-      if (next === 'active' && active && vehicleId && !watcherRef.current) {
+      if (next === 'active' && active && vehicleId) {
+        stopTracking();
         startTracking(vehicleId);
       } else if (next.match(/inactive|background/) && watcherRef.current) {
         stopTracking();
