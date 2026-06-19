@@ -179,4 +179,8 @@ export class TrackingGateway implements OnGatewayConnection, OnGatewayDisconnect
   broadcastQueueUpdate(slotId: string, queue: any): void {
     this.server.to(`slot-queue:${slotId}`).emit('queue-update', queue);
   }
+
+  broadcastMessage(tripId: string, message: any): void {
+    this.server.to(`trip:${tripId}`).emit('message', message);
+  }
 }

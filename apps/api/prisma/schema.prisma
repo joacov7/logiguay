@@ -191,6 +191,7 @@ model Company {
   turnBookings       TurnBooking[]
   truckAvailability  TruckAvailability[]
   ratingsReceived    Rating[] @relation("RatingsReceivedByCompany")
+  messagesSent       Message[] @relation("MessagesSent")
 
   @@map("companies")
 }
@@ -341,6 +342,7 @@ model Trip {
   alerts           Alert[]
   invoices         Invoice[]
   ratings          Rating[]
+  messages         Message[]
 
   @@map("trips")
 }
@@ -582,4 +584,22 @@ model AppSetting {
   updatedAt DateTime @updatedAt
 
   @@map("app_settings")
+}
+
+model Message {
+  id              String   @id @default(cuid())
+  tripId          String
+  senderCompanyId String
+  senderUserId    String?
+  // body ya viene enmascarado: nunca se persiste PII (teléfono/email/links)
+  body            String
+  maskedContact   Boolean  @default(false)
+  readAt          DateTime?
+  createdAt       DateTime @default(now())
+
+  trip          Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  senderCompany Company  @relation("MessagesSent", fields: [senderCompanyId], references: [id])
+
+  @@index([tripId, createdAt])
+  @@map("messages")
 }
