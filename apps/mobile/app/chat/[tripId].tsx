@@ -4,6 +4,7 @@ import {
   KeyboardAvoidingView, Platform, ActivityIndicator, StatusBar,
 } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Send, ShieldAlert, Info } from 'lucide-react-native';
 import { io, Socket } from 'socket.io-client';
@@ -26,6 +27,7 @@ function getSocketUrl(): string {
 
 export default function ChatScreen() {
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
+  const insets = useSafeAreaInsets();
   const qc = useQueryClient();
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [text, setText] = useState('');
@@ -153,7 +155,7 @@ export default function ChatScreen() {
           />
         )}
 
-        <View style={s.inputBar}>
+        <View style={[s.inputBar, { paddingBottom: 10 + insets.bottom }]}>
           <TextInput
             style={s.input}
             value={text}
