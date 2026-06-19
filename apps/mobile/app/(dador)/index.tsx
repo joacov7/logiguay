@@ -4,7 +4,7 @@ import {
   RefreshControl, ActivityIndicator, StatusBar,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Package } from 'lucide-react-native';
+import { Package, Plus } from 'lucide-react-native';
 import api, { getApiErrorMessage } from '../../src/lib/api';
 import { getUser } from '../../src/lib/auth';
 import { User } from '../../src/lib/types';
@@ -140,6 +140,10 @@ export default function DadorCargasScreen() {
           );
         }}
       />
+      {/* FAB publicar */}
+      <TouchableOpacity style={s.fab} onPress={() => router.push('/(dador)/nueva-carga')}>
+        <Plus size={24} color="#fff" />
+      </TouchableOpacity>
     </View>
   );
 }
@@ -189,4 +193,11 @@ const s = StyleSheet.create({
   // Meta secundaria
   cardBottom: { flexDirection: 'row', justifyContent: 'space-between', paddingTop: 10, borderTopWidth: 1, borderTopColor: '#f3f4f6' },
   meta: { fontSize: 13, color: '#9ca3af' },
+  fab: {
+    position: 'absolute', bottom: 20, right: 20,
+    width: 54, height: 54, borderRadius: 27,
+    backgroundColor: '#1e3a8a', alignItems: 'center', justifyContent: 'center',
+    elevation: 6, shadowColor: '#1e3a8a', shadowOpacity: 0.35,
+    shadowOffset: { width: 0, height: 4 }, shadowRadius: 8,
+  },
 });
