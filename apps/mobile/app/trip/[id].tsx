@@ -162,8 +162,10 @@ export default function TripDetailScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={20} color={T.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.toolbarTitle}>Viaje #{trip.id.slice(0, 8).toUpperCase()}</Text>
-        <View style={{ width: 36 }} />
+        <Text style={styles.toolbarTitle}>Viaje #{trip.id?.slice(0, 8).toUpperCase()}</Text>
+        <TouchableOpacity onPress={() => router.push(`/chat/${trip.id}`)} style={styles.backBtn}>
+          <Ionicons name="chatbubble-ellipses-outline" size={20} color={T.textPrimary} />
+        </TouchableOpacity>
       </View>
 
       {/* GPS banner */}

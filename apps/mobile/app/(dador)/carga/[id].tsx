@@ -4,7 +4,7 @@ import {
   RefreshControl, ActivityIndicator, StatusBar, Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
-import { Building2, Check, X } from 'lucide-react-native';
+import { Building2, Check, X, MessageCircle } from 'lucide-react-native';
 import api, { getApiErrorMessage } from '../../../src/lib/api';
 
 interface Quote {
@@ -36,6 +36,7 @@ export default function CargoQuotesScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [acting, setActing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [tripId, setTripId] = useState<string | null>(null);
 
   async function fetchQuotes() {
     try {
@@ -47,8 +48,18 @@ export default function CargoQuotesScreen() {
     }
   }
 
+  // Busca el viaje asignado a esta carga para habilitar el chat con el transportista
+  async function fetchTrip() {
+    try {
+      const res = await api.get('/trips', { params: { limit: 100 } });
+      const trips = res.data?.data ?? res.data ?? [];
+      const t = trips.find((tr: any) => tr.cargoId === id || tr.cargo?.id === id);
+      setTripId(t?.id ?? null);
+    } catch { /* sin viaje aún */ }
+  }
+
   useEffect(() => {
-    fetchQuotes().finally(() => setLoading(false));
+    Promise.all([fetchQuotes(), fetchTrip()]).finally(() => setLoading(false));
   }, [id]);
 
   const onRefresh = useCallback(async () => {
@@ -101,7 +112,19 @@ export default function CargoQuotesScreen() {
 
   return (
     <View style={s.container}>
-      <Stack.Screen options={{ headerShown: true, title: 'Cotizaciones', headerTintColor: '#1e3a8a' }} />
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          title: 'Cotizaciones',
+          headerTintColor: '#1e3a8a',
+          headerRight: () =>
+            tripId ? (
+              <TouchableOpacity onPress={() => router.push(`/chat/${tripId}`)} style={{ paddingHorizontal: 4 }}>
+                <MessageCircle size={22} color="#1e3a8a" />
+              </TouchableOpacity>
+            ) : null,
+        }}
+      />
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
 
       {error && <View style={s.errorBanner}><Text style={s.errorText}>{error}</Text></View>}

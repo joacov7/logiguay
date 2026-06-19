@@ -110,6 +110,7 @@ export default function RootLayout() {
               <Stack.Screen name="(dador)" />
               <Stack.Screen name="(chofer)" />
               <Stack.Screen name="trip/[id]" options={{ headerShown: false }} />
+              <Stack.Screen name="chat/[tripId]" options={{ headerShown: true }} />
             </Stack>
           </AuthGuard>
         </NetworkProvider>
