@@ -75,9 +75,11 @@ export default function ProfileScreen() {
 
       <ScrollView contentContainerStyle={s.scroll}>
         <View style={s.avatar}>
-          <Text style={s.avatarText}>{user.firstName[0]}{user.lastName[0]}</Text>
+          <Text style={s.avatarText}>
+            {`${user.firstName?.[0] ?? ''}${user.lastName?.[0] ?? ''}`.toUpperCase() || '?'}
+          </Text>
         </View>
-        <Text style={s.name}>{user.firstName} {user.lastName}</Text>
+        <Text style={s.name}>{`${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || 'Usuario'}</Text>
         <View style={[s.roleBadge, { backgroundColor: roleColors.bg }]}>
           <Text style={[s.roleText, { color: roleColors.text }]}>
             {ROLE_LABEL[user.role] ?? user.role}

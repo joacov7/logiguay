@@ -8,6 +8,7 @@ import { Package } from 'lucide-react-native';
 import api, { getApiErrorMessage } from '../../src/lib/api';
 import { getUser } from '../../src/lib/auth';
 import { User } from '../../src/lib/types';
+import { formatRouteShort } from '../../src/lib/formatAddress';
 
 interface Cargo {
   id: string;
@@ -98,6 +99,8 @@ export default function DadorCargasScreen() {
         }
         renderItem={({ item }) => {
           const colors = STATUS_COLORS[item.status] ?? { bg: '#f3f4f6', text: '#6b7280' };
+          const offers = item._count?.quotes ?? 0;
+          const routeShort = formatRouteShort(item.originAddress, item.destinationAddress);
           return (
             <TouchableOpacity
               style={s.card}
@@ -105,24 +108,33 @@ export default function DadorCargasScreen() {
               onPress={() => router.push(`/(dador)/carga/${item.id}`)}
             >
               <View style={s.cardTop}>
-                <Text style={s.cargoType}>{item.type}</Text>
+                <View style={s.typeBadge}>
+                  <Text style={s.typeText}>{item.type}</Text>
+                </View>
                 <View style={[s.badge, { backgroundColor: colors.bg }]}>
                   <Text style={[s.badgeText, { color: colors.text }]}>
                     {STATUS_LABEL[item.status] ?? item.status}
                   </Text>
                 </View>
               </View>
-              <View style={s.routeRow}>
-                <View style={[s.dot, { backgroundColor: '#22c55e' }]} />
-                <Text style={s.routeText} numberOfLines={1}>{item.originAddress}</Text>
+
+              {/* Ruta simplificada */}
+              <Text style={s.routeShort} numberOfLines={2}>{routeShort}</Text>
+
+              {/* Ofertas: dato más crítico para el dador */}
+              <View style={[s.offersRow, offers > 0 ? s.offersActive : s.offersEmpty]}>
+                <Text style={[s.offersLabel, { color: offers > 0 ? '#1e40af' : '#9ca3af' }]}>OFERTAS</Text>
+                <Text style={[s.offersCount, { color: offers > 0 ? '#1e3a8a' : '#9ca3af' }]}>{offers}</Text>
               </View>
-              <View style={s.routeRow}>
-                <View style={[s.dot, { backgroundColor: '#ef4444' }]} />
-                <Text style={s.routeText} numberOfLines={1}>{item.destinationAddress}</Text>
-              </View>
+
+              {/* Meta secundaria */}
               <View style={s.cardBottom}>
                 <Text style={s.meta}>{item.weightTons ? `${item.weightTons} t` : '—'}</Text>
-                <Text style={s.quotes}>{item._count?.quotes ?? 0} oferta{(item._count?.quotes ?? 0) !== 1 ? 's' : ''}</Text>
+                {item.requiredDate && (
+                  <Text style={s.meta}>
+                    {new Date(item.requiredDate).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })}
+                  </Text>
+                )}
               </View>
             </TouchableOpacity>
           );
@@ -155,14 +167,26 @@ const s = StyleSheet.create({
     shadowColor: '#000', shadowOpacity: 0.06, shadowOffset: { width: 0, height: 2 },
     shadowRadius: 6, elevation: 3,
   },
-  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  cargoType: { fontSize: 16, fontWeight: '700', color: '#111827', flex: 1 },
+  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  typeBadge: { backgroundColor: '#eff6ff', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
+  typeText: { fontSize: 12, fontWeight: '700', color: '#1e40af' },
   badge: { borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, marginLeft: 8 },
   badgeText: { fontSize: 12, fontWeight: '600' },
-  routeRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
-  dot: { width: 8, height: 8, borderRadius: 4 },
-  routeText: { fontSize: 13, color: '#374151', flex: 1 },
-  cardBottom: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#f3f4f6' },
-  meta: { fontSize: 13, color: '#6b7280' },
-  quotes: { fontSize: 13, fontWeight: '600', color: '#1e3a8a' },
+
+  // Ruta simplificada — jerarquía 2
+  routeShort: { fontSize: 15, fontWeight: '700', color: '#111827', marginBottom: 10, lineHeight: 21 },
+
+  // Ofertas — jerarquía 1
+  offersRow: {
+    flexDirection: 'row', alignItems: 'baseline', gap: 8,
+    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 10,
+  },
+  offersActive: { backgroundColor: '#eff6ff' },
+  offersEmpty: { backgroundColor: '#f9fafb' },
+  offersLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 0.8 },
+  offersCount: { fontSize: 20, fontWeight: '800', letterSpacing: -0.5 },
+
+  // Meta secundaria
+  cardBottom: { flexDirection: 'row', justifyContent: 'space-between', paddingTop: 10, borderTopWidth: 1, borderTopColor: '#f3f4f6' },
+  meta: { fontSize: 13, color: '#9ca3af' },
 });
