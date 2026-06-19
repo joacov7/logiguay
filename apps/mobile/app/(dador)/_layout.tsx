@@ -53,9 +53,9 @@ export default function DadorLayout() {
         }}
       />
       <Tabs.Screen
-        name="reputacion"
+        name="profile"
         options={{
-          title: 'Reputación',
+          title: 'Perfil',
           tabBarIcon: ({ color, size }) => <User color={color} size={size - 2} />,
         }}
       />
@@ -63,7 +63,7 @@ export default function DadorLayout() {
       {/* Pantallas sin tab */}
       <Tabs.Screen name="nueva-carga" options={{ href: null }} />
       <Tabs.Screen name="carga/[id]" options={{ href: null }} />
-      <Tabs.Screen name="profile" options={{ href: null }} />
+      <Tabs.Screen name="reputacion" options={{ href: null }} />
     </Tabs>
   );
 }
