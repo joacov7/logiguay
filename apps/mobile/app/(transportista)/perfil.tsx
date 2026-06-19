@@ -17,7 +17,7 @@ export default function PerfilScreen() {
   const router = useRouter();
   const user = getUser();
 
-  const fullName = user?.name ?? [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'Usuario';
+  const fullName = user?.name || [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'Usuario';
   const email = user?.email ?? '';
   const companyName = user?.company?.name ?? user?.companyName ?? '';
 
