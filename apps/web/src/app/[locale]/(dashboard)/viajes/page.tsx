@@ -2,7 +2,8 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Navigation, ChevronRight, X, Truck, User, MapPin, CheckCircle, Circle, Clock, FileDown } from 'lucide-react';
+import { Navigation, ChevronRight, X, Truck, User, MapPin, CheckCircle, Circle, Clock, FileDown, MessageCircle } from 'lucide-react';
+import { TripChat } from '@/components/ui/TripChat';
 import { exportToExcel, exportToPDF } from '@/lib/export';
 import { Card } from '@/components/ui/Card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
@@ -64,6 +65,7 @@ export default function ViajesPage() {
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState('');
   const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
+  const [chatTripId, setChatTripId] = useState<string | null>(null);
   const [cancelReason, setCancelReason] = useState('');
   const [showCancel, setShowCancel] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
@@ -329,7 +331,16 @@ export default function ViajesPage() {
                 <h2 className="text-lg font-semibold text-gray-900">Detalle del viaje</h2>
                 {trip && <StatusBadge status={trip.status} />}
               </div>
-              <button onClick={closeModal} className="text-gray-400 hover:text-gray-600 mt-1"><X className="h-5 w-5" /></button>
+              <div className="flex items-center gap-3 mt-1">
+                <button
+                  onClick={() => setChatTripId(selectedTripId)}
+                  className="flex items-center gap-1.5 rounded-lg bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-900 hover:bg-blue-100"
+                  title="Mensajes con la contraparte"
+                >
+                  <MessageCircle className="h-4 w-4" /> Mensajes
+                </button>
+                <button onClick={closeModal} className="text-gray-400 hover:text-gray-600"><X className="h-5 w-5" /></button>
+              </div>
             </div>
 
             {tripQuery.isLoading ? (
@@ -597,6 +608,8 @@ export default function ViajesPage() {
           />
         );
       })()}
+
+      {chatTripId && <TripChat tripId={chatTripId} onClose={() => setChatTripId(null)} />}
     </div>
   );
 }
