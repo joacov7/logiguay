@@ -2,6 +2,44 @@
 
 ---
 
+## 2026-06-19
+
+### ✅ Chat dador ↔ transportista con enmascarado anti-fraude
+- **Objetivo**: Habilitar comunicación entre las partes **sin perder la comisión** (evitar disintermediación: que cierren por fuera de la plataforma).
+- **Decisión de diseño**:
+  - **NO** se intercambian datos de contacto (teléfono/email) — eso es justo lo que permite saltarse la plataforma.
+  - Chat in-app atado a un `Trip` (la conversación es la operación real). Se habilita **con viaje asignado** (cotización aceptada), no en etapa de cotización.
+  - **Enmascarado de PII**: teléfonos, emails, URLs/dominios, handles `@usuario` y palabras señuelo ("whatsapp", "llamame", "mi número", etc.) se reemplazan por `[contacto oculto]`. **El body se persiste ya enmascarado** — la PII nunca toca la base de datos.
+- **Backend** (`apps/api/src/modules/messages/`):
+  - Modelo `Message` (migración `20260619_messages`), idempotente (`CREATE TABLE IF NOT EXISTS` + `DO $$` para FKs).
+  - Endpoints: `GET /messages/conversations`, `GET /messages/trip/:tripId`, `POST /messages/trip/:tripId`.
+  - Realtime reutilizando el WebSocket de tracking (room `trip:${tripId}`, con control de acceso: solo dador o transportista del viaje). Nuevo método `broadcastMessage` en `TrackingGateway`.
+  - `mask-contact.util.ts`: lógica de enmascarado + flag `maskedContact`.
+- **Mobile**: `app/chat/[tripId].tsx` (burbujas, realtime, aviso, badge "Contacto oculto"). Accesos desde detalle de viaje y detalle de carga del dador.
+- **Web**: `components/ui/TripChat.tsx` (modal en detalle de viaje).
+- **⚠️ Deploy**: requiere correr `prisma migrate deploy` (o rebuild del container de API) para crear la tabla `messages`.
+- **Commits**: `450f72b` (backend), `497efd7` (mobile), `e9b9f68` (web)
+
+### ✅ App móvil del dador — layout completo (6 tabs)
+- Tabs: **Cargas** (con FAB publicar) · **Bolsa** · **Turnos** · **Camiones** · **Alertas** · **Perfil**.
+- **Turnos del dador = gestión** (crear turnos + ver cola de reservas con acciones Atender/Completar). El rol estaba invertido antes (reservaba, que es del transportista).
+- **Perfil** con reputación, accesos rápidos y **cerrar sesión**.
+- **Commits**: `b627007`, `56b26bf`
+
+### ✅ Auditoría de null-safety en mobile (crashes ErrorBoundary)
+- Varios crashes por llamar `.trim()`/`.split()`/`.toLocaleString()`/`[0]` sobre campos `undefined` de la API (nombre de usuario vacío, `agreedRate`/`amount` nulos, direcciones nulas).
+- Fixes en `Avatar.tsx`, `profile.tsx`, `(tabs)/index.tsx`, `(transportista)/index.tsx`, `(dador)/carga/[id].tsx`, `(chofer)/index.tsx`, `formatAddress.ts`.
+- **Regla**: nunca asumir que un campo string/number de la API viene presente — guardar con `?.`, `?? '—'` o validación previa antes de métodos de string/number.
+- **Commits**: `8c23882`, `97e8374`, `639dad3`, `b631111`
+
+### ✅ Tracking GPS — reanudar al volver del bloqueo de pantalla
+- **Síntoma**: tras bloquear/desbloquear el celular, el GPS dejaba de reportar hasta reabrir el viaje.
+- **Causa**: el listener de `AppState` solo reiniciaba si `!watcherRef.current`, pero el watcher quedaba con referencia vieja (inválida) tras la suspensión del SO.
+- **Fix**: al volver a `active`, siempre `stopTracking()` + `startTracking()`; `stopTracking` ahora resetea `startingRef`.
+- **Archivo**: `apps/mobile/src/lib/useVehicleTracking.ts` · **Commit**: `5a3a727`
+
+---
+
 ## 2026-06-18
 
 ### ✅ RESUELTO — Errores de CORS en producción (el API estaba caído, no era CORS)

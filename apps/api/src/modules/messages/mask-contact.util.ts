@@ -51,11 +51,14 @@ export function maskContactInfo(input: string): MaskResult {
     // Evita enmascarar cosas que no son dominios reales (sin TLD razonable ya filtrado por regex)
     return flag(() => PLACEHOLDER);
   });
-  out = out.replace(PHONE, (m) => {
-    // Solo si hay al menos 7 dígitos reales
+  out = out.replace(PHONE, (m, _g, offset: number, full: string) => {
     const digits = m.replace(/\D/g, '');
-    if (digits.length >= 7) return flag(() => PLACEHOLDER);
-    return m;
+    if (digits.length < 7) return m;
+    // No enmascarar precios: si el número viene precedido por "$" es plata,
+    // no un teléfono. El precio no es PII y además ya vive en el sistema.
+    const before = full.slice(0, offset).trimEnd();
+    if (before.endsWith('$')) return m;
+    return flag(() => PLACEHOLDER);
   });
   out = out.replace(HANDLE, (m, pre) => flag(() => `${pre}${PLACEHOLDER}`));
   out = out.replace(MESSAGING_APPS, () => flag(() => PLACEHOLDER));
