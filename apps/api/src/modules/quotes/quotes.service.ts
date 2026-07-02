@@ -167,7 +167,10 @@ export class QuotesService {
   async accept(id: string, companyId: string) {
     const quote = await this.prisma.quote.findUnique({
       where: { id },
-      include: { cargo: { select: { id: true, companyId: true, status: true } } },
+      include: {
+        cargo: { select: { id: true, companyId: true, status: true } },
+        transportCompany: { select: { id: true, name: true } },
+      },
     });
     if (!quote) throw new NotFoundException('Cotización no encontrada');
     if (quote.cargo.companyId !== companyId) {
@@ -206,10 +209,9 @@ export class QuotesService {
         where: { cargoId: quote.cargoId, id: { not: id }, status: 'PENDIENTE' },
         data: { status: 'RECHAZADA' },
       });
-      const accepted = await tx.quote.findUnique({
-        where: { id },
-        include: { transportCompany: { select: { id: true, name: true } } },
-      });
+      // Estado final conocido localmente: evita un SELECT extra dentro de la
+      // transacción que además podría devolver null si el row fue borrado.
+      const accepted = { ...quote, status: 'ACEPTADA' as const };
       await tx.trip.create({
         data: {
           cargoId: quote.cargoId,

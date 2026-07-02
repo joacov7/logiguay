@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { QueryClient, QueryClientProvider, focusManager } from '@tanstack/react-query';
@@ -60,7 +60,9 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const segments = useSegments();
   const [checked, setChecked] = useState(false);
-  const [pushRegistered, setPushRegistered] = useState(false);
+  // Por usuario, no booleano: si User A cierra sesión y entra User B en el
+  // mismo dispositivo, hay que re-registrar el token para la cuenta nueva.
+  const pushUserRef = useRef<string | null>(null);
 
   const verifySession = useCallback(async () => {
     const [token, userRaw] = await AsyncStorage.multiGet(['accessToken', 'user']);
@@ -75,11 +77,12 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     const inAuth = segments[0] === 'login' || segments[0] === 'register';
 
     if (!accessToken || !user) {
+      pushUserRef.current = null;
       if (!inAuth) router.replace('/login');
     } else {
-      // Registrar push una sola vez por sesión de app, no en cada navegación
-      if (!pushRegistered) {
-        setPushRegistered(true);
+      // Registrar push una sola vez por usuario, no en cada navegación
+      if (pushUserRef.current !== user.id) {
+        pushUserRef.current = user.id;
         registerPushToken(user);
       }
       const group = roleGroup(user.role);
@@ -92,7 +95,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
       }
     }
     setChecked(true);
-  }, [segments, router, pushRegistered]);
+  }, [segments, router]);
 
   useEffect(() => {
     verifySession();

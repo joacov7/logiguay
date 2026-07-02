@@ -26,7 +26,7 @@ export class TrackingGateway implements OnGatewayConnection, OnGatewayDisconnect
   server: Server;
 
   private readonly logger = new Logger(TrackingGateway.name);
-  private clientMeta = new Map<string, { userId: string; role: string; companyId: string | null; driverId: string | null }>();
+  private clientMeta = new Map<string, { userId: string; role: string; companyIds: string[]; driverId: string | null }>();
 
   constructor(
     private readonly trackingService: TrackingService,
@@ -50,13 +50,13 @@ export class TrackingGateway implements OnGatewayConnection, OnGatewayDisconnect
       const payload = this.jwtService.verify(token, {
         secret: this.configService.get<string>('JWT_SECRET'),
       });
-      // El JWT solo trae { sub, email, role }: la company y el chofer se
-      // resuelven contra la DB, igual que en JwtStrategy.
+      // El JWT solo trae { sub, email, role }: companies y chofer se resuelven
+      // contra la DB. TODAS las membresías, consistente con la API REST.
       const user = await this.prisma.user.findUnique({
         where: { id: payload.sub },
         select: {
           isActive: true,
-          companyUsers: { select: { companyId: true }, orderBy: { companyId: 'asc' }, take: 1 },
+          companyUsers: { select: { companyId: true } },
           drivers: { select: { id: true }, take: 1 },
         },
       });
@@ -68,7 +68,7 @@ export class TrackingGateway implements OnGatewayConnection, OnGatewayDisconnect
       this.clientMeta.set(client.id, {
         userId: payload.sub,
         role: payload.role,
-        companyId: user.companyUsers[0]?.companyId ?? null,
+        companyIds: user.companyUsers.map((cu) => cu.companyId),
         driverId: user.drivers[0]?.id ?? null,
       });
       this.logger.log(`WS connected: ${client.id} (user=${payload.sub}, role=${payload.role})`);
@@ -83,22 +83,36 @@ export class TrackingGateway implements OnGatewayConnection, OnGatewayDisconnect
     this.clientMeta.delete(client.id);
   }
 
-  @SubscribeMessage('subscribe-vehicle')
-  async handleSubscribeVehicle(@MessageBody() vehicleId: string, @ConnectedSocket() client: Socket) {
-    const meta = this.clientMeta.get(client.id);
-    if (!meta) { client.disconnect(true); return; }
-    // Verify the vehicle belongs to the authenticated user's company,
-    // or the user is the driver assigned to an active trip with it
-    const vehicle = await this.prisma.vehicle.findUnique({ where: { id: vehicleId }, select: { companyId: true } });
-    if (!vehicle) return { event: 'error', data: 'Acceso denegado' };
-    let allowed = meta.role === 'ADMIN' || (meta.companyId != null && vehicle.companyId === meta.companyId);
+  /**
+   * Regla única de acceso a un vehículo: la empresa dueña, el chofer asignado
+   * a un viaje activo con él, o ADMIN. Usada por subscribe y position-update.
+   * Devuelve el vehículo (o null si no existe / sin acceso).
+   */
+  private async resolveVehicleAccess(
+    meta: { role: string; companyIds: string[]; driverId: string | null },
+    vehicleId: string,
+  ): Promise<{ companyId: string } | null> {
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: vehicleId },
+      select: { companyId: true },
+    });
+    if (!vehicle) return null;
+    let allowed = meta.role === 'ADMIN' || meta.companyIds.includes(vehicle.companyId);
     if (!allowed && meta.driverId) {
       const activeTrips = await this.prisma.trip.count({
         where: { vehicleId, driverId: meta.driverId, status: { notIn: ['FINALIZADO', 'CANCELADO'] } },
       });
       allowed = activeTrips > 0;
     }
-    if (!allowed) {
+    return allowed ? vehicle : null;
+  }
+
+  @SubscribeMessage('subscribe-vehicle')
+  async handleSubscribeVehicle(@MessageBody() vehicleId: string, @ConnectedSocket() client: Socket) {
+    const meta = this.clientMeta.get(client.id);
+    if (!meta) { client.disconnect(true); return; }
+    const vehicle = await this.resolveVehicleAccess(meta, vehicleId);
+    if (!vehicle) {
       return { event: 'error', data: 'Acceso denegado' };
     }
     client.join(`vehicle:${vehicleId}`);
@@ -115,8 +129,8 @@ export class TrackingGateway implements OnGatewayConnection, OnGatewayDisconnect
   handleSubscribeCompany(@MessageBody() companyId: string, @ConnectedSocket() client: Socket) {
     const meta = this.clientMeta.get(client.id);
     if (!meta) { client.disconnect(true); return; }
-    // Only allow subscribing to own company room (ADMIN can subscribe to any)
-    if (meta.role !== 'ADMIN' && (meta.companyId == null || companyId !== meta.companyId)) {
+    // Only allow subscribing to own company rooms (ADMIN can subscribe to any)
+    if (meta.role !== 'ADMIN' && !meta.companyIds.includes(companyId)) {
       return { event: 'error', data: 'Acceso denegado' };
     }
     client.join(`company:${companyId}`);
@@ -134,8 +148,8 @@ export class TrackingGateway implements OnGatewayConnection, OnGatewayDisconnect
     });
     if (!trip) return { event: 'error', data: 'Viaje no encontrado' };
     const involved = meta.role === 'ADMIN' ||
-      (meta.companyId != null &&
-        (trip.transportCompanyId === meta.companyId || trip.cargo?.companyId === meta.companyId)) ||
+      (trip.transportCompanyId != null && meta.companyIds.includes(trip.transportCompanyId)) ||
+      (trip.cargo?.companyId != null && meta.companyIds.includes(trip.cargo.companyId)) ||
       (meta.driverId != null && trip.driverId === meta.driverId);
     if (!involved) return { event: 'error', data: 'Acceso denegado' };
     client.join(`trip:${tripId}`);
@@ -161,25 +175,8 @@ export class TrackingGateway implements OnGatewayConnection, OnGatewayDisconnect
 
     // Solo puede reportar posición la empresa dueña del vehículo o el chofer
     // asignado a un viaje activo con ese vehículo.
-    const vehicle = await this.prisma.vehicle.findUnique({
-      where: { id: data.vehicleId },
-      select: { companyId: true },
-    });
+    const vehicle = await this.resolveVehicleAccess(meta, data.vehicleId);
     if (!vehicle) {
-      return { received: false, error: 'Vehículo no encontrado' };
-    }
-    let allowed = meta.role === 'ADMIN' || (meta.companyId != null && vehicle.companyId === meta.companyId);
-    if (!allowed && meta.driverId) {
-      const activeTrips = await this.prisma.trip.count({
-        where: {
-          vehicleId: data.vehicleId,
-          driverId: meta.driverId,
-          status: { notIn: ['FINALIZADO', 'CANCELADO'] },
-        },
-      });
-      allowed = activeTrips > 0;
-    }
-    if (!allowed) {
       this.logger.warn(`position-update denegado: user=${meta.userId} vehicle=${data.vehicleId}`);
       return { received: false, error: 'Acceso denegado' };
     }
@@ -227,10 +224,10 @@ export class TrackingGateway implements OnGatewayConnection, OnGatewayDisconnect
       select: { companyId: true },
     });
     if (!slot) return { event: 'error', data: 'Turno no encontrado' };
-    let allowed = meta.role === 'ADMIN' || (meta.companyId != null && slot.companyId === meta.companyId);
-    if (!allowed && meta.companyId) {
+    let allowed = meta.role === 'ADMIN' || meta.companyIds.includes(slot.companyId);
+    if (!allowed && meta.companyIds.length > 0) {
       const bookings = await this.prisma.turnBooking.count({
-        where: { slotId, companyId: meta.companyId },
+        where: { slotId, companyId: { in: meta.companyIds } },
       });
       allowed = bookings > 0;
     }

@@ -34,8 +34,14 @@ export function useVehicleTracking(vehicleId: string | undefined, active: boolea
   const watcherRef = useRef<Location.LocationSubscription | null>(null);
   const mountedRef = useRef(true);
   const startingRef = useRef(false); // evita arranques concurrentes
+  // Sesión de tracking: cada stop la incrementa. Un startTracking en vuelo
+  // (esperando permisos o el primer fix) compara su sesión tras cada await y
+  // aborta si quedó vieja: sin esto, cambiar de vehículo mientras resolvía
+  // dejaba un watcher huérfano emitiendo con el vehicleId anterior.
+  const sessionRef = useRef(0);
 
   const stopTracking = useCallback(() => {
+    sessionRef.current += 1;
     startingRef.current = false;
     if (watcherRef.current) {
       watcherRef.current.remove();
@@ -51,10 +57,13 @@ export function useVehicleTracking(vehicleId: string | undefined, active: boolea
   const startTracking = useCallback(async (vid: string) => {
     if (startingRef.current || watcherRef.current) return;
     startingRef.current = true;
+    const session = sessionRef.current;
+    const stale = () => !mountedRef.current || session !== sessionRef.current;
+    let socket: Socket | null = null;
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
-      // El componente pudo desmontarse mientras pedíamos permiso.
-      if (!mountedRef.current) return;
+      // El componente pudo desmontarse (o el vehículo cambiar) mientras esperábamos.
+      if (stale()) return;
       if (status !== 'granted') {
         setLocationError('Sin permiso de ubicación. Activalo en Configuración para enviar tu posición.');
         return;
@@ -62,9 +71,9 @@ export function useVehicleTracking(vehicleId: string | undefined, active: boolea
       setLocationError(null);
 
       const token = await getAccessToken();
-      if (!mountedRef.current) return;
+      if (stale()) return;
 
-      const socket = io(`${getSocketUrl()}/tracking`, {
+      socket = io(`${getSocketUrl()}/tracking`, {
         transports: ['websocket'],
         auth: { token },
         reconnection: true,
@@ -95,12 +104,13 @@ export function useVehicleTracking(vehicleId: string | undefined, active: boolea
         },
       );
 
-      // Carrera: si nos desmontamos mientras watchPositionAsync resolvía, el
-      // watcher recién creado quedaría huérfano. Lo cerramos en el acto.
-      if (!mountedRef.current) {
+      // Carrera: si nos desmontamos o la sesión cambió mientras
+      // watchPositionAsync resolvía, el watcher recién creado quedaría
+      // huérfano (y emitiendo con el vid viejo). Lo cerramos en el acto.
+      if (stale()) {
         watcher.remove();
         socket.disconnect();
-        socketRef.current = null;
+        if (socketRef.current === socket) socketRef.current = null;
         return;
       }
 
@@ -109,9 +119,10 @@ export function useVehicleTracking(vehicleId: string | undefined, active: boolea
     } catch (e) {
       // watchPositionAsync puede rechazar (ubicación del SO apagada, etc.):
       // sin este catch el socket recién abierto quedaría conectado para siempre.
-      if (socketRef.current) {
-        socketRef.current.disconnect();
-        socketRef.current = null;
+      // Solo cerramos NUESTRO socket: socketRef puede ser ya de otra sesión.
+      if (socket) {
+        socket.disconnect();
+        if (socketRef.current === socket) socketRef.current = null;
       }
       if (mountedRef.current) {
         setLocationError('No se pudo iniciar el GPS. Verificá que la ubicación esté activada.');

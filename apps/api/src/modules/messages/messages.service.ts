@@ -38,8 +38,13 @@ export class MessagesService {
     return { trip, dadorCompanyId };
   }
 
-  async getMessages(tripId: string, companyId: string, role: string, driverId?: string | null) {
-    await this.assertAccess(tripId, companyId, role, driverId);
+  async getMessages(tripId: string, companyId: string | null, role: string, driverId?: string | null) {
+    const { trip } = await this.assertAccess(tripId, companyId, role, driverId);
+
+    // Un chofer sin empresa vinculada lee en nombre de la transportista del
+    // viaje: así sus lecturas también marcan los mensajes como leídos.
+    const readerCompanyId =
+      companyId ?? (driverId != null && trip.driverId === driverId ? trip.transportCompanyId : null);
 
     const messages = await this.prisma.message.findMany({
       where: { tripId },
@@ -47,10 +52,10 @@ export class MessagesService {
       include: { senderCompany: { select: { id: true, name: true } } },
     });
 
-    // Marca como leídos los mensajes que NO envié yo
-    if (companyId) {
+    // Marca como leídos los mensajes que NO envió mi lado
+    if (readerCompanyId) {
       await this.prisma.message.updateMany({
-        where: { tripId, senderCompanyId: { not: companyId }, readAt: null },
+        where: { tripId, senderCompanyId: { not: readerCompanyId }, readAt: null },
         data: { readAt: new Date() },
       });
     }

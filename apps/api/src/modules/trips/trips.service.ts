@@ -212,7 +212,7 @@ export class TripsService {
       const allowed =
         (role === 'TRANSPORTISTA' && companyIds.includes(trip.transportCompanyId ?? '')) ||
         (role === 'DADOR' && companyIds.includes((trip.cargo as any)?.companyId ?? '')) ||
-        (role === 'CHOFER' && trip.driverId === requester.driverId);
+        (role === 'CHOFER' && requester.driverId != null && trip.driverId === requester.driverId);
       if (!allowed) throw new NotFoundException('Viaje no encontrado');
     }
 
@@ -254,7 +254,9 @@ export class TripsService {
     if (result.count === 0) {
       throw new BadRequestException('El viaje cambió de estado. Actualizá e intentá de nuevo.');
     }
-    const updated = await this.prisma.trip.findUnique({ where: { id } });
+    // El estado final es conocido localmente: evita un SELECT extra que además
+    // podría observar una escritura concurrente posterior (o null si borran el viaje).
+    const updated = { ...trip, ...updateData };
 
     const eventType = STATUS_TO_EVENT[dto.status as TripStatus];
     if (eventType) {

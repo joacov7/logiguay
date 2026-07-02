@@ -32,9 +32,12 @@ const MESSAGING_APPS = /\b(whats\s?app|whatsapp|wsp|wpp|wasap|telegram|tel[eé]f
 // Ej: +54 9 351 123-4567, 11/5555/4444, 11,5555,4444
 const PHONE = /(\+?\d[\d\s().,/-]{6,}\d)/g;
 
-// Formato estricto de precio: 1-3 dígitos + grupos de miles (1.250.000).
-// Un teléfono real no puede escribirse así, por eso es seguro exceptuarlo.
-const PRICE_FORMAT = /^\d{1,3}([.,]\d{3})+$/;
+// Formatos de precio aceptados tras "$":
+//  - Miles agrupados, con decimales opcionales: 1.250.000 / 1.250.000,50
+//  - Dígitos corridos hasta 7 (con decimales opcionales): 1500000 / 250000,50
+// Un run corrido de 8+ dígitos tras $ se sigue enmascarando: es el largo
+// típico de un teléfono y sería el bypass "$1155554444".
+const PRICE_FORMAT = /^(\d{1,3}([.,]\d{3})+|\d{1,7})([.,]\d{1,2})?$/;
 
 export interface MaskResult {
   masked: string;
