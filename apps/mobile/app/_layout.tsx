@@ -52,10 +52,15 @@ async function registerPushToken(_user: User) {
   }
 }
 
+function roleGroup(role: string): string {
+  return role === 'DADOR' ? '(dador)' : role === 'CHOFER' ? '(chofer)' : '(transportista)';
+}
+
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const segments = useSegments();
   const [checked, setChecked] = useState(false);
+  const [pushRegistered, setPushRegistered] = useState(false);
 
   const verifySession = useCallback(async () => {
     const [token, userRaw] = await AsyncStorage.multiGet(['accessToken', 'user']);
@@ -72,17 +77,22 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     if (!accessToken || !user) {
       if (!inAuth) router.replace('/login');
     } else {
-      registerPushToken(user);
-      if (inAuth) {
-        router.replace(
-          user.role === 'DADOR' ? '/(dador)/' :
-          user.role === 'CHOFER' ? '/(chofer)/' :
-          '/(transportista)/',
-        );
+      // Registrar push una sola vez por sesión de app, no en cada navegación
+      if (!pushRegistered) {
+        setPushRegistered(true);
+        registerPushToken(user);
+      }
+      const group = roleGroup(user.role);
+      const roleGroups = ['(dador)', '(chofer)', '(transportista)', '(tabs)'];
+      const inWrongGroup = roleGroups.includes(segments[0] ?? '') && segments[0] !== group;
+      // En cold start la URL "/" puede resolverse a cualquier index ambiguo:
+      // siempre forzamos el grupo del rol (también si cayó en un grupo ajeno).
+      if (inAuth || inWrongGroup || !segments[0]) {
+        router.replace(`/${group}/` as any);
       }
     }
     setChecked(true);
-  }, [segments, router]);
+  }, [segments, router, pushRegistered]);
 
   useEffect(() => {
     verifySession();

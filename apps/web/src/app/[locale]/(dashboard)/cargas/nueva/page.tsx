@@ -39,20 +39,25 @@ function primaryUnit(type?: string): 'tons' | 'volume' {
   return type && VOLUME_FIRST_TYPES.includes(type) ? 'volume' : 'tons';
 }
 
+// Los inputs numéricos con valueAsNumber devuelven NaN cuando quedan vacíos:
+// lo normalizamos a undefined para que los campos opcionales no bloqueen el envío.
+const optionalNumber = <T extends z.ZodTypeAny>(validator: T) =>
+  z.preprocess((v) => (typeof v === 'number' && Number.isNaN(v) ? undefined : v), validator) as unknown as T;
+
 const schema = z
   .object({
     type: z.string().min(1, 'Requerido'),
     description: z.string().optional(),
-    weightTons: z.number({ invalid_type_error: 'Debe ser un número' }).positive().optional(),
-    volumeM3: z.number({ invalid_type_error: 'Debe ser un número' }).positive().optional(),
+    weightTons: optionalNumber(z.number({ invalid_type_error: 'Debe ser un número' }).positive().optional()),
+    volumeM3: optionalNumber(z.number({ invalid_type_error: 'Debe ser un número' }).positive().optional()),
     originAddress: z.string().min(5, 'Dirección de origen requerida'),
-    originLat: z.number({ invalid_type_error: 'Debe ser un número' }).optional(),
-    originLng: z.number({ invalid_type_error: 'Debe ser un número' }).optional(),
+    originLat: optionalNumber(z.number({ invalid_type_error: 'Debe ser un número' }).optional()),
+    originLng: optionalNumber(z.number({ invalid_type_error: 'Debe ser un número' }).optional()),
     destinationAddress: z.string().min(5, 'Dirección de destino requerida'),
-    destinationLat: z.number({ invalid_type_error: 'Debe ser un número' }).optional(),
-    destinationLng: z.number({ invalid_type_error: 'Debe ser un número' }).optional(),
+    destinationLat: optionalNumber(z.number({ invalid_type_error: 'Debe ser un número' }).optional()),
+    destinationLng: optionalNumber(z.number({ invalid_type_error: 'Debe ser un número' }).optional()),
     requiredDate: z.string().optional(),
-    estimatedValue: z.number({ invalid_type_error: 'Debe ser un número' }).positive().optional(),
+    estimatedValue: optionalNumber(z.number({ invalid_type_error: 'Debe ser un número' }).positive().optional()),
     observations: z.string().optional(),
     isAuction: z.boolean().optional(),
     auctionEndsAt: z.string().optional(),
@@ -97,10 +102,12 @@ export default function NuevaCargaPage() {
   const destinationLng = watch('destinationLng');
 
   const createMutation = useMutation({
-    mutationFn: async (data: FormData) => {
+    mutationFn: async ({ data, publish }: { data: FormData; publish: boolean }) => {
       const res = await api.post('/cargo', {
         ...data,
         companyId: user?.companyId,
+        // draft: la carga queda en PENDIENTE y no aparece en la bolsa
+        draft: !publish,
       });
       return res.data;
     },
@@ -110,11 +117,11 @@ export default function NuevaCargaPage() {
   });
 
   const onSaveDraft = handleSubmit((data) => {
-    createMutation.mutate(data);
+    createMutation.mutate({ data, publish: false });
   });
 
   const onPublish = handleSubmit((data) => {
-    createMutation.mutate(data);
+    createMutation.mutate({ data, publish: true });
   });
 
   return (

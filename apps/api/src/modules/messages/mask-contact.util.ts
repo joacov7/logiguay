@@ -28,8 +28,13 @@ const HANDLE = /(^|\s)@[A-Za-z0-9._]{2,}/g;
 const MESSAGING_APPS = /\b(whats\s?app|whatsapp|wsp|wpp|wasap|telegram|tel[eé]fono|tel\.?|cel(ular)?|llamame|llam[aá]|contactame|mi\s?n[uú]mero)\b/gi;
 
 // Secuencias de dígitos que parecen teléfonos: 7+ dígitos permitiendo
-// espacios, guiones, puntos, paréntesis y prefijo +. Ej: +54 9 351 123-4567
-const PHONE = /(\+?\d[\d\s().-]{6,}\d)/g;
+// espacios, guiones, puntos, comas, barras, paréntesis y prefijo +.
+// Ej: +54 9 351 123-4567, 11/5555/4444, 11,5555,4444
+const PHONE = /(\+?\d[\d\s().,/-]{6,}\d)/g;
+
+// Formato estricto de precio: 1-3 dígitos + grupos de miles (1.250.000).
+// Un teléfono real no puede escribirse así, por eso es seguro exceptuarlo.
+const PRICE_FORMAT = /^\d{1,3}([.,]\d{3})+$/;
 
 export interface MaskResult {
   masked: string;
@@ -54,10 +59,11 @@ export function maskContactInfo(input: string): MaskResult {
   out = out.replace(PHONE, (m, _g, offset: number, full: string) => {
     const digits = m.replace(/\D/g, '');
     if (digits.length < 7) return m;
-    // No enmascarar precios: si el número viene precedido por "$" es plata,
-    // no un teléfono. El precio no es PII y además ya vive en el sistema.
+    // No enmascarar precios: solo se exceptúa si viene precedido por "$" Y
+    // tiene formato estricto de miles (ej: $1.250.000). "$1155554444" no
+    // califica: sería un bypass trivial para pasar un teléfono.
     const before = full.slice(0, offset).trimEnd();
-    if (before.endsWith('$')) return m;
+    if (before.endsWith('$') && PRICE_FORMAT.test(m.trim())) return m;
     return flag(() => PLACEHOLDER);
   });
   out = out.replace(HANDLE, (m, pre) => flag(() => `${pre}${PLACEHOLDER}`));

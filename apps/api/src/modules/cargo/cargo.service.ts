@@ -54,14 +54,15 @@ export class CargoService {
     });
     await this.subscriptions.checkLimit(companyId, 'maxMonthlyPublications', monthlyCount);
 
-    const { userId: _u, companyId: _c, ...rest } = dto;
+    const { userId: _u, companyId: _c, draft, ...rest } = dto;
     return this.prisma.cargo.create({
       data: {
         ...rest,
         companyId,
         requiredDate: dto.requiredDate ? new Date(dto.requiredDate) : null,
         auctionEndsAt: dto.auctionEndsAt ? new Date(dto.auctionEndsAt) : null,
-        status: 'PUBLICADO',
+        // draft: queda como borrador (PENDIENTE) hasta que el dador la publique
+        status: draft ? 'PENDIENTE' : 'PUBLICADO',
       },
     });
   }
@@ -401,7 +402,7 @@ export class CargoService {
     return withDist;
   }
 
-  async getCargoWithQuotes(id: string) {
+  async getCargoWithQuotes(id: string, requester?: { id: string; role: string }) {
     const cargo = await this.prisma.cargo.findUnique({
       where: { id },
       include: {
@@ -414,6 +415,20 @@ export class CargoService {
       },
     });
     if (!cargo) throw new NotFoundException('Carga no encontrada');
+
+    // Las cotizaciones completas solo las ve el dueño de la carga (o ADMIN).
+    // Un transportista solo ve las suyas: si no, podría espiar las ofertas
+    // de la competencia y pujar apenas por debajo.
+    if (requester && requester.role !== 'ADMIN') {
+      const memberships = await this.prisma.companyUser.findMany({
+        where: { userId: requester.id },
+        select: { companyId: true },
+      });
+      const companyIds = memberships.map((m) => m.companyId);
+      if (!companyIds.includes(cargo.companyId)) {
+        cargo.quotes = cargo.quotes.filter((q) => companyIds.includes(q.transportCompanyId));
+      }
+    }
     return cargo;
   }
 
@@ -428,23 +443,38 @@ export class CargoService {
     const quote = await this.prisma.quote.findUnique({ where: { id: quoteId } });
     if (!quote) throw new NotFoundException('Cotización no encontrada');
     if (quote.cargoId !== cargoId) throw new BadRequestException('La cotización no pertenece a esta carga');
+    if (quote.status !== 'PENDIENTE') throw new BadRequestException('Esta cotización ya fue procesada');
 
-    await this.prisma.$transaction([
-      this.prisma.quote.update({ where: { id: quoteId }, data: { status: 'ACEPTADA' } }),
-      this.prisma.quote.updateMany({
-        where: { cargoId, id: { not: quoteId } },
+    await this.prisma.$transaction(async (tx) => {
+      // Updates condicionados para evitar dos viajes sobre la misma carga
+      // ante accepts concurrentes (este flujo y quotes.accept).
+      const claimedQuote = await tx.quote.updateMany({
+        where: { id: quoteId, status: 'PENDIENTE' },
+        data: { status: 'ACEPTADA' },
+      });
+      if (claimedQuote.count === 0) {
+        throw new BadRequestException('Esta cotización ya fue procesada');
+      }
+      const claimedCargo = await tx.cargo.updateMany({
+        where: { id: cargoId, status: { in: ['PUBLICADO', 'COTIZANDO'] } },
+        data: { status: 'ASIGNADO' },
+      });
+      if (claimedCargo.count === 0) {
+        throw new BadRequestException('La carga ya no está disponible');
+      }
+      await tx.quote.updateMany({
+        where: { cargoId, id: { not: quoteId }, status: 'PENDIENTE' },
         data: { status: 'RECHAZADA' },
-      }),
-      this.prisma.cargo.update({ where: { id: cargoId }, data: { status: 'ASIGNADO' } }),
-      this.prisma.trip.create({
+      });
+      await tx.trip.create({
         data: {
           cargoId,
           transportCompanyId: quote.transportCompanyId,
           agreedRate: quote.amount,
           status: 'ASIGNADO',
         },
-      }),
-    ]);
+      });
+    });
 
     // Notify transportista by email
     try {

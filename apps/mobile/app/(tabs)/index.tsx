@@ -49,26 +49,26 @@ function TripCard({ trip, onPress }: { trip: Trip; onPress: () => void }) {
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
       <View style={styles.cardHeader}>
-        <Text style={styles.cargoType}>{trip.cargo.type}</Text>
+        <Text style={styles.cargoType}>{trip.cargo?.type ?? '—'}</Text>
         <StatusBadge status={trip.status} />
       </View>
       <View style={styles.route}>
         <View style={styles.routeRow}>
           <View style={[styles.dot, { backgroundColor: '#22c55e' }]} />
           <Text style={styles.routeText} numberOfLines={1}>
-            {trip.cargo.originAddress}
+            {trip.cargo?.originAddress ?? '—'}
           </Text>
         </View>
         <View style={styles.routeLine} />
         <View style={styles.routeRow}>
           <View style={[styles.dot, { backgroundColor: '#ef4444' }]} />
           <Text style={styles.routeText} numberOfLines={1}>
-            {trip.cargo.destinationAddress}
+            {trip.cargo?.destinationAddress ?? '—'}
           </Text>
         </View>
       </View>
       <View style={styles.cardFooter}>
-        <Text style={styles.weight}>{trip.cargo.weightTons} t</Text>
+        <Text style={styles.weight}>{trip.cargo?.weightTons != null ? `${trip.cargo.weightTons} t` : '—'}</Text>
         <Text style={styles.rate}>
           {trip.agreedRate != null ? `$${trip.agreedRate.toLocaleString('es-AR')}` : '—'}
         </Text>

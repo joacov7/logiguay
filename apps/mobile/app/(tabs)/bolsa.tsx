@@ -73,7 +73,7 @@ function QuoteModal({ cargo, onClose, onSuccess }: QuoteModalProps) {
               {formatRouteShort(cargo.originAddress, cargo.destinationAddress)}
             </Text>
             <Text style={styles.modalCargoDetail}>
-              {cargo.weightTons ? `${cargo.weightTons} t · ` : ''}{cargo.company.name}
+              {cargo.weightTons ? `${cargo.weightTons} t · ` : ''}{cargo.company?.name ?? ''}
             </Text>
           </View>
 
@@ -160,7 +160,7 @@ function CargoCard({ cargo, onQuote }: { cargo: Cargo; onQuote: () => void }) {
             <Text style={styles.metaText}>{cargo.weightTons} t</Text>
           </View>
         ) : null}
-        <Text style={styles.companyText} numberOfLines={1}>{cargo.company.name}</Text>
+        <Text style={styles.companyText} numberOfLines={1}>{cargo.company?.name ?? ''}</Text>
       </View>
 
       <TouchableOpacity style={styles.quoteBtn} onPress={onQuote} activeOpacity={0.8}>

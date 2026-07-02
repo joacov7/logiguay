@@ -185,18 +185,30 @@ export class QuotesService {
     await this.billing.assertNotDelinquent(companyId);
 
     return this.prisma.$transaction(async (tx) => {
-      const accepted = await tx.quote.update({
-        where: { id },
+      // Updates condicionados: si otro accept/selectQuote concurrente ya
+      // procesó la cotización o asignó la carga, count === 0 y abortamos
+      // (evita dos viajes para la misma carga).
+      const claimedQuote = await tx.quote.updateMany({
+        where: { id, status: 'PENDIENTE' },
         data: { status: 'ACEPTADA' },
-        include: { transportCompany: { select: { id: true, name: true } } },
       });
+      if (claimedQuote.count === 0) {
+        throw new BadRequestException('Esta cotización ya fue procesada');
+      }
+      const claimedCargo = await tx.cargo.updateMany({
+        where: { id: quote.cargoId, status: { in: ['PUBLICADO', 'COTIZANDO'] } },
+        data: { status: 'ASIGNADO' },
+      });
+      if (claimedCargo.count === 0) {
+        throw new BadRequestException('La carga ya no está disponible');
+      }
       await tx.quote.updateMany({
         where: { cargoId: quote.cargoId, id: { not: id }, status: 'PENDIENTE' },
         data: { status: 'RECHAZADA' },
       });
-      await tx.cargo.update({
-        where: { id: quote.cargoId },
-        data: { status: 'ASIGNADO' },
+      const accepted = await tx.quote.findUnique({
+        where: { id },
+        include: { transportCompany: { select: { id: true, name: true } } },
       });
       await tx.trip.create({
         data: {

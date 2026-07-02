@@ -18,9 +18,9 @@ const STATUS_TRANSITIONS: Record<TripStatus, TripStatus[]> = {
   COTIZANDO: [TripStatus.ASIGNADO, TripStatus.CANCELADO],
   ASIGNADO: [TripStatus.EN_CAMINO_ORIGEN, TripStatus.CANCELADO],
   EN_CAMINO_ORIGEN: [TripStatus.EN_CARGA, TripStatus.CANCELADO],
-  EN_CARGA: [TripStatus.EN_TRANSITO],
-  EN_TRANSITO: [TripStatus.EN_DESCARGA],
-  EN_DESCARGA: [TripStatus.FINALIZADO],
+  EN_CARGA: [TripStatus.EN_TRANSITO, TripStatus.CANCELADO],
+  EN_TRANSITO: [TripStatus.EN_DESCARGA, TripStatus.CANCELADO],
+  EN_DESCARGA: [TripStatus.FINALIZADO, TripStatus.CANCELADO],
   FINALIZADO: [],
   CANCELADO: [],
 };
@@ -43,9 +43,20 @@ export class TripsService {
     private readonly email: EmailService,
   ) {}
 
-  async create(dto: CreateTripDto) {
+  async create(dto: CreateTripDto, requester?: { id: string; role: string }) {
     const cargo = await this.prisma.cargo.findUnique({ where: { id: dto.cargoId } });
     if (!cargo) throw new NotFoundException('Carga no encontrada');
+
+    // Un DADOR solo puede crear viajes sobre cargas de sus propias empresas
+    if (requester && requester.role !== 'ADMIN') {
+      const memberships = await this.prisma.companyUser.findMany({
+        where: { userId: requester.id },
+        select: { companyId: true },
+      });
+      if (!memberships.some((m) => m.companyId === cargo.companyId)) {
+        throw new ForbiddenException('La carga no pertenece a tu empresa');
+      }
+    }
 
     const trip = await this.prisma.trip.create({
       data: {
@@ -61,7 +72,7 @@ export class TripsService {
     return trip;
   }
 
-  async assign(id: string, dto: AssignTripDto, requester?: { role: string; companyId?: string }) {
+  async assign(id: string, dto: AssignTripDto, requester?: { id?: string; role: string; companyId?: string }) {
     const trip = await this.findOne(id, requester);
 
     if (trip.status !== TripStatus.ASIGNADO && trip.status !== TripStatus.COTIZANDO) {
@@ -73,6 +84,21 @@ export class TripsService {
 
     const driver = await this.prisma.driver.findUnique({ where: { id: dto.driverId } });
     if (!driver) throw new NotFoundException('Chofer no encontrado');
+
+    // Vehículo y chofer deben pertenecer a una empresa del transportista
+    if (requester && requester.role !== 'ADMIN' && requester.id) {
+      const memberships = await this.prisma.companyUser.findMany({
+        where: { userId: requester.id },
+        select: { companyId: true },
+      });
+      const companyIds = memberships.map((m) => m.companyId);
+      if (!companyIds.includes(vehicle.companyId)) {
+        throw new ForbiddenException('El vehículo no pertenece a tu empresa');
+      }
+      if (!companyIds.includes(driver.companyId)) {
+        throw new ForbiddenException('El chofer no pertenece a tu empresa');
+      }
+    }
 
     return this.prisma.trip.update({
       where: { id },
@@ -219,7 +245,16 @@ export class TripsService {
         break;
     }
 
-    const updated = await this.prisma.trip.update({ where: { id }, data: updateData });
+    // Update condicionado al estado leído: si otro request ya lo transicionó,
+    // count === 0 y evitamos efectos duplicados (comisiones, eventos, emails).
+    const result = await this.prisma.trip.updateMany({
+      where: { id, status: trip.status },
+      data: updateData,
+    });
+    if (result.count === 0) {
+      throw new BadRequestException('El viaje cambió de estado. Actualizá e intentá de nuevo.');
+    }
+    const updated = await this.prisma.trip.findUnique({ where: { id } });
 
     const eventType = STATUS_TO_EVENT[dto.status as TripStatus];
     if (eventType) {
@@ -411,8 +446,8 @@ export class TripsService {
     }
   }
 
-  async addEvent(tripId: string, dto: AddTripEventDto) {
-    await this.findOne(tripId);
+  async addEvent(tripId: string, dto: AddTripEventDto, requester?: { id?: string; role: string; companyId?: string; driverId?: string }) {
+    await this.findOne(tripId, requester);
     return this.prisma.tripEvent.create({
       data: {
         tripId,
@@ -424,16 +459,16 @@ export class TripsService {
     });
   }
 
-  async getEvents(tripId: string) {
-    await this.findOne(tripId);
+  async getEvents(tripId: string, requester?: { id?: string; role: string; companyId?: string; driverId?: string }) {
+    await this.findOne(tripId, requester);
     return this.prisma.tripEvent.findMany({
       where: { tripId },
       orderBy: { timestamp: 'asc' },
     });
   }
 
-  async getEta(tripId: string) {
-    const trip = await this.findOne(tripId);
+  async getEta(tripId: string, requester?: { id?: string; role: string; companyId?: string; driverId?: string }) {
+    const trip = await this.findOne(tripId, requester);
     return {
       tripId,
       status: trip.status,

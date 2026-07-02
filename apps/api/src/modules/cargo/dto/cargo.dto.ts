@@ -90,6 +90,11 @@ export class CreateCargoDto {
   @IsOptional()
   @IsDateString()
   auctionEndsAt?: string;
+
+  @ApiPropertyOptional({ default: false, description: 'Guardar como borrador (PENDIENTE) en vez de publicar' })
+  @IsOptional()
+  @IsBoolean()
+  draft?: boolean;
 }
 
 export class UpdateCargoDto {

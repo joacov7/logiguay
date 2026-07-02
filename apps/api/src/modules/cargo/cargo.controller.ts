@@ -76,8 +76,8 @@ export class CargoController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Detalle de carga con cotizaciones' })
-  findOne(@Param('id') id: string) {
-    return this.cargoService.getCargoWithQuotes(id);
+  findOne(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.cargoService.getCargoWithQuotes(id, user);
   }
 
   @Patch(':id')

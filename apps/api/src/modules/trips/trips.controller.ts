@@ -21,8 +21,8 @@ export class TripsController {
   @Post()
   @Roles('DADOR', 'ADMIN')
   @ApiOperation({ summary: 'Crear viaje a partir de una carga' })
-  create(@Body() dto: CreateTripDto) {
-    return this.tripsService.create(dto);
+  create(@Body() dto: CreateTripDto, @CurrentUser() user: any) {
+    return this.tripsService.create(dto, user);
   }
 
   @Get()
@@ -46,6 +46,10 @@ export class TripsController {
     } else if (user.role === 'DADOR') {
       scope = 'cargo';
     } else if (user.role === 'CHOFER') {
+      // Un chofer sin registro Driver no debe ver ningún viaje
+      if (!user.driverId) {
+        return { data: [], total: 0, page: Number(page) || 1, limit: Number(limit) || 20, pages: 0 };
+      }
       driverId = user.driverId;
     }
     // ADMIN can see everything without forced filters
@@ -69,8 +73,8 @@ export class TripsController {
 
   @Get(':id/eta')
   @ApiOperation({ summary: 'ETA actual del viaje' })
-  getEta(@Param('id') id: string) {
-    return this.tripsService.getEta(id);
+  getEta(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.tripsService.getEta(id, user);
   }
 
   @Patch(':id/assign')
@@ -88,7 +92,7 @@ export class TripsController {
   }
 
   @Patch(':id/cancel')
-  @Roles('TRANSPORTISTA', 'CHOFER', 'ADMIN')
+  @Roles('DADOR', 'TRANSPORTISTA', 'CHOFER', 'ADMIN')
   @ApiOperation({ summary: 'Cancelar viaje' })
   cancel(
     @Param('id') id: string,
@@ -101,13 +105,13 @@ export class TripsController {
   @Post(':id/events')
   @Roles('TRANSPORTISTA', 'CHOFER', 'ADMIN')
   @ApiOperation({ summary: 'Registrar evento manual en el viaje' })
-  addEvent(@Param('id') id: string, @Body() dto: AddTripEventDto) {
-    return this.tripsService.addEvent(id, dto);
+  addEvent(@Param('id') id: string, @Body() dto: AddTripEventDto, @CurrentUser() user: any) {
+    return this.tripsService.addEvent(id, dto, user);
   }
 
   @Get(':id/events')
   @ApiOperation({ summary: 'Historial completo de eventos del viaje' })
-  getEvents(@Param('id') id: string) {
-    return this.tripsService.getEvents(id);
+  getEvents(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.tripsService.getEvents(id, user);
   }
 }

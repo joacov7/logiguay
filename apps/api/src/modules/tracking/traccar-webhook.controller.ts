@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
+import { Public } from '../../common/decorators/roles.decorator';
 import { TrackingService } from './tracking.service';
 import { TrackingGateway } from './tracking.gateway';
 
@@ -31,6 +32,7 @@ export class TraccarWebhookController {
   ) {}
 
   @Post()
+  @Public()
   @HttpCode(200)
   @ApiOperation({ summary: 'Webhook de posiciones desde Traccar (token interno)' })
   async receive(@Query('token') token: string, @Body() body: any) {

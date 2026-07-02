@@ -106,17 +106,28 @@ export function useVehicleTracking(vehicleId: string | undefined, active: boolea
 
       watcherRef.current = watcher;
       setIsTracking(true);
+    } catch (e) {
+      // watchPositionAsync puede rechazar (ubicación del SO apagada, etc.):
+      // sin este catch el socket recién abierto quedaría conectado para siempre.
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+      if (mountedRef.current) {
+        setLocationError('No se pudo iniciar el GPS. Verificá que la ubicación esté activada.');
+      }
     } finally {
       startingRef.current = false;
     }
   }, []);
 
-  // Arranque/parada según `active` y disponibilidad de vehicleId
+  // Arranque/parada según `active` y disponibilidad de vehicleId.
+  // Siempre se para antes de arrancar: si cambia el vehicleId con un watcher
+  // vivo, el closure viejo seguiría reportando posiciones del vehículo anterior.
   useEffect(() => {
+    stopTracking();
     if (active && vehicleId) {
       startTracking(vehicleId);
-    } else {
-      stopTracking();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, vehicleId]);
