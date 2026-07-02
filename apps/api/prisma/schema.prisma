@@ -598,8 +598,11 @@ model Message {
   createdAt       DateTime @default(now())
 
   trip          Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
-  senderCompany Company  @relation("MessagesSent", fields: [senderCompanyId], references: [id])
+  // Cascade explícito: la migración 20260619_messages ya creó el FK así;
+  // sin declararlo acá, un futuro migrate diff generaría cambios inesperados.
+  senderCompany Company  @relation("MessagesSent", fields: [senderCompanyId], references: [id], onDelete: Cascade)
 
   @@index([tripId, createdAt])
+  @@index([senderCompanyId])
   @@map("messages")
 }

@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -22,6 +23,8 @@ export default function LoginPage() {
   const { login } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const t = useTranslations('auth');
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get('redirect') ?? undefined;
 
   const {
     register,
@@ -32,7 +35,7 @@ export default function LoginPage() {
   const onSubmit = async (data: FormData) => {
     setError(null);
     try {
-      await login(data.email, data.password);
+      await login(data.email, data.password, redirect);
     } catch (err: any) {
       setError(err?.response?.data?.message || t('loginError'));
     }

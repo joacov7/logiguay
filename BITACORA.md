@@ -284,3 +284,32 @@
 | 4 | Integración Resend (emails transaccionales) | ❌ Sin API key |
 | 5 | Password reset no envía email (solo loguea en consola) | ❌ Depende de Resend |
 | 6 | Aplicar migraciones en producción (`./scripts/apply-migrations.sh`) | 🔄 Pendiente |
+
+---
+
+## 2026-07-02 — Auditoría completa de código y correcciones
+
+Auditoría de las 3 apps (API, mobile, web) con 37 hallazgos. Correcciones aplicadas por severidad:
+
+### Seguridad API (críticos)
+- **WS gateway**: el JWT no trae `companyId` → toda la autorización de rooms estaba rota (tracking en vivo muerto para no-admin). Ahora se resuelve company/driver desde la DB en `handleConnection`.
+- **position-update**: se verifica pertenencia del vehículo (antes cualquier usuario podía inyectar GPS falso).
+- **Webhook Traccar**: faltaba `@Public()` → recibía 401 siempre.
+- **trips**: ownership en create/assign/events/eta; chofer sin registro Driver ya no ve todos los viajes; DADOR puede cancelar; se puede cancelar en curso.
+- **GET /cargo/:id**: un transportista ya no ve las cotizaciones de la competencia (solo las suyas).
+- **Race conditions**: accept/selectQuote/updateStatus con updates condicionados → ya no se pueden crear 2 viajes por carga ni comisiones duplicadas.
+- **Anti-fraude chat**: cerrado bypass `$<teléfono>`, y separadores coma/barra; chat en solo-lectura al FINALIZAR/CANCELAR; chofer asignado puede chatear.
+
+### Mobile
+- GPS: al cambiar de vehículo se reinicia el watcher (antes seguía reportando el vehículo anterior); catch de errores de ubicación.
+- Bolsa transportista: modal de cotización propio (antes navegaba a la pantalla del dador y daba 403).
+- Cold start: siempre redirige al grupo del rol; push token se registra una sola vez.
+- Refresh de token single-flight (evita logout espurio); turnos des-envuelve paginación; lista de cargas del dador se refresca al volver; chat con estado de error y aviso de realtime caído; guardas null varias.
+
+### Web
+- Nueva carga: "Guardar borrador" ≠ "Publicar" (flag `draft` en el API); campos numéricos opcionales vacíos ya no bloquean.
+- Tracking: re-suscripción al socket cuando llegan los companyIds (el realtime quedaba mudo); marcador fallback por vehículo correcto.
+- Refresh de token single-flight; bolsa invalida `my-quotes` (evita doble cotización); login respeta `?redirect=`; chat con feedback de errores.
+
+### Pendiente producción
+- Aplicar migración `20260702_messages_sender_index` (índice de mensajes).

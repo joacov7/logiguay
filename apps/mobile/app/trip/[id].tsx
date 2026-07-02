@@ -212,7 +212,7 @@ export default function TripDetailScreen() {
         {trip.cargo && (
           <Section title="CARGA">
             <Row label="Tipo" value={trip.cargo.type} />
-            <Row label="Peso" value={`${trip.cargo.weightTons} toneladas`} />
+            <Row label="Peso" value={trip.cargo.weightTons != null ? `${trip.cargo.weightTons} toneladas` : '—'} />
           </Section>
         )}
 
@@ -241,7 +241,7 @@ export default function TripDetailScreen() {
 
         {/* Finanzas */}
         <Section title="FINANZAS">
-          <Row label="Tarifa acordada" value={`$${trip.agreedRate?.toLocaleString('es-AR')}`} bold />
+          <Row label="Tarifa acordada" value={trip.agreedRate != null ? `$${trip.agreedRate.toLocaleString('es-AR')}` : '—'} bold />
         </Section>
 
         {/* Vehículo y conductor */}
@@ -249,7 +249,7 @@ export default function TripDetailScreen() {
           <Section title="VEHÍCULO Y CONDUCTOR">
             {trip.vehicle && <Row label="Patente" value={trip.vehicle.plate} bold />}
             {trip.driver && (
-              <Row label="Conductor" value={`${trip.driver.user.firstName} ${trip.driver.user.lastName}`} />
+              <Row label="Conductor" value={`${trip.driver.user?.firstName ?? ''} ${trip.driver.user?.lastName ?? ''}`.trim() || '—'} />
             )}
           </Section>
         )}

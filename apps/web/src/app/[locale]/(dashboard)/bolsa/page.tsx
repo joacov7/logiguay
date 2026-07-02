@@ -192,6 +192,9 @@ export default function BolsaPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bolsa'] });
+      // Sin esto la card recién cotizada vuelve a ofrecer "Cotizar" (doble cotización)
+      queryClient.invalidateQueries({ queryKey: ['my-quotes'] });
+      queryClient.invalidateQueries({ queryKey: ['cargo-detail-bolsa'] });
       setQuotingCargoId(null);
       setQuoteAmount('');
       setQuoteNotes('');

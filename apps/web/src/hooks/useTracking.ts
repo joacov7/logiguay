@@ -90,6 +90,21 @@ export function useTracking(options: UseTrackingOptions = {}) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Re-suscripción cuando cambian los targets DESPUÉS del connect. En la
+  // página de tracking los companyIds llegan async (via /auth/me): al momento
+  // del 'connect' la lista está vacía y sin este efecto el realtime queda mudo.
+  const vehicleKey = (options.vehicleIds ?? []).join(',');
+  const companyKey = (options.companyIds ?? (options.companyId ? [options.companyId] : [])).join(',');
+  useEffect(() => {
+    const socket = socketRef.current;
+    if (!socket?.connected) return;
+    const { vehicleIds, companyId, companyIds, tripId } = optionsRef.current;
+    vehicleIds?.forEach((id) => socket.emit('subscribe-vehicle', id));
+    const allCompanies = companyIds ?? (companyId ? [companyId] : []);
+    allCompanies.forEach((id) => socket.emit('subscribe-company', id));
+    if (tripId) socket.emit('subscribe-trip', tripId);
+  }, [vehicleKey, companyKey, options.tripId, connected]);
+
   const subscribeVehicle = useCallback((vehicleId: string) => {
     socketRef.current?.emit('subscribe-vehicle', vehicleId);
   }, []);

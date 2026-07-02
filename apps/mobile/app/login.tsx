@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  KeyboardAvoidingView, Platform, ActivityIndicator, SafeAreaView, StatusBar,
+  KeyboardAvoidingView, Platform, ActivityIndicator, SafeAreaView, StatusBar, Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { login } from '../src/lib/auth';
-import { getApiErrorMessage, isNetworkError } from '../src/lib/api';
+import api, { getApiErrorMessage, isNetworkError } from '../src/lib/api';
 import { T } from '../src/lib/theme';
 
 export default function LoginScreen() {
@@ -36,6 +36,23 @@ export default function LoginScreen() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleForgotPassword() {
+    const mail = email.trim();
+    if (!mail) {
+      setError('Escribí tu email arriba y volvé a tocar "¿Olvidaste tu contraseña?".');
+      return;
+    }
+    try {
+      await api.post('/auth/forgot-password', { email: mail });
+    } catch {
+      // Respuesta uniforme: no revelamos si el email existe o hubo error
+    }
+    Alert.alert(
+      'Revisá tu correo',
+      `Si ${mail} está registrado, te enviamos instrucciones para restablecer la contraseña.`,
+    );
   }
 
   return (
@@ -88,7 +105,7 @@ export default function LoginScreen() {
             onBlur={() => setPasswordFocused(false)}
           />
 
-          <TouchableOpacity style={s.forgotWrap}>
+          <TouchableOpacity style={s.forgotWrap} onPress={handleForgotPassword}>
             <Text style={s.forgotText}>¿Olvidaste tu contraseña?</Text>
           </TouchableOpacity>
 

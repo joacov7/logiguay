@@ -30,7 +30,7 @@ export function TripChat({ tripId, onClose }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const socketRef = useRef<Socket | null>(null);
 
-  const { data: messages = [], isLoading } = useQuery<Message[]>({
+  const { data: messages = [], isLoading, isError, refetch } = useQuery<Message[]>({
     queryKey: ['chat', tripId],
     queryFn: async () => (await api.get(`/messages/trip/${tripId}`)).data ?? [],
   });
@@ -95,6 +95,13 @@ export function TripChat({ tripId, onClose }: Props) {
         <div className="flex-1 space-y-2 overflow-y-auto bg-gray-50 p-4">
           {isLoading ? (
             <p className="mt-8 text-center text-sm text-gray-400">Cargando…</p>
+          ) : isError ? (
+            <div className="mt-12 text-center">
+              <p className="text-sm font-semibold text-red-600">No se pudieron cargar los mensajes</p>
+              <button onClick={() => refetch()} className="mt-2 text-xs text-blue-700 underline">
+                Reintentar
+              </button>
+            </div>
           ) : messages.length === 0 ? (
             <div className="mt-12 text-center">
               <p className="mb-2 text-3xl">💬</p>
@@ -136,6 +143,11 @@ export function TripChat({ tripId, onClose }: Props) {
         </div>
 
         {/* Input */}
+        {sendMutation.isError && (
+          <p className="border-t border-red-100 bg-red-50 px-4 py-1.5 text-xs text-red-600">
+            {(sendMutation.error as any)?.response?.data?.message || 'No se pudo enviar el mensaje. Intentá de nuevo.'}
+          </p>
+        )}
         <form onSubmit={send} className="flex items-end gap-2 border-t border-gray-200 p-3">
           <textarea
             value={text}

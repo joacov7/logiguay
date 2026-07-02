@@ -3,7 +3,7 @@ import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
   RefreshControl, ActivityIndicator, StatusBar,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Package, Plus } from 'lucide-react-native';
 import api, { getApiErrorMessage } from '../../src/lib/api';
 import { getUser } from '../../src/lib/auth';
@@ -64,6 +64,15 @@ export default function DadorCargasScreen() {
       setLoading(false);
     });
   }, []);
+
+  // Refetch al volver a la pantalla: tras aceptar una cotización en el detalle,
+  // el estado/ofertas de la lista quedarían viejos hasta un pull-to-refresh.
+  useFocusEffect(
+    useCallback(() => {
+      if (user) fetchCargas(user);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user]),
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);

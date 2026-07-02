@@ -170,6 +170,8 @@ export default function ViajesPage() {
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['viajes'] });
     queryClient.invalidateQueries({ queryKey: ['trip-detail', selectedTripId] });
+    // Al pasar a FINALIZADO, el prompt de calificación depende de esta query
+    queryClient.invalidateQueries({ queryKey: ['trip-has-rated', selectedTripId] });
   };
 
   const ratingMutation = useMutation({

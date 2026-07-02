@@ -26,8 +26,9 @@ export class MessagesController {
     @Param('tripId') tripId: string,
     @CurrentUser('companyId') companyId: string,
     @CurrentUser('role') role: string,
+    @CurrentUser('driverId') driverId: string | null,
   ) {
-    return this.messagesService.getMessages(tripId, companyId, role);
+    return this.messagesService.getMessages(tripId, companyId, role, driverId);
   }
 
   @Post('trip/:tripId')
@@ -37,8 +38,9 @@ export class MessagesController {
     @CurrentUser('companyId') companyId: string,
     @CurrentUser('id') userId: string,
     @CurrentUser('role') role: string,
+    @CurrentUser('driverId') driverId: string | null,
     @Body() body: { body: string },
   ) {
-    return this.messagesService.sendMessage(tripId, companyId, userId, role, body?.body);
+    return this.messagesService.sendMessage(tripId, companyId, userId, role, body?.body, driverId);
   }
 }

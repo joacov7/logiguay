@@ -46,6 +46,31 @@ function isRetriable(config: RetryConfig | undefined, error: AxiosError): boolea
   return isTransient(error);
 }
 
+// Single-flight del refresh: si varias requests devuelven 401 a la vez (el
+// dashboard dispara 2-3 queries en paralelo), solo la primera hace el POST
+// /auth/refresh; las demás esperan la misma promesa. El backend rota el
+// refresh token, así que refreshes paralelos deslogueaban al usuario.
+let refreshPromise: Promise<string> | null = null;
+
+async function refreshAccessToken(): Promise<string> {
+  if (!refreshPromise) {
+    refreshPromise = (async () => {
+      const refreshToken = await AsyncStorage.getItem('refreshToken');
+      if (!refreshToken) throw new Error('no refresh token');
+      const res = await axios.post(`${API_URL}/api/v1/auth/refresh`, { refreshToken });
+      const { accessToken, refreshToken: newRefresh } = res.data;
+      await AsyncStorage.multiSet([
+        ['accessToken', accessToken],
+        ['refreshToken', newRefresh],
+      ]);
+      return accessToken as string;
+    })().finally(() => {
+      refreshPromise = null;
+    });
+  }
+  return refreshPromise;
+}
+
 api.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
   const token = await AsyncStorage.getItem('accessToken');
   if (token && config.headers) {
@@ -59,18 +84,11 @@ api.interceptors.response.use(
   async (error: AxiosError) => {
     const original = error.config as RetryConfig | undefined;
 
-    // 1) Refresh de token en 401 (una sola vez)
+    // 1) Refresh de token en 401 (una sola vez, single-flight)
     if (error.response?.status === 401 && original && !original._retry) {
       original._retry = true;
       try {
-        const refreshToken = await AsyncStorage.getItem('refreshToken');
-        if (!refreshToken) throw new Error('no refresh token');
-        const res = await axios.post(`${API_URL}/api/v1/auth/refresh`, { refreshToken });
-        const { accessToken, refreshToken: newRefresh } = res.data;
-        await AsyncStorage.multiSet([
-          ['accessToken', accessToken],
-          ['refreshToken', newRefresh],
-        ]);
+        const accessToken = await refreshAccessToken();
         if (original.headers) original.headers.Authorization = `Bearer ${accessToken}`;
         return api(original);
       } catch {

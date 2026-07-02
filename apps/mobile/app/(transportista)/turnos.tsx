@@ -71,13 +71,13 @@ export default function TurnosScreen() {
 
   const { data: slots = [], isLoading: loadingSlots, refetch: refetchSlots, isRefetching: refetchingSlots } = useQuery({
     queryKey: ['turnos-slots'],
-    queryFn: () => api.get('/turnos/slots').then(r => r.data),
+    queryFn: () => api.get('/turnos/slots').then(r => r.data?.data ?? r.data ?? []),
     enabled: tab === 'disponibles',
   });
 
   const { data: bookings = [], isLoading: loadingBookings, refetch: refetchBookings, isRefetching: refetchingBookings } = useQuery({
     queryKey: ['turnos-my-bookings'],
-    queryFn: () => api.get('/turnos/my-bookings').then(r => r.data),
+    queryFn: () => api.get('/turnos/my-bookings').then(r => r.data?.data ?? r.data ?? []),
     enabled: tab === 'misreservas',
   });
 

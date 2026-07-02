@@ -73,6 +73,7 @@ export default function TrackingPage() {
     .filter((t: any) => ACTIVE_STATUSES.includes(t.status) || t.status === 'ASIGNADO')
     .map((t: any) => ({
       id: t.id,
+      vehicleId: t.vehicle?.id,
       plate: t.vehicle?.plate,
       originLat: t.cargo?.originLat,
       originLng: t.cargo?.originLng,

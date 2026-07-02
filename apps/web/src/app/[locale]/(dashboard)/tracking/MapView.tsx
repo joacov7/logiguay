@@ -45,6 +45,7 @@ const destIcon = new L.DivIcon({
 
 export interface ActiveTrip {
   id: string;
+  vehicleId?: string;
   plate?: string;
   originLat?: number;
   originLng?: number;
@@ -145,8 +146,8 @@ export default function MapView({ positions, selectedVehicleId, activeTrips = []
                 </Popup>
               </Marker>
             )}
-            {/* Show truck at origin if in transit */}
-            {hasOrigin && !positions.find(p => p.vehicleId) && trip.status !== 'FINALIZADO' && (
+            {/* Camión fallback en origen solo si SU vehículo no tiene GPS en vivo */}
+            {hasOrigin && !positions.some(p => trip.vehicleId && p.vehicleId === trip.vehicleId) && trip.status !== 'FINALIZADO' && (
               <Marker position={[trip.originLat!, trip.originLng!]} icon={truckIcon}>
                 <Popup>
                   <div className="text-sm">

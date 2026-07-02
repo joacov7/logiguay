@@ -31,6 +31,7 @@ export default function ChatScreen() {
   const qc = useQueryClient();
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [text, setText] = useState('');
+  const [realtimeDown, setRealtimeDown] = useState(false);
   const listRef = useRef<FlatList>(null);
   const socketRef = useRef<Socket | null>(null);
 
@@ -38,7 +39,7 @@ export default function ChatScreen() {
     getUser().then((u) => setCompanyId(u?.companyId ?? null));
   }, []);
 
-  const { data: messages = [], isLoading } = useQuery<Message[]>({
+  const { data: messages = [], isLoading, isError, refetch } = useQuery<Message[]>({
     queryKey: ['chat', tripId],
     queryFn: () => api.get(`/messages/trip/${tripId}`).then((r) => r.data ?? []),
     enabled: !!tripId,
@@ -58,6 +59,11 @@ export default function ChatScreen() {
       });
       socketRef.current = socket;
       socket.on('connect', () => socket.emit('subscribe-trip', tripId));
+      // El gateway responde {event:'error'} si la suscripción es denegada:
+      // sin escuchar esto el usuario cree que tiene realtime y no recibe nada.
+      socket.on('error', () => setRealtimeDown(true));
+      socket.on('subscribed-trip', () => setRealtimeDown(false));
+      socket.on('connect_error', () => setRealtimeDown(true));
       socket.on('message', (msg: Message) => {
         qc.setQueryData<Message[]>(['chat', tripId], (prev = []) => {
           if (prev.some((m) => m.id === msg.id)) return prev;
@@ -112,6 +118,14 @@ export default function ChatScreen() {
         </Text>
       </View>
 
+      {realtimeDown && (
+        <View style={s.realtimeBanner}>
+          <Text style={s.realtimeText}>
+            Sin conexión en tiempo real: los mensajes nuevos pueden demorar.
+          </Text>
+        </View>
+      )}
+
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -119,6 +133,13 @@ export default function ChatScreen() {
       >
         {isLoading ? (
           <View style={s.centered}><ActivityIndicator size="large" color="#1e3a8a" /></View>
+        ) : isError ? (
+          <View style={s.centered}>
+            <Text style={s.errorTitle}>No se pudieron cargar los mensajes</Text>
+            <TouchableOpacity onPress={() => refetch()} style={s.retryBtn}>
+              <Text style={s.retryText}>Reintentar</Text>
+            </TouchableOpacity>
+          </View>
         ) : (
           <FlatList
             ref={listRef}
@@ -191,6 +212,11 @@ const s = StyleSheet.create({
     backgroundColor: '#fef9c3', paddingHorizontal: 14, paddingVertical: 8,
   },
   noticeText: { fontSize: 11.5, color: '#854d0e', flex: 1, lineHeight: 16 },
+  realtimeBanner: { backgroundColor: '#fef2f2', paddingHorizontal: 14, paddingVertical: 6 },
+  realtimeText: { fontSize: 11, color: '#b91c1c' },
+  errorTitle: { fontSize: 15, fontWeight: '700', color: '#b91c1c', marginBottom: 10 },
+  retryBtn: { backgroundColor: '#1e3a8a', borderRadius: 8, paddingHorizontal: 18, paddingVertical: 9 },
+  retryText: { color: '#fff', fontWeight: '700', fontSize: 14 },
   list: { padding: 14, gap: 8 },
   emptyContainer: { flexGrow: 1 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80 },

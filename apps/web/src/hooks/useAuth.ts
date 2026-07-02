@@ -16,12 +16,14 @@ export function useAuth() {
   }, []);
 
   const handleLogin = useCallback(
-    async (email: string, password: string) => {
+    async (email: string, password: string, redirectTo?: string) => {
       setLoading(true);
       try {
         const response = await login(email, password);
         setUser(response.user);
-        router.push('/dashboard');
+        // Solo rutas relativas internas: evita open-redirect con ?redirect=
+        const safe = redirectTo && redirectTo.startsWith('/') && !redirectTo.startsWith('//');
+        router.push(safe ? (redirectTo as any) : '/dashboard');
         return response;
       } finally {
         setLoading(false);

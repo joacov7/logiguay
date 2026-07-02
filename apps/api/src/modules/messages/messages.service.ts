@@ -11,16 +11,17 @@ export class MessagesService {
   ) {}
 
   /**
-   * Devuelve el viaje si la empresa participa (dador o transportista) y el
-   * estado habilita el chat. Lanza si no tiene acceso.
+   * Devuelve el viaje si la empresa participa (dador o transportista), o el
+   * usuario es el chofer asignado. Lanza si no tiene acceso.
    */
-  private async assertAccess(tripId: string, companyId: string, role: string) {
+  private async assertAccess(tripId: string, companyId: string | null, role: string, driverId?: string | null) {
     const trip = await this.prisma.trip.findUnique({
       where: { id: tripId },
       select: {
         id: true,
         status: true,
         transportCompanyId: true,
+        driverId: true,
         cargo: { select: { companyId: true } },
       },
     });
@@ -29,15 +30,16 @@ export class MessagesService {
     const dadorCompanyId = trip.cargo?.companyId;
     const involved =
       role === 'ADMIN' ||
-      trip.transportCompanyId === companyId ||
-      dadorCompanyId === companyId;
+      (companyId != null &&
+        (trip.transportCompanyId === companyId || dadorCompanyId === companyId)) ||
+      (driverId != null && trip.driverId === driverId);
     if (!involved) throw new ForbiddenException('No participás en este viaje');
 
     return { trip, dadorCompanyId };
   }
 
-  async getMessages(tripId: string, companyId: string, role: string) {
-    await this.assertAccess(tripId, companyId, role);
+  async getMessages(tripId: string, companyId: string, role: string, driverId?: string | null) {
+    await this.assertAccess(tripId, companyId, role, driverId);
 
     const messages = await this.prisma.message.findMany({
       where: { tripId },
@@ -46,16 +48,30 @@ export class MessagesService {
     });
 
     // Marca como leídos los mensajes que NO envié yo
-    await this.prisma.message.updateMany({
-      where: { tripId, senderCompanyId: { not: companyId }, readAt: null },
-      data: { readAt: new Date() },
-    });
+    if (companyId) {
+      await this.prisma.message.updateMany({
+        where: { tripId, senderCompanyId: { not: companyId }, readAt: null },
+        data: { readAt: new Date() },
+      });
+    }
 
     return messages;
   }
 
-  async sendMessage(tripId: string, companyId: string, userId: string, role: string, rawBody: string) {
-    await this.assertAccess(tripId, companyId, role);
+  async sendMessage(tripId: string, companyId: string | null, userId: string, role: string, rawBody: string, driverId?: string | null) {
+    const { trip } = await this.assertAccess(tripId, companyId, role, driverId);
+
+    // En viajes terminados/cancelados el chat queda en solo-lectura: dejarlo
+    // abierto indefinidamente es una ventana para negociar por fuera.
+    if (trip.status === 'CANCELADO' || trip.status === 'FINALIZADO') {
+      throw new BadRequestException('El chat está cerrado para este viaje');
+    }
+
+    // Un chofer sin empresa vinculada envía en nombre de la transportista del viaje
+    const senderCompanyId = companyId ?? trip.transportCompanyId;
+    if (!senderCompanyId) {
+      throw new ForbiddenException('No se pudo determinar la empresa emisora');
+    }
 
     const trimmed = (rawBody ?? '').trim();
     if (!trimmed) throw new BadRequestException('El mensaje está vacío');
@@ -66,7 +82,7 @@ export class MessagesService {
     const message = await this.prisma.message.create({
       data: {
         tripId,
-        senderCompanyId: companyId,
+        senderCompanyId,
         senderUserId: userId,
         body: masked,
         maskedContact: hadContact,
