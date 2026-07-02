@@ -1,0 +1,608 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  DADOR
+  TRANSPORTISTA
+  CHOFER
+}
+
+enum PlanType {
+  FREE
+  PRO
+  EMPRESA
+  FLOTA
+}
+
+enum VehicleType {
+  CAMION
+  ACOPLADO
+  SEMIRREMOLQUE
+}
+
+enum VehicleStatus {
+  ACTIVO
+  INACTIVO
+  MANTENIMIENTO
+}
+
+enum CondicionFiscal {
+  RESPONSABLE_INSCRIPTO
+  MONOTRIBUTO
+  EXENTO
+  CONSUMIDOR_FINAL
+  NO_DECLARADA
+}
+
+// Fuente de seguimiento de un vehículo
+enum TrackingMode {
+  APP        // El chofer comparte ubicación desde la app durante el viaje
+  GPS_FISICO // Equipo GPS instalado que reporta vía Traccar
+}
+
+// Protocolo del equipo GPS físico (cada uno escucha en un puerto de Traccar)
+enum TrackerProtocol {
+  CONCOX
+  GT06
+}
+
+enum DocumentStatus {
+  VIGENTE
+  VENCIDO
+  POR_VENCER
+}
+
+enum CargoStatus {
+  PENDIENTE
+  PUBLICADO
+  COTIZANDO
+  ASIGNADO
+  CANCELADO
+}
+
+enum TripStatus {
+  PENDIENTE
+  PUBLICADO
+  COTIZANDO
+  ASIGNADO
+  EN_CAMINO_ORIGEN
+  EN_CARGA
+  EN_TRANSITO
+  EN_DESCARGA
+  FINALIZADO
+  CANCELADO
+}
+
+enum CommissionType {
+  PORCENTAJE
+  FIJO
+  HIBRIDO
+}
+
+enum QuoteStatus {
+  PENDIENTE
+  ACEPTADA
+  RECHAZADA
+}
+
+enum GeoFenceType {
+  ORIGEN
+  DESTINO
+  PLANTA
+  ACOPIO
+  PUERTO
+  CLIENTE
+}
+
+enum TripEventType {
+  LLEGADA_ORIGEN
+  SALIDA_ORIGEN
+  LLEGADA_DESTINO
+  SALIDA_DESTINO
+  DESVIO
+  PERDIDA_SENAL
+  DEMORA
+}
+
+enum InvoiceType {
+  VIAJE
+  COMISION
+  SUSCRIPCION
+}
+
+enum PayerRole {
+  TRANSPORTISTA
+  DADOR
+  PLATAFORMA
+}
+
+enum InvoiceStatus {
+  PENDIENTE
+  PAGADA
+  CANCELADA
+}
+
+enum SubscriptionStatus {
+  ACTIVA
+  CANCELADA
+  VENCIDA
+  TRIAL
+}
+
+model User {
+  id         String   @id @default(cuid())
+  email      String   @unique
+  password   String
+  role       Role     @default(DADOR)
+  firstName  String
+  lastName   String
+  phone      String?
+  country    String   @default("AR")
+  language   String   @default("es")
+  currency   String   @default("ARS")
+  timezone   String   @default("America/Argentina/Buenos_Aires")
+  pushToken  String?
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  companyUsers     CompanyUser[]
+  drivers          Driver[]
+  auditLogs        AuditLog[]
+  ratingsGiven     Rating[] @relation("RatingsGiven")
+  ratingsReceived  Rating[] @relation("RatingsReceived")
+
+  @@map("users")
+}
+
+model Company {
+  id              String          @id @default(cuid())
+  name            String
+  cuit            String          @unique
+  // Razón social y condición fiscal: requeridos para poder facturar
+  razonSocial     String?
+  condicionFiscal CondicionFiscal @default(NO_DECLARADA)
+  address         String?
+  country         String          @default("AR")
+  planType        PlanType        @default(FREE)
+  isActive        Boolean         @default(true)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  companyUsers       CompanyUser[]
+  branches           Branch[]
+  vehicles           Vehicle[]
+  drivers            Driver[]
+  cargos             Cargo[]
+  quotes             Quote[]
+  geoFences          GeoFence[]
+  alerts             Alert[]
+  subscriptions      Subscription[]
+  invoices           Invoice[]
+  trips              Trip[]
+  turnSlots          TurnSlot[]
+  turnBookings       TurnBooking[]
+  truckAvailability  TruckAvailability[]
+  ratingsReceived    Rating[] @relation("RatingsReceivedByCompany")
+  messagesSent       Message[] @relation("MessagesSent")
+
+  @@map("companies")
+}
+
+model CompanyUser {
+  userId    String
+  companyId String
+  role      Role   @default(DADOR)
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@id([userId, companyId])
+  @@map("company_users")
+}
+
+model Branch {
+  id        String  @id @default(cuid())
+  companyId String
+  name      String
+  address   String
+  lat       Float?
+  lng       Float?
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("branches")
+}
+
+model Vehicle {
+  id            String        @id @default(cuid())
+  companyId     String
+  type          VehicleType
+  plate         String        @unique
+  brand         String?
+  model         String?
+  year          Int?
+  capacityTons  Float?
+  capacityM3    Float?
+  status        VehicleStatus @default(ACTIVO)
+  // Fuente de seguimiento: app del chofer (default) o equipo GPS físico
+  trackingMode    TrackingMode    @default(APP)
+  // IMEI del equipo GPS instalado (ej: West A10), usado por el webhook de Traccar
+  trackerDeviceId String?     @unique
+  // Protocolo del equipo GPS físico (define el puerto de Traccar al que reporta)
+  trackerProtocol TrackerProtocol?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  company   Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  trips     Trip[]
+  positions VehiclePosition[]
+  documents Document[]
+
+  @@map("vehicles")
+}
+
+model Driver {
+  id             String   @id @default(cuid())
+  userId         String
+  companyId      String
+  licenseNumber  String
+  licenseExpiry  DateTime
+  status         String   @default("ACTIVO")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company   Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  trips     Trip[]
+  documents Document[]
+
+  @@map("drivers")
+}
+
+model Document {
+  id         String         @id @default(cuid())
+  entityType String
+  entityId   String
+  type       String
+  fileUrl    String
+  expiresAt  DateTime?
+  status     DocumentStatus @default(VIGENTE)
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  vehicle Vehicle? @relation(fields: [vehicleId], references: [id])
+  vehicleId String?
+  driver  Driver?  @relation(fields: [driverId], references: [id])
+  driverId String?
+
+  @@map("documents")
+}
+
+model Cargo {
+  id                 String      @id @default(cuid())
+  companyId          String
+  type               String
+  description        String?
+  weightTons         Float?
+  volumeM3           Float?
+  originAddress      String
+  originLat          Float?
+  originLng          Float?
+  destinationAddress String
+  destinationLat     Float?
+  destinationLng     Float?
+  requiredDate       DateTime?
+  estimatedValue     Float?
+  observations       String?
+  isAuction          Boolean     @default(false)
+  auctionEndsAt      DateTime?
+  status             CargoStatus @default(PENDIENTE)
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  trips   Trip[]
+  quotes  Quote[]
+
+  @@map("cargos")
+}
+
+model Trip {
+  id               String     @id @default(cuid())
+  cargoId          String
+  vehicleId        String?
+  driverId         String?
+  transportCompanyId String?
+  status           TripStatus @default(PENDIENTE)
+  agreedRate       Float?
+  commission       Float?
+  commissionType   CommissionType?
+  estimatedArrival DateTime?
+  actualArrival    DateTime?
+  startedAt        DateTime?
+  finishedAt       DateTime?
+  canceledAt       DateTime?
+  cancelReason     String?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  cargo            Cargo    @relation(fields: [cargoId], references: [id])
+  vehicle          Vehicle? @relation(fields: [vehicleId], references: [id])
+  driver           Driver?  @relation(fields: [driverId], references: [id])
+  transportCompany Company? @relation(fields: [transportCompanyId], references: [id])
+  events           TripEvent[]
+  alerts           Alert[]
+  invoices         Invoice[]
+  ratings          Rating[]
+  messages         Message[]
+
+  @@map("trips")
+}
+
+model Quote {
+  id               String      @id @default(cuid())
+  cargoId          String
+  transportCompanyId String
+  amount           Float
+  notes            String?
+  status           QuoteStatus @default(PENDIENTE)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  cargo            Cargo   @relation(fields: [cargoId], references: [id])
+  transportCompany Company @relation(fields: [transportCompanyId], references: [id])
+
+  @@map("quotes")
+}
+
+model GeoFence {
+  id           String       @id @default(cuid())
+  companyId    String
+  name         String
+  type         GeoFenceType
+  lat          Float
+  lng          Float
+  radiusMeters Float        @default(500)
+  createdAt    DateTime     @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("geofences")
+}
+
+model VehiclePosition {
+  id               String   @id @default(cuid())
+  vehicleId        String
+  lat              Float
+  lng              Float
+  speed            Float?
+  heading          Float?
+  timestamp        DateTime @default(now())
+  connectionStatus String   @default("CONNECTED")
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@map("vehicle_positions")
+}
+
+model TripEvent {
+  id        String        @id @default(cuid())
+  tripId    String
+  type      TripEventType
+  lat       Float?
+  lng       Float?
+  timestamp DateTime      @default(now())
+  notes     String?
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@map("trip_events")
+}
+
+model Alert {
+  id        String   @id @default(cuid())
+  companyId String
+  tripId    String?
+  type      String
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  trip    Trip?   @relation(fields: [tripId], references: [id])
+
+  @@map("alerts")
+}
+
+model Subscription {
+  id        String             @id @default(cuid())
+  companyId String
+  plan      PlanType
+  status    SubscriptionStatus @default(TRIAL)
+  startDate DateTime
+  endDate   DateTime
+  amount    Float
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
+
+model Invoice {
+  id        String        @id @default(cuid())
+  companyId String
+  tripId    String?
+  type      InvoiceType
+  amount    Float
+  status    InvoiceStatus @default(PENDIENTE)
+  concept   String?       // Descripción legible, ej. "Comisión Logiguay (transportista 5%)"
+  payerRole PayerRole?    // Quién paga: TRANSPORTISTA, DADOR o PLATAFORMA
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  trip    Trip?   @relation(fields: [tripId], references: [id])
+
+  @@map("invoices")
+}
+
+// Tasas de comisión de la plataforma, editables por el admin.
+// Una fila por plan. carrierRate = % que paga el transportista,
+// shipperRate = % que paga el dador, ambos sobre la tarifa del flete.
+model CommissionRate {
+  id          String   @id @default(cuid())
+  plan        PlanType @unique
+  carrierRate Float    // % sobre el flete que paga el transportista
+  shipperRate Float    // % sobre el flete que paga el dador
+  updatedAt   DateTime @updatedAt
+}
+
+model Rating {
+  id          String   @id @default(cuid())
+  tripId      String
+  fromUserId  String
+  toUserId    String
+  toCompanyId String?
+  score       Int                  // Overall 1-5 (calculado como promedio de categorías)
+  comment     String?
+  role        String               // Quién califica: DADOR o TRANSPORTISTA
+
+  // Categorías para TRANSPORTISTA (calificado por el DADOR)
+  puntualidad      Int?            // llegó a tiempo
+  cuidadoCarga     Int?            // trató bien la mercadería
+  comunicacion     Int?            // respondió, avisó novedades
+  estadoVehiculo   Int?            // camión en buenas condiciones
+  documentacion    Int?            // papeles en regla
+
+  // Categorías para DADOR (calificado por el TRANSPORTISTA)
+  puntualidadCarga Int?            // el lugar estuvo listo a tiempo
+  condicionesLugar Int?            // acceso, playa, comodidades
+  pagoTiempo       Int?            // pagó según lo acordado
+  tratoPersonal    Int?            // buen trato al chofer
+
+  createdAt   DateTime @default(now())
+
+  trip        Trip     @relation(fields: [tripId], references: [id])
+  fromUser    User     @relation("RatingsGiven", fields: [fromUserId], references: [id])
+  toUser      User     @relation("RatingsReceived", fields: [toUserId], references: [id])
+  toCompany   Company? @relation("RatingsReceivedByCompany", fields: [toCompanyId], references: [id])
+
+  @@unique([tripId, fromUserId])
+  @@map("ratings")
+}
+
+model TurnSlot {
+  id          String   @id @default(cuid())
+  companyId   String
+  plantName   String
+  address     String
+  lat         Float?
+  lng         Float?
+  date        DateTime
+  startTime   String
+  endTime     String
+  capacity    Int      @default(1)
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  company   Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  bookings  TurnBooking[]
+
+  @@map("turn_slots")
+}
+
+model TurnBooking {
+  id           String   @id @default(cuid())
+  slotId       String
+  companyId    String
+  driverName   String?
+  vehiclePlate String?
+  notes        String?
+  status       String    @default("CONFIRMADO")
+  arrivedAt    DateTime?
+  delayMinutes Int?
+  delayNote    String?
+  createdAt    DateTime  @default(now())
+
+  slot    TurnSlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  company Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("turn_bookings")
+}
+
+model TruckAvailability {
+  id             String   @id @default(cuid())
+  companyId      String
+  vehicleId      String?
+  vehicleType    String
+  capacityTons   Float?
+  capacityM3     Float?
+  originAddress  String
+  originLat      Float?
+  originLng      Float?
+  availableFrom  DateTime
+  availableTo    DateTime
+  notes          String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("truck_availability")
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  oldValue  Json?
+  newValue  Json?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
+}
+
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+
+  @@map("app_settings")
+}
+
+model Message {
+  id              String   @id @default(cuid())
+  tripId          String
+  senderCompanyId String
+  senderUserId    String?
+  // body ya viene enmascarado: nunca se persiste PII (teléfono/email/links)
+  body            String
+  maskedContact   Boolean  @default(false)
+  readAt          DateTime?
+  createdAt       DateTime @default(now())
+
+  trip          Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  // Cascade explícito: la migración 20260619_messages ya creó el FK así;
+  // sin declararlo acá, un futuro migrate diff generaría cambios inesperados.
+  senderCompany Company  @relation("MessagesSent", fields: [senderCompanyId], references: [id], onDelete: Cascade)
+
+  @@index([tripId, createdAt])
+  @@index([senderCompanyId])
+  @@map("messages")
+}

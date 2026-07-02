@@ -1,0 +1,252 @@
+{
+  "common": {
+    "loading": "Carregando...",
+    "save": "Salvar",
+    "cancel": "Cancelar",
+    "delete": "Excluir",
+    "edit": "Editar",
+    "create": "Criar",
+    "search": "Buscar",
+    "filter": "Filtrar",
+    "export": "Exportar",
+    "noData": "Sem dados",
+    "actions": "Ações",
+    "confirm": "Confirmar",
+    "back": "Voltar",
+    "next": "Próximo",
+    "previous": "Anterior",
+    "page": "Página",
+    "of": "de",
+    "results": "resultados",
+    "yes": "Sim",
+    "no": "Não",
+    "all": "Todos",
+    "active": "Ativo",
+    "inactive": "Inativo",
+    "status": "Status",
+    "date": "Data",
+    "amount": "Valor",
+    "notes": "Notas",
+    "type": "Tipo",
+    "name": "Nome",
+    "email": "Email",
+    "phone": "Telefone",
+    "address": "Endereço",
+    "country": "País",
+    "createdAt": "Criado",
+    "updatedAt": "Atualizado"
+  },
+  "nav": {
+    "operaciones": "Operaciones",
+    "dashboard": "Dashboard",
+    "cargas": "Cargas",
+    "viajes": "Viagens",
+    "flota": "Frota",
+    "choferes": "Motoristas",
+    "tracking": "Rastreamento",
+    "bolsa": "Bolsa de Cargas",
+    "documentos": "Documentos",
+    "alertas": "Alertas",
+    "facturacion": "Faturamento",
+    "suscripcion": "Assinatura",
+    "logout": "Sair"
+  },
+  "auth": {
+    "login": "Entrar",
+    "register": "Cadastrar-se",
+    "logout": "Sair",
+    "email": "Email",
+    "password": "Senha",
+    "firstName": "Nome",
+    "lastName": "Sobrenome",
+    "forgotPassword": "Esqueceu sua senha?",
+    "noAccount": "Não tem conta?",
+    "alreadyAccount": "Já tem conta?",
+    "loginError": "Credenciais inválidas",
+    "welcome": "Bem-vindo ao LOGIGUAY",
+    "loginSubtitle": "Acesse sua conta LOGIGUAY",
+    "registerSubtitle": "Crie sua conta grátis"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "greeting": "Bom dia",
+    "activeTrips": "Viagens ativas",
+    "tripsThisMonth": "Viagens este mês",
+    "pendingRevenue": "Faturamento pendente",
+    "fleetUtilization": "Utilização da frota",
+    "totalWeight": "Toneladas transportadas",
+    "unreadAlerts": "Alertas não lidos",
+    "avgDelivery": "Tempo médio de entrega",
+    "recentTrips": "Viagens recentes",
+    "expiringDocs": "Documentos a vencer",
+    "viewAll": "Ver todos",
+    "hours": "horas",
+    "tons": "toneladas"
+  },
+  "trips": {
+    "title": "Viagens",
+    "newTrip": "Nova viagem",
+    "status": {
+      "PENDIENTE": "Pendente",
+      "PUBLICADO": "Publicado",
+      "COTIZANDO": "Cotando",
+      "ASIGNADO": "Atribuído",
+      "EN_CAMINO_ORIGEN": "A caminho da origem",
+      "EN_CARGA": "Carregando",
+      "EN_TRANSITO": "Em trânsito",
+      "EN_DESCARGA": "Descarregando",
+      "FINALIZADO": "Finalizado",
+      "CANCELADO": "Cancelado"
+    },
+    "cargo": "Carga",
+    "origin": "Origem",
+    "destination": "Destino",
+    "vehicle": "Veículo",
+    "driver": "Motorista",
+    "rate": "Tarifa",
+    "startedAt": "Iniciado",
+    "eta": "ETA",
+    "cancelReason": "Motivo do cancelamento"
+  },
+  "cargo": {
+    "title": "Cargas",
+    "newCargo": "Nova carga",
+    "type": "Tipo de carga",
+    "description": "Descrição",
+    "weight": "Peso (toneladas)",
+    "volume": "Volume (m³)",
+    "origin": "Origem",
+    "destination": "Destino",
+    "requiredDate": "Data necessária",
+    "estimatedValue": "Valor estimado",
+    "observations": "Observações",
+    "isAuction": "Modo leilão",
+    "auctionEndsAt": "Prazo do leilão",
+    "publishNow": "Publicar agora",
+    "saveDraft": "Salvar rascunho",
+    "quotes": "Cotações",
+    "noQuotes": "Sem cotações ainda",
+    "selectWinner": "Selecionar vencedor",
+    "types": {
+      "Cereal": "Grãos",
+      "Fertilizante": "Fertilizante",
+      "Maquinaria": "Maquinário",
+      "General": "Carga geral",
+      "Outro": "Outro"
+    }
+  },
+  "fleet": {
+    "title": "Frota",
+    "addVehicle": "Adicionar veículo",
+    "plate": "Placa",
+    "brand": "Marca",
+    "model": "Modelo",
+    "year": "Ano",
+    "capacityTons": "Capacidade (ton)",
+    "capacityM3": "Capacidade (m³)",
+    "type": {
+      "CAMION": "Caminhão",
+      "ACOPLADO": "Reboque",
+      "SEMIRREMOLQUE": "Semirreboque"
+    },
+    "status": {
+      "ACTIVO": "Ativo",
+      "INACTIVO": "Inativo",
+      "MANTENIMIENTO": "Em manutenção"
+    }
+  },
+  "drivers": {
+    "title": "Motoristas",
+    "addDriver": "Adicionar motorista",
+    "licenseNumber": "Número da habilitação",
+    "licenseExpiry": "Vencimento da habilitação",
+    "licenseExpired": "Habilitação vencida"
+  },
+  "documents": {
+    "title": "Documentos",
+    "addDocument": "Adicionar documento",
+    "fileUrl": "URL do arquivo",
+    "expiresAt": "Data de vencimento",
+    "checkExpiries": "Verificar vencimentos",
+    "daysRemaining": "dias restantes",
+    "expired": "Vencido",
+    "expiresIn": "Vence em",
+    "types": {
+      "SEGURO": "Seguro",
+      "CEDULA": "Documento do veículo",
+      "LICENCIA": "Habilitação",
+      "RTO": "Inspeção veicular",
+      "HABILITACION": "Habilitação",
+      "OTRO": "Outro"
+    },
+    "status": {
+      "VIGENTE": "Válido",
+      "POR_VENCER": "A vencer",
+      "VENCIDO": "Vencido"
+    }
+  },
+  "tracking": {
+    "title": "Rastreamento ao vivo",
+    "connected": "Ao vivo",
+    "disconnected": "Desconectado",
+    "activeVehicles": "veículo(s) ativo(s)",
+    "noVehicles": "Sem veículos online",
+    "speed": "Velocidade",
+    "heading": "Direção",
+    "lastUpdate": "Última atualização",
+    "fleet": "Frota ativa",
+    "detail": "Detalhe do veículo",
+    "alerts": "Alertas"
+  },
+  "marketplace": {
+    "title": "Bolsa de Cargas",
+    "subtitle": "Cargas disponíveis para transportadores",
+    "searchPlaceholder": "Buscar por tipo, origem, destino...",
+    "filters": "Filtros",
+    "offers": "oferta(s)",
+    "makeOffer": "Fazer oferta",
+    "offerAmount": "Valor da oferta",
+    "noResults": "Nenhuma carga disponível com os filtros aplicados"
+  },
+  "billing": {
+    "title": "Faturamento",
+    "totalPaid": "Total recebido",
+    "pendingPayment": "Pendente de recebimento",
+    "commissions": "Comissões",
+    "totalInvoices": "Total de faturas",
+    "types": {
+      "VIAJE": "Viagem",
+      "COMISION": "Comissão",
+      "SUSCRIPCION": "Assinatura"
+    },
+    "status": {
+      "PENDIENTE": "Pendente",
+      "PAGADA": "Pago",
+      "CANCELADA": "Cancelado"
+    }
+  },
+  "subscription": {
+    "title": "Assinatura",
+    "currentPlan": "Plano atual",
+    "upgradePlan": "Melhorar plano",
+    "activate": "Ativar",
+    "cancel": "Cancelar assinatura",
+    "months": "meses",
+    "recommended": "Recomendado",
+    "plans": {
+      "FREE": "Gratuito",
+      "PRO": "Profissional",
+      "EMPRESA": "Empresa",
+      "FLOTA": "Frota"
+    },
+    "limits": {
+      "maxVehicles": "Veículos",
+      "maxDrivers": "Motoristas",
+      "maxActiveTrips": "Viagens ativas",
+      "maxMonthlyPublications": "Publicações/mês",
+      "commissionRate": "Comissão da plataforma",
+      "canExportReports": "Exportar relatórios",
+      "canUsePremiumListings": "Publicações em destaque"
+    }
+  }
+}
